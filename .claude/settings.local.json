@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//Users/johanwinquist/Library/Application Support/Claude/local-agent-mode-sessions/skills-plugin/7d7c083b-dc20-493a-b85a-50989e90273a/1215eb37-5ab9-457c-a7d4-97588228b80f/skills/xlsx/**)",
+      "Bash(python3 -c ' *)",
+      "Bash(pip3 install *)",
+      "Bash(brew install *)"
+    ]
+  }
+}

@@ -1,0 +1,139 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  FRANCHISEE
+}
+
+enum CustomerType {
+  VARDHEM
+  FORENING
+  TRAFFPUNKT
+  BOENDE_55
+  OVRIGT
+}
+
+enum SeasonType {
+  VAR
+  HOST
+}
+
+enum ReportStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+}
+
+enum Region {
+  SE
+  FI
+  DK
+}
+
+model User {
+  id           String         @id @default(cuid())
+  email        String         @unique
+  name         String?
+  passwordHash String
+  role         Role           @default(FRANCHISEE)
+  districtId   String?
+  district     District?      @relation(fields: [districtId], references: [id])
+  reports      WeeklyReport[]
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+}
+
+model District {
+  id        String        @id @default(cuid())
+  number    Int           @unique
+  name      String
+  region    Region        @default(SE)
+  users     User[]
+  customers Customer[]
+  reports   WeeklyReport[]
+  feeConfig FeeConfig?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+}
+
+model FeeConfig {
+  id             String   @id @default(cuid())
+  districtId     String   @unique
+  district       District @relation(fields: [districtId], references: [id])
+  ftFeePercent   Float    @default(0.075)
+  mfFeePercent   Float    @default(0.01)
+  mfFeeCap       Float    @default(5999.812)
+  vatMultiplier  Float    @default(1.25)
+  updatedBy      String?
+  updatedAt      DateTime @updatedAt
+}
+
+model Customer {
+  id            String       @id @default(cuid())
+  name          String
+  type          CustomerType
+  contactPerson String?
+  phone         String?
+  address       String?
+  notes         String?
+  active        Boolean      @default(true)
+  districtId    String
+  district      District     @relation(fields: [districtId], references: [id])
+  visits        Visit[]
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+}
+
+model Season {
+  id        String         @id @default(cuid())
+  type      SeasonType
+  year      Int
+  weekStart Int
+  weekEnd   Int
+  reports   WeeklyReport[]
+
+  @@unique([type, year])
+}
+
+model WeeklyReport {
+  id         String       @id @default(cuid())
+  districtId String
+  district   District     @relation(fields: [districtId], references: [id])
+  seasonId   String
+  season     Season       @relation(fields: [seasonId], references: [id])
+  week       Int
+  status     ReportStatus @default(DRAFT)
+  userId     String
+  user       User         @relation(fields: [userId], references: [id])
+  visits     Visit[]
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  @@unique([districtId, seasonId, week])
+}
+
+model Visit {
+  id                String       @id @default(cuid())
+  reportId          String
+  report            WeeklyReport @relation(fields: [reportId], references: [id])
+  customerId        String
+  customer          Customer     @relation(fields: [customerId], references: [id])
+  numberOfCustomers Int          @default(0)
+  sales             Float        @default(0)
+  isFashionShow     Boolean      @default(false)
+  fashionShowSales  Float        @default(0)
+  ftFee             Float        @default(0)
+  mfFee             Float        @default(0)
+  mfFeeAccumulated  Float        @default(0)
+  totalToPay        Float        @default(0)
+  comment           String?
+  previousYearSales Float?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+}
