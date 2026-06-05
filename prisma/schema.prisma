@@ -4,6 +4,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 enum Role {
@@ -50,28 +51,28 @@ model User {
 }
 
 model District {
-  id        String        @id @default(cuid())
-  number    Int           @unique
+  id        String         @id @default(cuid())
+  number    Int            @unique
   name      String
-  region    Region        @default(SE)
+  region    Region         @default(SE)
   users     User[]
   customers Customer[]
   reports   WeeklyReport[]
   feeConfig FeeConfig?
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
 }
 
 model FeeConfig {
-  id             String   @id @default(cuid())
-  districtId     String   @unique
-  district       District @relation(fields: [districtId], references: [id])
-  ftFeePercent   Float    @default(0.075)
-  mfFeePercent   Float    @default(0.01)
-  mfFeeCap       Float    @default(5999.812)
-  vatMultiplier  Float    @default(1.25)
-  updatedBy      String?
-  updatedAt      DateTime @updatedAt
+  id            String   @id @default(cuid())
+  districtId    String   @unique
+  district      District @relation(fields: [districtId], references: [id])
+  ftFeePercent  Float    @default(0.075)
+  mfFeePercent  Float    @default(0.01)
+  mfFeeCap      Float    @default(5999.812)
+  vatMultiplier Float    @default(1.25)
+  updatedBy     String?
+  updatedAt     DateTime @updatedAt
 }
 
 model Customer {

@@ -7,7 +7,7 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: seniorshop
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -29,9 +29,14 @@ services:
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-devsecret_change_in_production}
       NODE_ENV: development
     volumes:
-      - .:/app
-      - /app/node_modules
-      - /app/.next
+      - ./src:/app/src
+      - ./prisma:/app/prisma
+      - ./public:/app/public
+      - ./next.config.ts:/app/next.config.ts
+      - ./tailwind.config.ts:/app/tailwind.config.ts
+      - ./tsconfig.json:/app/tsconfig.json
+      - ./postcss.config.mjs:/app/postcss.config.mjs
+      - nextjs_cache:/app/.next
     depends_on:
       db:
         condition: service_healthy
@@ -39,3 +44,4 @@ services:
 
 volumes:
   postgres_data:
+  nextjs_cache:
