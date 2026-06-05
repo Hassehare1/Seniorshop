@@ -41,6 +41,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   callbacks: {
     jwt({ token, user }) {
       if (user) {
+        token.id = user.id;
         token.role = (user as any).role;
         token.districtId = (user as any).districtId;
         token.districtNumber = (user as any).districtNumber;
@@ -48,6 +49,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       return token;
     },
     session({ session, token }) {
+      session.user.id = token.id as string;
       session.user.role = token.role as string;
       session.user.districtId = token.districtId as string | null;
       session.user.districtNumber = token.districtNumber as number | null;

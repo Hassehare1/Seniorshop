@@ -13,14 +13,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
+  const userId = session.user.id;
+  if (!userId) return NextResponse.json({ error: "Session saknar user id" }, { status: 401 });
+
   const report = await prisma.weeklyReport.upsert({
     where: { districtId_seasonId_week: { districtId, seasonId, week } },
     update: { status: "DRAFT", updatedAt: new Date() },
     create: {
-      districtId,
-      seasonId,
+      district: { connect: { id: districtId } },
+      season: { connect: { id: seasonId } },
       week,
-      userId: session.user.id,
+      user: { connect: { id: userId } },
       status: "DRAFT",
     },
   });
