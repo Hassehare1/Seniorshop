@@ -11,6 +11,12 @@ export async function POST(req: NextRequest) {
 
   const { seasonId } = await req.json();
 
+  // Hämta rapporterna som ska godkännas för audit-loggning
+  const toApprove = await prisma.weeklyReport.findMany({
+    where: { status: "SUBMITTED", ...(seasonId ? { seasonId } : {}) },
+    include: { district: { select: { number: true, name: true } } },
+  });
+
   const result = await prisma.weeklyReport.updateMany({
     where: {
       status: "SUBMITTED",
@@ -18,6 +24,28 @@ export async function POST(req: NextRequest) {
     },
     data: { status: "APPROVED" },
   });
+
+  // Logga varje godkänd rapport
+  if (toApprove.length > 0) {
+    await prisma.auditLog.createMany({
+      data: toApprove.map(r => ({
+        action: "RAPPORT_GODKÄND",
+        entity: "WeeklyReport",
+        entityId: r.id,
+        userId: session.user.id ?? null,
+        userEmail: session.user.email ?? null,
+        details: JSON.stringify({
+          från: "SUBMITTED",
+          till: "APPROVED",
+          districtId: r.districtId,
+          districtNr: r.district.number,
+          districtName: r.district.name,
+          vecka: r.week,
+          bulk: true,
+        }),
+      })),
+    });
+  }
 
   return NextResponse.json({ approved: result.count });
 }

@@ -110,15 +110,18 @@ export default function AdminRapporterClient({
         <div className="flex flex-wrap items-center gap-2">
           {/* Säsongsväljare */}
           {allSeasons.length > 1 && (
-            <select
-              value={seasonId}
-              onChange={e => router.push(`/admin/rapporter?season=${e.target.value}`)}
-              className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-            >
-              {allSeasons.map(s => (
-                <option key={s.id} value={s.id}>{s.label}</option>
-              ))}
-            </select>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-400">Säsong:</span>
+              <select
+                value={seasonId}
+                onChange={e => router.push(`/admin/rapporter?season=${e.target.value}`)}
+                className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              >
+                {allSeasons.map(s => (
+                  <option key={s.id} value={s.id}>{s.label}</option>
+                ))}
+              </select>
+            </div>
           )}
           {/* Exportknapp */}
           <a

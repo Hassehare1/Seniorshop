@@ -10,7 +10,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const { status: newStatus } = await req.json();
   const isAdmin = session.user.role === "ADMIN";
 
-  const report = await prisma.weeklyReport.findUnique({ where: { id } });
+  const report = await prisma.weeklyReport.findUnique({
+    where: { id },
+    include: { district: { select: { number: true, name: true } } },
+  });
   if (!report) return NextResponse.json({ error: "Rapport hittades inte" }, { status: 404 });
 
   if (!isAdmin && session.user.districtId !== report.districtId) {
@@ -53,6 +56,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         från: current,
         till: newStatus,
         districtId: report.districtId,
+        districtNr: report.district.number,
+        districtName: report.district.name,
         vecka: report.week,
       }),
     },

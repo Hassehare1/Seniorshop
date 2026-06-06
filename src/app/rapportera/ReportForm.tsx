@@ -180,18 +180,22 @@ export default function ReportForm({
   const [selectedSeasonId, setSelectedSeasonId] = useState(
     currentSeason?.id ?? ""
   );
-  const [selectedWeek, setSelectedWeek] = useState<number>(
-    new Date().getWeek()
-  );
+  const [selectedWeek, setSelectedWeek] = useState<number>(() => {
+    const week = new Date().getWeek();
+    if (!currentSeason) return week;
+    return Math.min(Math.max(week, currentSeason.weekStart), currentSeason.weekEnd);
+  });
+  const [reports, setReports] = useState(existingReports);
   const [visits, setVisits] = useState<VisitRow[]>([]);
   const [loadingVisits, setLoadingVisits] = useState(false);
+  const [loadError, setLoadError] = useState("");
   const [saving, setSaving] = useState(false);
   const [locking, setLocking] = useState(false);
   const [savedReportId, setSavedReportId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [mfAccumulated, setMfAccumulated] = useState(0);
 
-  const currentReport = existingReports.find(r => r.week === selectedWeek) ?? null;
+  const currentReport = reports.find(r => r.week === selectedWeek) ?? null;
   const currentStatus = currentReport?.status ?? "DRAFT";
   const isLocked = currentStatus === "SUBMITTED" || currentStatus === "APPROVED";
   const isApproved = currentStatus === "APPROVED";
@@ -207,13 +211,14 @@ export default function ReportForm({
 
   // Load existing visits when switching to an already-reported week
   useEffect(() => {
-    const isReported = existingReports.some(r => r.week === selectedWeek);
-    if (!isReported) { setVisits([]); return; }
+    const isReported = reports.some(r => r.week === selectedWeek);
+    if (!isReported) { setVisits([]); setLoadError(""); return; }
     setLoadingVisits(true);
+    setLoadError("");
     fetch(`/api/reports?districtId=${districtId}&seasonId=${selectedSeasonId}`)
       .then(r => r.json())
-      .then((reports: { week: number; visits: (VisitRow & { id: string })[] }[]) => {
-        const report = reports.find(r => r.week === selectedWeek);
+      .then((fetched: { week: number; visits: (VisitRow & { id: string })[] }[]) => {
+        const report = fetched.find(r => r.week === selectedWeek);
         if (report) {
           setVisits(report.visits.map(v => ({
             customerId: v.customerId,
@@ -225,9 +230,10 @@ export default function ReportForm({
           })));
         }
       })
-      .catch(() => {})
+      .catch(() => { setLoadError("Kunde inte ladda rapporten. Försök igen."); })
       .finally(() => setLoadingVisits(false));
-  }, [selectedWeek, selectedSeasonId, districtId, existingReports]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedWeek, selectedSeasonId, districtId]);
 
   function addVisit() {
     setVisits((v) => [
@@ -288,6 +294,12 @@ export default function ReportForm({
       const { id } = await res.json();
       setSavedReportId(id);
       setVisits([]);
+      // Uppdatera lokalt state utan prop-mutation
+      setReports(prev => {
+        const exists = prev.some(r => r.week === selectedWeek);
+        if (exists) return prev.map(r => r.week === selectedWeek ? { ...r, id, status: "DRAFT" } : r);
+        return [...prev, { id, week: selectedWeek, status: "DRAFT" }];
+      });
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Något gick fel");
     } finally {
@@ -308,10 +320,8 @@ export default function ReportForm({
         body: JSON.stringify({ status: newStatus }),
       });
       if (!res.ok) throw new Error(await res.text());
-      // Uppdatera existingReports lokalt
-      const idx = existingReports.findIndex(r => r.week === selectedWeek);
-      if (idx !== -1) existingReports[idx].status = newStatus;
-      // Tvinga re-render
+      // Uppdatera lokalt state (immutable)
+      setReports(prev => prev.map(r => r.week === selectedWeek ? { ...r, status: newStatus } : r));
       setSavedReportId(reportId);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Något gick fel");
@@ -320,8 +330,13 @@ export default function ReportForm({
     }
   }
 
-  const reportedWeeks = new Set(existingReports.map((r) => r.week));
-  const weeks = Array.from({ length: 52 }, (_, i) => i + 1);
+  const reportedWeeks = new Set(reports.map((r) => r.week));
+  const weeks = currentSeason
+    ? Array.from(
+        { length: currentSeason.weekEnd - currentSeason.weekStart + 1 },
+        (_, i) => i + currentSeason.weekStart
+      )
+    : Array.from({ length: 52 }, (_, i) => i + 1);
 
   return (
     <div className="space-y-6">
@@ -400,6 +415,12 @@ export default function ReportForm({
 
         {loadingVisits && (
           <div className="p-12 text-center text-slate-400 text-sm">Laddar tidigare rapport...</div>
+        )}
+
+        {loadError && (
+          <div className="mx-4 md:mx-6 mt-4 px-4 py-3 bg-red-50 text-red-700 text-sm rounded-lg">
+            {loadError}
+          </div>
         )}
 
         {!loadingVisits && visits.length === 0 && (

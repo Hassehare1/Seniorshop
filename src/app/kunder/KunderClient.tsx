@@ -35,6 +35,7 @@ export default function KunderClient({ customers: initial, districtId, typeLabel
   const [editingId, setEditingId] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const [form, setForm] = useState(emptyForm);
 
   const filtered = customers.filter(c =>
@@ -64,6 +65,7 @@ export default function KunderClient({ customers: initial, districtId, typeLabel
   async function handleSave() {
     if (!form.name || !form.type) return;
     setSaving(true);
+    setSaveError("");
 
     if (editingId) {
       const res = await fetch(`/api/customers/${editingId}`, {
@@ -76,6 +78,9 @@ export default function KunderClient({ customers: initial, districtId, typeLabel
         setCustomers(prev => prev.map(c => c.id === editingId ? updated : c));
         setEditingId(null);
         setForm(emptyForm);
+      } else {
+        const { error } = await res.json().catch(() => ({ error: "Något gick fel vid sparning." }));
+        setSaveError(error ?? "Något gick fel vid sparning.");
       }
     } else {
       const res = await fetch("/api/customers", {
@@ -88,6 +93,9 @@ export default function KunderClient({ customers: initial, districtId, typeLabel
         setCustomers(prev => [created, ...prev]);
         setForm(emptyForm);
         setShowForm(false);
+      } else {
+        const { error } = await res.json().catch(() => ({ error: "Något gick fel vid sparning." }));
+        setSaveError(error ?? "Något gick fel vid sparning.");
       }
     }
 
@@ -198,6 +206,9 @@ export default function KunderClient({ customers: initial, districtId, typeLabel
               </div>
             )}
           </div>
+          {saveError && (
+            <p className="mt-3 text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{saveError}</p>
+          )}
           <div className="flex gap-2 mt-4">
             <button
               onClick={handleSave}
@@ -207,7 +218,7 @@ export default function KunderClient({ customers: initial, districtId, typeLabel
               {saving ? "Sparar..." : editingId ? "Spara ändringar" : "Spara kund"}
             </button>
             <button
-              onClick={editingId ? cancelEdit : () => setShowForm(false)}
+              onClick={editingId ? cancelEdit : () => { setShowForm(false); setSaveError(""); }}
               className="text-sm text-slate-500 hover:text-slate-700 px-4 py-2"
             >
               Avbryt

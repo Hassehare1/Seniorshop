@@ -16,6 +16,18 @@ export async function POST(req: NextRequest) {
   const userId = session.user.id;
   if (!userId) return NextResponse.json({ error: "Session saknar user id" }, { status: 401 });
 
+  // Skydda godkända rapporter från att skrivas över
+  const existing = await prisma.weeklyReport.findUnique({
+    where: { districtId_seasonId_week: { districtId, seasonId, week } },
+    select: { status: true },
+  });
+  if (existing?.status === "APPROVED") {
+    return NextResponse.json(
+      { error: "Rapporten är godkänd av admin och kan inte ändras. Kontakta admin." },
+      { status: 403 }
+    );
+  }
+
   const report = await prisma.weeklyReport.upsert({
     where: { districtId_seasonId_week: { districtId, seasonId, week } },
     update: { status: "DRAFT", updatedAt: new Date() },

@@ -12,6 +12,11 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const body = await req.json();
   const { ftFeePercent, mfFeePercent, mfFeeCap, vatMultiplier } = body;
 
+  const district = await prisma.district.findUnique({
+    where: { id: districtId },
+    select: { number: true, name: true },
+  });
+
   const updated = await prisma.feeConfig.upsert({
     where: { districtId },
     update: {
@@ -38,7 +43,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       entityId: districtId,
       userId: session.user.id ?? null,
       userEmail: session.user.email ?? null,
-      details: JSON.stringify({ ftFeePercent, mfFeePercent, mfFeeCap, vatMultiplier }),
+      details: JSON.stringify({ ftFeePercent, mfFeePercent, mfFeeCap, vatMultiplier, districtNr: district?.number, districtName: district?.name }),
     },
   });
 
