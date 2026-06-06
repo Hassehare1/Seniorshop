@@ -34,12 +34,12 @@ export default function SeasonChart({ data }: Props) {
           tick={{ fontSize: 12, fill: "#94a3b8" }}
         />
         <Tooltip
-          formatter={(value: number, name: string) => [
+          formatter={(value, name) => [
             new Intl.NumberFormat("sv-SE", {
               style: "currency",
               currency: "SEK",
               maximumFractionDigits: 0,
-            }).format(value),
+            }).format(Number(value)),
             name === "accumulated" ? "Ackumulerat" : "Veckans försäljning",
           ]}
           labelFormatter={(v) => `Vecka ${v}`}

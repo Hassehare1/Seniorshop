@@ -26,7 +26,7 @@ export default async function RapporteraPage() {
           districtId: session.user.districtId,
           seasonId: currentSeason.id,
         },
-        select: { week: true, status: true },
+        select: { id: true, week: true, status: true },
       })
     : [];
 

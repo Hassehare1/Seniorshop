@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { calculateFees, formatSEK, type FeeConfig } from "@/lib/fees";
 import type { Customer, Season } from "@prisma/client";
 
@@ -13,11 +13,150 @@ interface VisitRow {
   comment: string;
 }
 
+interface VisitRowProps {
+  index: number;
+  visit: VisitRow;
+  customers: Customer[];
+  feeRow: { ftFee: number; mfFee: number; totalToPay: number } | null;
+  onUpdate: (field: keyof VisitRow, value: unknown) => void;
+  onRemove: () => void;
+}
+
+function VisitRow({ index, visit, customers, feeRow, onUpdate, onRemove }: VisitRowProps) {
+  const [inputValue, setInputValue] = useState(() => customers.find(c => c.id === visit.customerId)?.name ?? "");
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  const filtered = inputValue === ""
+    ? customers
+    : customers.filter(c =>
+        c.name.toLowerCase().includes(inputValue.toLowerCase()) ||
+        customerTypeLabels[c.type]?.toLowerCase().includes(inputValue.toLowerCase())
+      );
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        // restore selected name if user blurred without picking
+        const selected = customers.find(c => c.id === visit.customerId);
+        setInputValue(selected?.name ?? "");
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [customers, visit.customerId]);
+
+  function selectCustomer(id: string, name: string) {
+    onUpdate("customerId", id);
+    setInputValue(name);
+    setOpen(false);
+  }
+
+  return (
+    <div className="p-6 space-y-4">
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-medium text-slate-600">Besök {index + 1}</span>
+        <button onClick={onRemove} className="text-xs text-red-500 hover:text-red-700">Ta bort</button>
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="lg:col-span-2 relative" ref={ref}>
+          <label className="block text-xs font-medium text-slate-600 mb-1">Kund</label>
+          <input
+            type="text"
+            value={inputValue}
+            placeholder="Sök kund..."
+            onFocus={() => { setInputValue(""); setOpen(true); }}
+            onChange={e => { setInputValue(e.target.value); setOpen(true); }}
+            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          {open && (
+            <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-52 overflow-y-auto">
+              {filtered.length === 0 && (
+                <p className="px-3 py-2 text-sm text-slate-400">Inga kunder hittades</p>
+              )}
+              {filtered.map(c => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onMouseDown={() => selectCustomer(c.id, c.name)}
+                  className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 flex justify-between items-center ${c.id === visit.customerId ? "bg-blue-50 text-blue-700 font-medium" : "text-slate-700"}`}
+                >
+                  <span>{c.name}</span>
+                  <span className="text-xs text-slate-400 ml-2">{customerTypeLabels[c.type]}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-slate-600 mb-1">Antal kunder</label>
+          <input
+            type="number"
+            min={0}
+            value={visit.numberOfCustomers === 0 ? "" : visit.numberOfCustomers}
+            placeholder="0"
+            onChange={e => onUpdate("numberOfCustomers", e.target.value === "" ? 0 : Number(e.target.value))}
+            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-slate-600 mb-1">Försäljning (ink. moms)</label>
+          <input
+            type="number"
+            min={0}
+            step={0.01}
+            value={visit.sales === 0 ? "" : visit.sales}
+            placeholder="0"
+            onChange={e => onUpdate("sales", e.target.value === "" ? 0 : Number(e.target.value))}
+            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-3">
+        <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer w-fit">
+          <input
+            type="checkbox"
+            id={`fashionshow-${index}`}
+            checked={visit.isFashionShow}
+            onChange={e => onUpdate("isFashionShow", e.target.checked)}
+            className="rounded"
+          />
+          Modevisning
+        </label>
+
+        <div>
+          <label className="block text-xs font-medium text-slate-600 mb-1">Kommentar</label>
+          <textarea
+            value={visit.comment}
+            rows={2}
+            placeholder="Valfri notering om besöket"
+            onChange={e => onUpdate("comment", e.target.value)}
+            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+          />
+        </div>
+      </div>
+
+      {feeRow && (
+        <div className="bg-slate-50 rounded-lg px-4 py-2 text-xs text-slate-500 flex gap-6">
+          <span>FT-avgift: {formatSEK(feeRow.ftFee)}</span>
+          <span>MF-avgift: {formatSEK(feeRow.mfFee)}</span>
+          <span className="font-medium text-slate-700">Att betala: {formatSEK(feeRow.totalToPay)}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 interface Props {
   customers: Customer[];
   seasons: Season[];
   currentSeason: Season | null;
-  existingReports: { week: number; status: string }[];
+  existingReports: { week: number; status: string; id: string }[];
   districtId: string;
   feeConfig: Pick<FeeConfig, "ftFeePercent" | "mfFeePercent" | "mfFeeCap" | "vatMultiplier">;
 }
@@ -44,10 +183,17 @@ export default function ReportForm({
     new Date().getWeek()
   );
   const [visits, setVisits] = useState<VisitRow[]>([]);
+  const [loadingVisits, setLoadingVisits] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const [locking, setLocking] = useState(false);
+  const [savedReportId, setSavedReportId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [mfAccumulated, setMfAccumulated] = useState(0);
+
+  const currentReport = existingReports.find(r => r.week === selectedWeek) ?? null;
+  const currentStatus = currentReport?.status ?? "DRAFT";
+  const isLocked = currentStatus === "SUBMITTED" || currentStatus === "APPROVED";
+  const isApproved = currentStatus === "APPROVED";
 
   useEffect(() => {
     fetch(
@@ -57,6 +203,30 @@ export default function ReportForm({
       .then((d) => setMfAccumulated(d.accumulated ?? 0))
       .catch(() => {});
   }, [selectedSeasonId, selectedWeek, districtId]);
+
+  // Load existing visits when switching to an already-reported week
+  useEffect(() => {
+    const isReported = existingReports.some(r => r.week === selectedWeek);
+    if (!isReported) { setVisits([]); return; }
+    setLoadingVisits(true);
+    fetch(`/api/reports?districtId=${districtId}&seasonId=${selectedSeasonId}`)
+      .then(r => r.json())
+      .then((reports: { week: number; visits: (VisitRow & { id: string })[] }[]) => {
+        const report = reports.find(r => r.week === selectedWeek);
+        if (report) {
+          setVisits(report.visits.map(v => ({
+            customerId: v.customerId,
+            numberOfCustomers: v.numberOfCustomers,
+            sales: v.sales,
+            isFashionShow: v.isFashionShow,
+            fashionShowSales: v.fashionShowSales,
+            comment: v.comment ?? "",
+          })));
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoadingVisits(false));
+  }, [selectedWeek, selectedSeasonId, districtId, existingReports]);
 
   function addVisit() {
     setVisits((v) => [
@@ -114,7 +284,8 @@ export default function ReportForm({
         }),
       });
       if (!res.ok) throw new Error(await res.text());
-      setSaved(true);
+      const { id } = await res.json();
+      setSavedReportId(id);
       setVisits([]);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Något gick fel");
@@ -123,8 +294,33 @@ export default function ReportForm({
     }
   }
 
+  async function handleLockToggle() {
+    const reportId = currentReport?.id ?? savedReportId;
+    if (!reportId) return;
+    setLocking(true);
+    setError("");
+    try {
+      const newStatus = currentStatus === "SUBMITTED" ? "DRAFT" : "SUBMITTED";
+      const res = await fetch(`/api/reports/${reportId}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      // Uppdatera existingReports lokalt
+      const idx = existingReports.findIndex(r => r.week === selectedWeek);
+      if (idx !== -1) existingReports[idx].status = newStatus;
+      // Tvinga re-render
+      setSavedReportId(reportId);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Något gick fel");
+    } finally {
+      setLocking(false);
+    }
+  }
+
   const reportedWeeks = new Set(existingReports.map((r) => r.week));
-  const weeks = Array.from({ length: 26 }, (_, i) => i + 1);
+  const weeks = Array.from({ length: 52 }, (_, i) => i + 1);
 
   return (
     <div className="space-y-6">
@@ -138,7 +334,7 @@ export default function ReportForm({
               value={selectedWeek}
               onChange={(e) => {
                 setSelectedWeek(Number(e.target.value));
-                setSaved(false);
+                setSavedReportId(null);
               }}
               className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
@@ -168,142 +364,59 @@ export default function ReportForm({
       </div>
 
       <div className="bg-white rounded-xl border border-slate-200">
-        <div className="p-6 border-b border-slate-100">
-          <h2 className="font-semibold text-slate-700">Besök denna vecka</h2>
+        <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+          <h2 className="font-semibold text-slate-700">Besök vecka {selectedWeek}</h2>
+          {isApproved && (
+            <span className="text-xs bg-red-50 text-red-700 border border-red-200 px-3 py-1.5 rounded-lg font-medium">
+              🔒 Godkänd av admin — kontakta admin för ändringar
+            </span>
+          )}
+          {currentStatus === "SUBMITTED" && (
+            <span className="text-xs bg-amber-50 text-amber-700 border border-amber-200 px-3 py-1.5 rounded-lg font-medium">
+              🔒 Låst — lås upp för att redigera
+            </span>
+          )}
+          {currentStatus === "DRAFT" && reportedWeeks.has(selectedWeek) && (
+            <span className="text-xs bg-blue-50 text-blue-700 border border-blue-200 px-3 py-1.5 rounded-lg">
+              Tidigare rapport laddad — lägg till eller redigera besök och spara igen
+            </span>
+          )}
         </div>
 
-        {visits.length === 0 && (
+        {loadingVisits && (
+          <div className="p-12 text-center text-slate-400 text-sm">Laddar tidigare rapport...</div>
+        )}
+
+        {!loadingVisits && visits.length === 0 && (
           <div className="p-12 text-center text-slate-400 text-sm">
             Klicka &quot;Lägg till besök&quot; för att börja rapportera.
           </div>
         )}
 
-        <div className="divide-y divide-slate-100">
+        <div className={`divide-y divide-slate-100 ${isLocked ? "opacity-60 pointer-events-none select-none" : ""}`}>
           {visits.map((visit, i) => (
-            <div key={i} className="p-6 space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-slate-600">
-                  Besök {i + 1}
-                </span>
-                <button
-                  onClick={() => removeVisit(i)}
-                  className="text-xs text-red-500 hover:text-red-700"
-                >
-                  Ta bort
-                </button>
-              </div>
-
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="lg:col-span-2">
-                  <label className="block text-xs font-medium text-slate-600 mb-1">
-                    Kund
-                  </label>
-                  <select
-                    value={visit.customerId}
-                    onChange={(e) => updateVisit(i, "customerId", e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    {customers.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name} ({customerTypeLabels[c.type]})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">
-                    Antal kunder
-                  </label>
-                  <input
-                    type="number"
-                    min={0}
-                    value={visit.numberOfCustomers}
-                    onChange={(e) =>
-                      updateVisit(i, "numberOfCustomers", Number(e.target.value))
-                    }
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">
-                    Försäljning (ink. moms)
-                  </label>
-                  <input
-                    type="number"
-                    min={0}
-                    step={0.01}
-                    value={visit.sales}
-                    onChange={(e) =>
-                      updateVisit(i, "sales", Number(e.target.value))
-                    }
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center gap-4">
-                <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={visit.isFashionShow}
-                    onChange={(e) =>
-                      updateVisit(i, "isFashionShow", e.target.checked)
-                    }
-                    className="rounded"
-                  />
-                  Modevisning
-                </label>
-
-                {visit.isFashionShow && (
-                  <div>
-                    <input
-                      type="number"
-                      min={0}
-                      step={0.01}
-                      value={visit.fashionShowSales}
-                      placeholder="Försäljning modevisning"
-                      onChange={(e) =>
-                        updateVisit(i, "fashionShowSales", Number(e.target.value))
-                      }
-                      className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                )}
-
-                <input
-                  type="text"
-                  value={visit.comment}
-                  placeholder="Kommentar (valfritt)"
-                  onChange={(e) => updateVisit(i, "comment", e.target.value)}
-                  className="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              {feeRows[i] && (
-                <div className="bg-slate-50 rounded-lg px-4 py-2 text-xs text-slate-500 flex gap-6">
-                  <span>
-                    FT-avgift: {formatSEK(feeRows[i].ftFee)}
-                  </span>
-                  <span>MF-avgift: {formatSEK(feeRows[i].mfFee)}</span>
-                  <span className="font-medium text-slate-700">
-                    Att betala: {formatSEK(feeRows[i].totalToPay)}
-                  </span>
-                </div>
-              )}
-            </div>
+            <VisitRow
+              key={i}
+              index={i}
+              visit={visit}
+              customers={customers}
+              feeRow={feeRows[i] ?? null}
+              onUpdate={(field, value) => updateVisit(i, field, value)}
+              onRemove={() => removeVisit(i)}
+            />
           ))}
         </div>
 
-        <div className="p-6 border-t border-slate-100">
-          <button
-            onClick={addVisit}
-            className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-          >
-            + Lägg till besök
-          </button>
-        </div>
+        {!isLocked && (
+          <div className="p-6 border-t border-slate-100">
+            <button
+              onClick={addVisit}
+              className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+            >
+              + Lägg till besök
+            </button>
+          </div>
+        )}
       </div>
 
       {visits.length > 0 && (
@@ -340,21 +453,57 @@ export default function ReportForm({
         </p>
       )}
 
-      {saved && (
-        <p className="text-green-600 text-sm bg-green-50 px-4 py-3 rounded-lg">
-          Rapporten sparades!
-        </p>
+      {savedReportId && !isLocked && (
+        <div className="flex items-center gap-4 bg-green-50 border border-green-200 px-4 py-3 rounded-lg">
+          <p className="text-green-700 text-sm font-medium flex-1">Rapporten sparades!</p>
+          <a
+            href={`/api/reports/${savedReportId}/export`}
+            download
+            className="bg-green-600 hover:bg-green-700 text-white text-sm font-medium px-4 py-1.5 rounded-lg"
+          >
+            Ladda ner Excel
+          </a>
+        </div>
       )}
 
-      {visits.length > 0 && (
-        <div className="flex gap-3">
-          <button
-            onClick={handleSubmit}
-            disabled={saving}
-            className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium px-6 py-2.5 rounded-lg transition-colors"
-          >
-            {saving ? "Sparar..." : "Spara rapport"}
-          </button>
+      {(visits.length > 0 || currentReport) && (
+        <div className="flex gap-3 items-center">
+          {/* Spara — dold när låst */}
+          {!isLocked && (
+            <button
+              onClick={handleSubmit}
+              disabled={saving || visits.length === 0}
+              className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium px-6 py-2.5 rounded-lg transition-colors"
+            >
+              {saving ? "Sparar..." : "Spara rapport"}
+            </button>
+          )}
+
+          {/* Lås / Lås upp — ej tillgänglig om admin-godkänd */}
+          {!isApproved && (currentReport || savedReportId) && (
+            <button
+              onClick={handleLockToggle}
+              disabled={locking}
+              className={`font-medium px-6 py-2.5 rounded-lg transition-colors ${
+                currentStatus === "SUBMITTED"
+                  ? "bg-amber-100 hover:bg-amber-200 text-amber-800"
+                  : "bg-slate-100 hover:bg-slate-200 text-slate-700"
+              }`}
+            >
+              {locking ? "..." : currentStatus === "SUBMITTED" ? "🔓 Lås upp rapport" : "🔒 Lås rapport"}
+            </button>
+          )}
+
+          {/* Excel-länk när låst */}
+          {isLocked && (currentReport?.id ?? savedReportId) && (
+            <a
+              href={`/api/reports/${currentReport?.id ?? savedReportId}/export`}
+              download
+              className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium px-4 py-2.5 rounded-lg"
+            >
+              Ladda ner Excel
+            </a>
+          )}
         </div>
       )}
     </div>

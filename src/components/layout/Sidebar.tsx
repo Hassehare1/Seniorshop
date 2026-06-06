@@ -13,7 +13,9 @@ const franchiseeNav = [
 
 const adminNav = [
   { href: "/dashboard", label: "Översikt" },
-  { href: "/admin/distrikt", label: "Distrikt" },
+  { href: "/admin/distrikt", label: "Distrikt & avgifter" },
+  { href: "/admin/rapporter", label: "Rapportstatus" },
+  { href: "/admin/sasonger", label: "Säsonger" },
   { href: "/admin/anvandare", label: "Användare" },
   { href: "/admin/kunder", label: "Alla kunder" },
 ];
@@ -58,8 +60,18 @@ export default function Sidebar() {
         <p className="text-slate-400 text-xs px-3 mb-2 truncate">
           {session?.user.email}
         </p>
+        <Link
+          href="/profil"
+          className={`block px-3 py-2 rounded-lg text-sm transition-colors mb-1 ${
+            pathname === "/profil"
+              ? "bg-blue-600 text-white"
+              : "text-slate-300 hover:bg-slate-800 hover:text-white"
+          }`}
+        >
+          Min profil
+        </Link>
         <button
-          onClick={() => signOut({ callbackUrl: "/login" })}
+          onClick={() => { if (confirm("Vill du logga ut?")) signOut({ callbackUrl: "/login" }); }}
           className="w-full text-left px-3 py-2 rounded-lg text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
         >
           Logga ut

@@ -11,6 +11,18 @@ const customerTypes = [
   { value: "OVRIGT", label: "Övrigt" },
 ];
 
+const typeColors: Record<string, string> = {
+  TRAFFPUNKT: "bg-blue-100 text-blue-700",
+  FORENING: "bg-green-100 text-green-700",
+  VARDHEM: "bg-purple-100 text-purple-700",
+  BOENDE_55: "bg-orange-100 text-orange-700",
+  OVRIGT: "bg-slate-100 text-slate-600",
+};
+
+const emptyForm = {
+  name: "", type: "TRAFFPUNKT", contactPerson: "", phone: "", address: "", notes: "",
+};
+
 interface Props {
   customers: Customer[];
   districtId: string;
@@ -20,41 +32,68 @@ interface Props {
 export default function KunderClient({ customers: initial, districtId, typeLabels }: Props) {
   const [customers, setCustomers] = useState(initial);
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({
-    name: "", type: "TRAFFPUNKT", contactPerson: "", phone: "", address: "", notes: "",
-  });
+  const [form, setForm] = useState(emptyForm);
 
   const filtered = customers.filter(c =>
     c.name.toLowerCase().includes(filter.toLowerCase()) ||
     typeLabels[c.type]?.toLowerCase().includes(filter.toLowerCase())
   );
 
+  function startEdit(c: Customer) {
+    setEditingId(c.id);
+    setForm({
+      name: c.name,
+      type: c.type,
+      contactPerson: c.contactPerson ?? "",
+      phone: c.phone ?? "",
+      address: c.address ?? "",
+      notes: c.notes ?? "",
+    });
+    setShowForm(false);
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setForm(emptyForm);
+  }
+
   async function handleSave() {
     if (!form.name || !form.type) return;
     setSaving(true);
-    const res = await fetch("/api/customers", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...form, districtId }),
-    });
-    if (res.ok) {
-      const created = await res.json();
-      setCustomers(prev => [created, ...prev]);
-      setForm({ name: "", type: "TRAFFPUNKT", contactPerson: "", phone: "", address: "", notes: "" });
-      setShowForm(false);
+
+    if (editingId) {
+      const res = await fetch(`/api/customers/${editingId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setCustomers(prev => prev.map(c => c.id === editingId ? updated : c));
+        setEditingId(null);
+        setForm(emptyForm);
+      }
+    } else {
+      const res = await fetch("/api/customers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...form, districtId }),
+      });
+      if (res.ok) {
+        const created = await res.json();
+        setCustomers(prev => [created, ...prev]);
+        setForm(emptyForm);
+        setShowForm(false);
+      }
     }
+
     setSaving(false);
   }
 
-  const typeColors: Record<string, string> = {
-    TRAFFPUNKT: "bg-blue-100 text-blue-700",
-    FORENING: "bg-green-100 text-green-700",
-    VARDHEM: "bg-purple-100 text-purple-700",
-    BOENDE_55: "bg-orange-100 text-orange-700",
-    OVRIGT: "bg-slate-100 text-slate-600",
-  };
+  const formOpen = showForm || editingId !== null;
 
   return (
     <div className="space-y-4">
@@ -67,16 +106,18 @@ export default function KunderClient({ customers: initial, districtId, typeLabel
           className="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
         <button
-          onClick={() => setShowForm(!showForm)}
+          onClick={() => { setShowForm(!showForm); setEditingId(null); setForm(emptyForm); }}
           className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg"
         >
           + Ny kund
         </button>
       </div>
 
-      {showForm && (
+      {formOpen && (
         <div className="bg-white border border-slate-200 rounded-xl p-6">
-          <h3 className="font-semibold text-slate-700 mb-4">Lägg till kund</h3>
+          <h3 className="font-semibold text-slate-700 mb-4">
+            {editingId ? "Redigera kund" : "Lägg till kund"}
+          </h3>
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
               <label className="block text-xs font-medium text-slate-600 mb-1">Namn *</label>
@@ -147,10 +188,10 @@ export default function KunderClient({ customers: initial, districtId, typeLabel
               disabled={saving || !form.name}
               className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white text-sm font-medium px-4 py-2 rounded-lg"
             >
-              {saving ? "Sparar..." : "Spara kund"}
+              {saving ? "Sparar..." : editingId ? "Spara ändringar" : "Spara kund"}
             </button>
             <button
-              onClick={() => setShowForm(false)}
+              onClick={editingId ? cancelEdit : () => setShowForm(false)}
               className="text-sm text-slate-500 hover:text-slate-700 px-4 py-2"
             >
               Avbryt
@@ -168,6 +209,7 @@ export default function KunderClient({ customers: initial, districtId, typeLabel
               <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Kontakt</th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Telefon</th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Kommentar</th>
+              <th className="px-4 py-3"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -182,11 +224,19 @@ export default function KunderClient({ customers: initial, districtId, typeLabel
                 <td className="px-4 py-3 text-slate-600">{c.contactPerson ?? "–"}</td>
                 <td className="px-4 py-3 text-slate-600">{c.phone ?? "–"}</td>
                 <td className="px-4 py-3 text-slate-500 max-w-xs truncate">{c.notes ?? "–"}</td>
+                <td className="px-4 py-3 text-right">
+                  <button
+                    onClick={() => startEdit(c)}
+                    className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                  >
+                    Redigera
+                  </button>
+                </td>
               </tr>
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-slate-400">Inga kunder hittades.</td>
+                <td colSpan={6} className="px-4 py-8 text-center text-slate-400">Inga kunder hittades.</td>
               </tr>
             )}
           </tbody>
