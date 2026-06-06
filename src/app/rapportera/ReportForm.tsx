@@ -171,6 +171,7 @@ const customerTypeLabels: Record<string, string> = {
 
 export default function ReportForm({
   customers,
+  seasons,
   currentSeason,
   existingReports,
   districtId,
