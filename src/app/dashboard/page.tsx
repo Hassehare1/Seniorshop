@@ -86,7 +86,7 @@ export default async function DashboardPage({
 
   return (
     <div>
-      <div className="mb-6 flex items-start justify-between">
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Översikt</h1>
           <p className="text-slate-500 text-sm mt-1">Säsong: {seasonLabel}</p>
@@ -102,7 +102,7 @@ export default async function DashboardPage({
         )}
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6 md:mb-8">
         <StatCard label="Total försäljning" value={formatSEK(stats.totalSales)} sub="ink. moms" />
         <StatCard label="FT-avgift" value={formatSEK(stats.totalFtFee)} sub="ex. moms" />
         <StatCard label="MF-avgift" value={formatSEK(stats.totalMfFee)} sub="ex. moms" />
@@ -133,9 +133,9 @@ export default async function DashboardPage({
 
 function StatCard({ label, value, sub }: { label: string; value: string; sub: string }) {
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-5">
+    <div className="bg-white rounded-xl border border-slate-200 p-4 md:p-5">
       <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{label}</p>
-      <p className="text-2xl font-bold text-slate-800 mt-1">{value}</p>
+      <p className="text-xl md:text-2xl font-bold text-slate-800 mt-1 truncate">{value}</p>
       <p className="text-xs text-slate-400 mt-0.5">{sub}</p>
     </div>
   );

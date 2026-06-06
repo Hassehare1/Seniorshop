@@ -94,7 +94,7 @@ export default function SasongerClient({ seasons: initial }: { seasons: Season[]
       {showForm && (
         <div className="bg-white border border-slate-200 rounded-xl p-6">
           <h3 className="font-semibold text-slate-700 mb-4">Skapa ny säsong</h3>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
               <label className="block text-xs font-medium text-slate-600 mb-1">Typ</label>
               <select
@@ -183,7 +183,8 @@ export default function SasongerClient({ seasons: initial }: { seasons: Season[]
       )}
 
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full text-sm min-w-[400px]">
           <thead>
             <tr className="border-b border-slate-100 bg-slate-50">
               <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Säsong</th>
@@ -220,6 +221,7 @@ export default function SasongerClient({ seasons: initial }: { seasons: Season[]
             )}
           </tbody>
         </table>
+        </div>
       </div>
       <p className="text-xs text-slate-400">Den senaste säsongen (högst år + Höst före Vår) är alltid aktiv.</p>
     </div>

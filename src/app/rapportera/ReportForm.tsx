@@ -54,7 +54,7 @@ function VisitRow({ index, visit, customers, feeRow, onUpdate, onRemove }: Visit
   }
 
   return (
-    <div className="p-6 space-y-4">
+    <div className="p-4 md:p-6 space-y-4">
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium text-slate-600">Besök {index + 1}</span>
         <button onClick={onRemove} className="text-xs text-red-500 hover:text-red-700">Ta bort</button>
@@ -325,7 +325,7 @@ export default function ReportForm({
   return (
     <div className="space-y-6">
       <div className="bg-white rounded-xl border border-slate-200 p-6">
-        <div className="flex gap-6">
+        <div className="flex flex-wrap gap-4 items-end">
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">
               Vecka
@@ -346,25 +346,23 @@ export default function ReportForm({
             </select>
           </div>
 
-          <div className="flex items-end">
-            <div className="text-sm text-slate-500">
-              MF ackumulerat hittills:{" "}
-              <span className="font-medium text-slate-700">
-                {formatSEK(mfAccumulated)}
-              </span>{" "}
-              / {formatSEK(feeConfig.mfFeeCap)}
-              {mfAccumulated >= feeConfig.mfFeeCap && (
-                <span className="ml-2 text-amber-600 font-medium">
-                  (tak nått)
-                </span>
-              )}
-            </div>
+          <div className="text-sm text-slate-500 pb-1">
+            MF ackumulerat hittills:{" "}
+            <span className="font-medium text-slate-700">
+              {formatSEK(mfAccumulated)}
+            </span>{" "}
+            / {formatSEK(feeConfig.mfFeeCap)}
+            {mfAccumulated >= feeConfig.mfFeeCap && (
+              <span className="ml-2 text-amber-600 font-medium">
+                (tak nått)
+              </span>
+            )}
           </div>
         </div>
       </div>
 
       <div className="bg-white rounded-xl border border-slate-200">
-        <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+        <div className="p-4 md:p-6 border-b border-slate-100 flex flex-wrap items-center gap-2 justify-between">
           <h2 className="font-semibold text-slate-700">Besök vecka {selectedWeek}</h2>
           {isApproved && (
             <span className="text-xs bg-red-50 text-red-700 border border-red-200 px-3 py-1.5 rounded-lg font-medium">
@@ -467,7 +465,7 @@ export default function ReportForm({
       )}
 
       {(visits.length > 0 || currentReport) && (
-        <div className="flex gap-3 items-center">
+        <div className="flex flex-wrap gap-3 items-center">
           {/* Spara — dold när låst */}
           {!isLocked && (
             <button

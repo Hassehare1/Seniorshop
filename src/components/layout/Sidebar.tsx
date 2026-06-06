@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { useSession } from "next-auth/react";
+import { useState, useEffect } from "react";
 
 const franchiseeNav = [
   { href: "/dashboard", label: "Översikt" },
@@ -20,48 +21,56 @@ const adminNav = [
   { href: "/admin/kunder", label: "Alla kunder" },
 ];
 
+function NavLinks({
+  nav,
+  pathname,
+  onNavigate,
+}: {
+  nav: { href: string; label: string }[];
+  pathname: string;
+  onNavigate?: () => void;
+}) {
+  return (
+    <>
+      {nav.map((item) => (
+        <Link
+          key={item.href}
+          href={item.href}
+          onClick={onNavigate}
+          className={`block px-3 py-2 rounded-lg text-sm transition-colors ${
+            pathname === item.href
+              ? "bg-blue-600 text-white"
+              : "text-slate-300 hover:bg-slate-800 hover:text-white"
+          }`}
+        >
+          {item.label}
+        </Link>
+      ))}
+    </>
+  );
+}
+
 export default function Sidebar() {
   const pathname = usePathname();
   const { data: session } = useSession();
   const isAdmin = session?.user.role === "ADMIN";
   const nav = isAdmin ? adminNav : franchiseeNav;
+  const [open, setOpen] = useState(false);
 
-  return (
-    <aside className="w-56 min-h-screen bg-slate-900 flex flex-col">
-      <div className="px-6 py-5 border-b border-slate-700">
-        <span className="text-white font-bold text-lg">SeniorShop</span>
-        {session?.user.districtNumber && (
-          <p className="text-slate-400 text-xs mt-0.5">
-            Distrikt {session.user.districtNumber}
-          </p>
-        )}
-        {isAdmin && (
-          <p className="text-blue-400 text-xs mt-0.5 font-medium">Admin</p>
-        )}
-      </div>
+  useEffect(() => { setOpen(false); }, [pathname]);
 
-      <nav className="flex-1 px-3 py-4 space-y-1">
-        {nav.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={`block px-3 py-2 rounded-lg text-sm transition-colors ${
-              pathname === item.href
-                ? "bg-blue-600 text-white"
-                : "text-slate-300 hover:bg-slate-800 hover:text-white"
-            }`}
-          >
-            {item.label}
-          </Link>
-        ))}
-      </nav>
+  useEffect(() => {
+    document.body.style.overflow = open ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
+  }, [open]);
 
+  function SidebarFooter({ onNav }: { onNav?: () => void }) {
+    return (
       <div className="px-3 py-4 border-t border-slate-700">
-        <p className="text-slate-400 text-xs px-3 mb-2 truncate">
-          {session?.user.email}
-        </p>
+        <p className="text-slate-400 text-xs px-3 mb-2 truncate">{session?.user.email}</p>
         <Link
           href="/profil"
+          onClick={onNav}
           className={`block px-3 py-2 rounded-lg text-sm transition-colors mb-1 ${
             pathname === "/profil"
               ? "bg-blue-600 text-white"
@@ -71,12 +80,79 @@ export default function Sidebar() {
           Min profil
         </Link>
         <button
-          onClick={() => { if (confirm("Vill du logga ut?")) signOut({ callbackUrl: "/login" }); }}
+          onClick={() => {
+            onNav?.();
+            if (confirm("Vill du logga ut?")) signOut({ callbackUrl: "/login" });
+          }}
           className="w-full text-left px-3 py-2 rounded-lg text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
         >
           Logga ut
         </button>
       </div>
-    </aside>
+    );
+  }
+
+  return (
+    <>
+      {/* ── MOBILE: fixed top bar ── */}
+      <header className="md:hidden fixed top-0 left-0 right-0 z-40 bg-slate-900 flex items-center h-14 px-4 border-b border-slate-700">
+        <button
+          onClick={() => setOpen(true)}
+          aria-label="Öppna meny"
+          className="text-slate-300 hover:text-white p-1 mr-3"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+        <span className="text-white font-bold">SeniorShop</span>
+        {isAdmin && <span className="ml-2 text-blue-400 text-xs font-medium">Admin</span>}
+      </header>
+
+      {/* ── MOBILE: drawer overlay ── */}
+      {open && (
+        <div className="md:hidden fixed inset-0 z-50 flex" onClick={() => setOpen(false)}>
+          <div className="absolute inset-0 bg-black/50" />
+          <aside
+            className="relative w-64 max-w-[80vw] bg-slate-900 flex flex-col h-full shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-700">
+              <div>
+                <span className="text-white font-bold text-lg">SeniorShop</span>
+                {session?.user.districtNumber && (
+                  <p className="text-slate-400 text-xs mt-0.5">Distrikt {session.user.districtNumber}</p>
+                )}
+                {isAdmin && <p className="text-blue-400 text-xs font-medium mt-0.5">Admin</p>}
+              </div>
+              <button onClick={() => setOpen(false)} aria-label="Stäng" className="text-slate-400 hover:text-white p-1">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+              <NavLinks nav={nav} pathname={pathname} onNavigate={() => setOpen(false)} />
+            </nav>
+            <SidebarFooter onNav={() => setOpen(false)} />
+          </aside>
+        </div>
+      )}
+
+      {/* ── DESKTOP: inline sidebar ── */}
+      <aside className="hidden md:flex w-56 min-h-screen bg-slate-900 flex-col shrink-0">
+        <div className="px-6 py-5 border-b border-slate-700">
+          <span className="text-white font-bold text-lg">SeniorShop</span>
+          {session?.user.districtNumber && (
+            <p className="text-slate-400 text-xs mt-0.5">Distrikt {session.user.districtNumber}</p>
+          )}
+          {isAdmin && <p className="text-blue-400 text-xs mt-0.5 font-medium">Admin</p>}
+        </div>
+        <nav className="flex-1 px-3 py-4 space-y-1">
+          <NavLinks nav={nav} pathname={pathname} />
+        </nav>
+        <SidebarFooter />
+      </aside>
+    </>
   );
 }

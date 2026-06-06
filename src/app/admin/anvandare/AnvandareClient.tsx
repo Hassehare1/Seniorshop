@@ -187,7 +187,8 @@ export default function AnvandareClient({ users: initial, districts }: Props) {
       )}
 
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full text-sm min-w-[540px]">
           <thead>
             <tr className="border-b border-slate-100 bg-slate-50">
               <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Namn</th>
@@ -222,6 +223,7 @@ export default function AnvandareClient({ users: initial, districts }: Props) {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

@@ -89,7 +89,7 @@ export default function AdminRapporterClient({ districts: initial, weeks, curren
 
   return (
     <div>
-      <div className="mb-6 flex items-start justify-between">
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Rapportstatus</h1>
           <p className="text-slate-500 text-sm mt-1">{seasonLabel}</p>
