@@ -1,7 +1,8 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatSEK } from "@/lib/fees";
-import SeasonChart from "@/components/charts/SeasonChart";
+import WeeklySalesChart from "@/components/charts/WeeklySalesChart";
+import AccumulatedChart from "@/components/charts/AccumulatedChart";
 import WeeklyReportList from "./WeeklyReportList";
 import SeasonSwitcher from "./SeasonSwitcher";
 
@@ -114,9 +115,17 @@ export default async function DashboardPage({
       </div>
 
       {stats.weeklyData.length > 0 && (
-        <div className="bg-white rounded-xl border border-slate-200 p-6 mb-6">
-          <h2 className="text-sm font-semibold text-slate-700 mb-4">Ackumulerad försäljning per vecka</h2>
-          <SeasonChart data={stats.weeklyData} />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+          <div className="bg-white rounded-xl border border-slate-200 p-4 md:p-6">
+            <h2 className="text-sm font-semibold text-slate-700 mb-1">Försäljning per vecka</h2>
+            <p className="text-xs text-slate-400 mb-4">Mörkblå = utfall &nbsp;·&nbsp; Ljusblå = prognos (kommer)</p>
+            <WeeklySalesChart data={stats.weeklyData} />
+          </div>
+          <div className="bg-white rounded-xl border border-slate-200 p-4 md:p-6">
+            <h2 className="text-sm font-semibold text-slate-700 mb-1">Ackumulerad försäljning</h2>
+            <p className="text-xs text-slate-400 mb-4">Heldraget = utfall &nbsp;·&nbsp; Streckad = prognos (kommer)</p>
+            <AccumulatedChart data={stats.weeklyData} />
+          </div>
         </div>
       )}
 
