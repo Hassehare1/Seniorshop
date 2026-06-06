@@ -3,15 +3,21 @@ import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import AdminRapporterClient from "./AdminRapporterClient";
 
-export default async function AdminRapporterPage() {
+export default async function AdminRapporterPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ season?: string }>;
+}) {
   const session = await auth();
   if (session?.user.role !== "ADMIN") redirect("/dashboard");
 
-  const currentSeason = await prisma.season.findFirst({
+  const { season: seasonParam } = await searchParams;
+
+  const allSeasons = await prisma.season.findMany({
     orderBy: [{ year: "desc" }, { type: "desc" }],
   });
 
-  if (!currentSeason) {
+  if (!allSeasons.length) {
     return (
       <div>
         <h1 className="text-2xl font-bold text-slate-800 mb-6">Rapportstatus</h1>
@@ -19,6 +25,10 @@ export default async function AdminRapporterPage() {
       </div>
     );
   }
+
+  const currentSeason = seasonParam
+    ? allSeasons.find(s => s.id === seasonParam) ?? allSeasons[0]
+    : allSeasons[0];
 
   const districts = await prisma.district.findMany({
     include: {
@@ -32,9 +42,10 @@ export default async function AdminRapporterPage() {
     orderBy: { number: "asc" },
   });
 
+  // Visa bara veckor inom säsongens intervall
   const weeks = Array.from(
-    { length: 52 },
-    (_, i) => i + 1
+    { length: currentSeason.weekEnd - currentSeason.weekStart + 1 },
+    (_, i) => i + currentSeason.weekStart
   );
 
   const currentWeek = (() => {
@@ -52,6 +63,10 @@ export default async function AdminRapporterPage() {
       currentWeek={currentWeek}
       seasonId={currentSeason.id}
       seasonLabel={`${currentSeason.type === "VAR" ? "Vår" : "Höst"} ${currentSeason.year}`}
+      allSeasons={allSeasons.map(s => ({
+        id: s.id,
+        label: `${s.type === "VAR" ? "Vår" : "Höst"} ${s.year}`,
+      }))}
     />
   );
 }

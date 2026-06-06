@@ -31,5 +31,16 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     },
   });
 
+  await prisma.auditLog.create({
+    data: {
+      action: "AVGIFTER_UPPDATERADE",
+      entity: "FeeConfig",
+      entityId: districtId,
+      userId: session.user.id ?? null,
+      userEmail: session.user.email ?? null,
+      details: JSON.stringify({ ftFeePercent, mfFeePercent, mfFeeCap, vatMultiplier }),
+    },
+  });
+
   return NextResponse.json(updated);
 }

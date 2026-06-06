@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 interface Report {
   id: string;
@@ -23,6 +24,7 @@ interface Props {
   currentWeek: number;
   seasonId: string;
   seasonLabel: string;
+  allSeasons: { id: string; label: string }[];
 }
 
 const statusLabel: Record<string, string> = {
@@ -40,7 +42,10 @@ const statusStyle: Record<string, string> = {
 const fmt = (n: number) =>
   new Intl.NumberFormat("sv-SE", { style: "currency", currency: "SEK", maximumFractionDigits: 0 }).format(n);
 
-export default function AdminRapporterClient({ districts: initial, weeks, currentWeek, seasonId, seasonLabel }: Props) {
+export default function AdminRapporterClient({
+  districts: initial, weeks, currentWeek, seasonId, seasonLabel, allSeasons,
+}: Props) {
+  const router = useRouter();
   const [districts, setDistricts] = useState(initial);
   const [working, setWorking] = useState<string | null>(null);
   const [bulkWorking, setBulkWorking] = useState(false);
@@ -86,25 +91,55 @@ export default function AdminRapporterClient({ districts: initial, weeks, curren
   }
 
   const submittedCount = districts.flatMap(d => d.reports).filter(r => r.status === "SUBMITTED").length;
+  const totalDistricts = districts.length;
+  const reportedCount = districts.filter(d =>
+    d.reports.some(r => r.status === "SUBMITTED" || r.status === "APPROVED")
+  ).length;
 
   return (
     <div>
+      {/* Header */}
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Rapportstatus</h1>
           <p className="text-slate-500 text-sm mt-1">{seasonLabel}</p>
+          <p className="text-slate-400 text-xs mt-0.5">
+            {reportedCount} av {totalDistricts} distrikt har lämnat in
+          </p>
         </div>
-        <div className="flex flex-col items-end gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Säsongsväljare */}
+          {allSeasons.length > 1 && (
+            <select
+              value={seasonId}
+              onChange={e => router.push(`/admin/rapporter?season=${e.target.value}`)}
+              className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            >
+              {allSeasons.map(s => (
+                <option key={s.id} value={s.id}>{s.label}</option>
+              ))}
+            </select>
+          )}
+          {/* Exportknapp */}
+          <a
+            href={`/api/admin/reports/export?seasonId=${seasonId}`}
+            download
+            className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+          >
+            ↓ Exportera Excel
+          </a>
+          {/* Bulk-godkänn */}
           <button
             onClick={bulkApprove}
             disabled={bulkWorking || submittedCount === 0}
-            className="bg-green-600 hover:bg-green-700 disabled:bg-slate-300 disabled:text-slate-400 text-white font-medium px-5 py-2 rounded-lg text-sm transition-colors"
+            className="bg-green-600 hover:bg-green-700 disabled:bg-slate-300 disabled:text-slate-400 text-white font-medium px-4 py-2 rounded-lg text-sm transition-colors"
           >
             {bulkWorking ? "Godkänner..." : `Godkänn alla inlämnade (${submittedCount})`}
           </button>
-          {message && <p className="text-sm text-green-700">{message}</p>}
         </div>
       </div>
+
+      {message && <p className="mb-4 text-sm text-green-700 bg-green-50 px-4 py-2 rounded-lg">{message}</p>}
 
       <div className="overflow-x-auto">
         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden inline-block min-w-full">
@@ -164,20 +199,14 @@ export default function AdminRapporterClient({ districts: initial, weeks, curren
                                   onClick={() => setStatus(report.id, "APPROVED")}
                                   disabled={working === report.id}
                                   className="text-xs text-green-700 hover:underline whitespace-nowrap"
-                                  title="Godkänn"
-                                >
-                                  Godkänn
-                                </button>
+                                >Godkänn</button>
                               )}
                               {report.status !== "DRAFT" && (
                                 <button
                                   onClick={() => setStatus(report.id, "DRAFT")}
                                   disabled={working === report.id}
                                   className="text-xs text-slate-400 hover:text-slate-600 hover:underline whitespace-nowrap ml-1"
-                                  title="Lås upp för FT"
-                                >
-                                  Lås upp
-                                </button>
+                                >Lås upp</button>
                               )}
                             </div>
                           </div>
@@ -192,11 +221,11 @@ export default function AdminRapporterClient({ districts: initial, weeks, curren
         </div>
       </div>
 
-      <div className="mt-4 flex gap-4 text-xs text-slate-500">
+      <div className="mt-4 flex flex-wrap gap-4 text-xs text-slate-500">
         <span className="flex items-center gap-1.5"><span className="px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 text-xs">Inlämnad</span> FT har låst</span>
         <span className="flex items-center gap-1.5"><span className="px-1.5 py-0.5 rounded bg-green-100 text-green-700 text-xs">Godkänd</span> Admin-godkänd, permanent</span>
         <span className="flex items-center gap-1.5"><span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 text-xs">Utkast</span> Ej låst av FT</span>
-        <span className="flex items-center gap-1.5"><span className="inline-flex w-4 h-4 rounded-full bg-red-100 text-red-500 text-xs items-center justify-center">✗</span> Ej rapporterad</span>
+        <span className="flex items-center gap-1.5"><span className="inline-flex w-4 h-4 rounded-full bg-red-100 text-red-500 text-xs items-center justify-center">✗</span> Ej rapporterad (passerad vecka)</span>
       </div>
     </div>
   );

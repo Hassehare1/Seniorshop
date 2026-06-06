@@ -55,9 +55,11 @@ export default function WeeklyReportList({ reports }: { reports: ReportRow[] }) 
                     <div className="flex items-center justify-between gap-2">
                       <span className="font-medium text-slate-800 text-sm">Vecka {r.week}</span>
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium shrink-0 ${
-                        r.status === "APPROVED" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-600"
+                        r.status === "APPROVED" ? "bg-green-100 text-green-700"
+                        : r.status === "SUBMITTED" ? "bg-blue-100 text-blue-600"
+                        : "bg-slate-100 text-slate-500"
                       }`}>
-                        {r.status === "APPROVED" ? "Godkänd" : "Inlämnad"}
+                        {r.status === "APPROVED" ? "Godkänd" : r.status === "SUBMITTED" ? "Inlämnad" : "Utkast"}
                       </span>
                     </div>
                     <div className="flex items-center justify-between mt-1">
@@ -74,9 +76,11 @@ export default function WeeklyReportList({ reports }: { reports: ReportRow[] }) 
                   <span className="text-sm font-medium text-slate-700">{fmt(r.totalSales)}</span>
                   <span className="text-sm font-bold text-blue-700 w-32 text-right">{fmt(r.totalToPay)} att betala</span>
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ml-2 ${
-                    r.status === "APPROVED" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-600"
+                    r.status === "APPROVED" ? "bg-green-100 text-green-700"
+                    : r.status === "SUBMITTED" ? "bg-blue-100 text-blue-600"
+                    : "bg-slate-100 text-slate-500"
                   }`}>
-                    {r.status === "APPROVED" ? "Godkänd" : "Inlämnad"}
+                    {r.status === "APPROVED" ? "Godkänd" : r.status === "SUBMITTED" ? "Inlämnad" : "Utkast"}
                   </span>
                 </div>
               </button>

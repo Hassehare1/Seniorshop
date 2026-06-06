@@ -5,15 +5,16 @@ import WeeklySalesChart from "@/components/charts/WeeklySalesChart";
 import AccumulatedChart from "@/components/charts/AccumulatedChart";
 import WeeklyReportList from "./WeeklyReportList";
 import SeasonSwitcher from "./SeasonSwitcher";
+import DistrictSwitcher from "./DistrictSwitcher";
 
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ season?: string }>;
+  searchParams: Promise<{ season?: string; district?: string }>;
 }) {
   const session = await auth();
   const isAdmin = session?.user.role === "ADMIN";
-  const { season: seasonParam } = await searchParams;
+  const { season: seasonParam, district: districtParam } = await searchParams;
 
   const allSeasons = await prisma.season.findMany({
     orderBy: [{ year: "desc" }, { type: "desc" }],
@@ -22,6 +23,14 @@ export default async function DashboardPage({
   const currentSeason = seasonParam
     ? allSeasons.find(s => s.id === seasonParam) ?? allSeasons[0]
     : allSeasons[0];
+
+  // Admin kan filtrera per distrikt
+  const allDistricts = isAdmin
+    ? await prisma.district.findMany({ orderBy: { number: "asc" }, select: { id: true, number: true, name: true } })
+    : [];
+  const selectedDistrictId = isAdmin
+    ? (districtParam ?? null)
+    : (session?.user.districtId ?? null);
 
   type ReportRow = {
     id: string; week: number; status: string;
@@ -36,9 +45,10 @@ export default async function DashboardPage({
   };
 
   if (currentSeason) {
-    const where = isAdmin
-      ? { seasonId: currentSeason.id }
-      : { seasonId: currentSeason.id, districtId: session?.user.districtId ?? undefined };
+    const where = {
+      seasonId: currentSeason.id,
+      ...(selectedDistrictId ? { districtId: selectedDistrictId } : {}),
+    };
 
     const reports = await prisma.weeklyReport.findMany({
       where,
@@ -90,17 +100,37 @@ export default async function DashboardPage({
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Översikt</h1>
-          <p className="text-slate-500 text-sm mt-1">Säsong: {seasonLabel}</p>
+          <p className="text-slate-500 text-sm mt-1">
+            Säsong: {seasonLabel}
+            {isAdmin && selectedDistrictId && allDistricts.length > 0 && (
+              <span className="ml-2 text-blue-600">
+                · {allDistricts.find(d => d.id === selectedDistrictId)?.name ?? ""}
+              </span>
+            )}
+            {isAdmin && !selectedDistrictId && (
+              <span className="ml-1 text-slate-400 text-xs">(alla distrikt)</span>
+            )}
+          </p>
         </div>
-        {allSeasons.length > 1 && (
-          <SeasonSwitcher
-            seasons={allSeasons.map(s => ({
-              id: s.id,
-              label: `${s.type === "VAR" ? "Vår" : "Höst"} ${s.year}`,
-            }))}
-            currentId={currentSeason?.id ?? ""}
-          />
-        )}
+        <div className="flex flex-wrap gap-2 items-center">
+          {isAdmin && allDistricts.length > 0 && (
+            <DistrictSwitcher
+              districts={allDistricts}
+              currentId={selectedDistrictId}
+              seasonId={currentSeason?.id ?? ""}
+            />
+          )}
+          {allSeasons.length > 1 && (
+            <SeasonSwitcher
+              seasons={allSeasons.map(s => ({
+                id: s.id,
+                label: `${s.type === "VAR" ? "Vår" : "Höst"} ${s.year}`,
+              }))}
+              currentId={currentSeason?.id ?? ""}
+              districtId={selectedDistrictId}
+            />
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6 md:mb-8">

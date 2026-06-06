@@ -20,7 +20,7 @@ const typeColors: Record<string, string> = {
 };
 
 const emptyForm = {
-  name: "", type: "TRAFFPUNKT", contactPerson: "", phone: "", address: "", notes: "",
+  name: "", type: "TRAFFPUNKT", contactPerson: "", phone: "", address: "", notes: "", active: true,
 };
 
 interface Props {
@@ -51,6 +51,7 @@ export default function KunderClient({ customers: initial, districtId, typeLabel
       phone: c.phone ?? "",
       address: c.address ?? "",
       notes: c.notes ?? "",
+      active: c.active,
     });
     setShowForm(false);
   }
@@ -181,6 +182,21 @@ export default function KunderClient({ customers: initial, districtId, typeLabel
                 placeholder="Noteringar, öppettider, m.m."
               />
             </div>
+            {editingId && (
+              <div className="col-span-2">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <div
+                    onClick={() => setForm(f => ({ ...f, active: !f.active }))}
+                    className={`relative w-10 h-6 rounded-full transition-colors ${form.active ? "bg-green-500" : "bg-slate-300"}`}
+                  >
+                    <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${form.active ? "left-5" : "left-1"}`} />
+                  </div>
+                  <span className="text-sm text-slate-700">
+                    {form.active ? "Aktiv kund" : "Inaktiv (visas ej i rapportformuläret)"}
+                  </span>
+                </label>
+              </div>
+            )}
           </div>
           <div className="flex gap-2 mt-4">
             <button

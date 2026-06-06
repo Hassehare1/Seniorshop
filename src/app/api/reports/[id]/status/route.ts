@@ -13,18 +13,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const report = await prisma.weeklyReport.findUnique({ where: { id } });
   if (!report) return NextResponse.json({ error: "Rapport hittades inte" }, { status: 404 });
 
-  // FT kan bara ändra sin egen rapport
   if (!isAdmin && session.user.districtId !== report.districtId) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const current = report.status;
 
-  // Behörighetsmatris
   const allowed = isAdmin
-    ? ["DRAFT", "SUBMITTED", "APPROVED"].includes(newStatus)           // admin kan sätta vad som helst
-    : (current === "DRAFT" && newStatus === "SUBMITTED") ||            // FT låser
-      (current === "SUBMITTED" && newStatus === "DRAFT");              // FT låser upp (ej APPROVED)
+    ? ["DRAFT", "SUBMITTED", "APPROVED"].includes(newStatus)
+    : (current === "DRAFT" && newStatus === "SUBMITTED") ||
+      (current === "SUBMITTED" && newStatus === "DRAFT");
 
   if (!allowed) {
     return NextResponse.json(
@@ -36,6 +34,28 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const updated = await prisma.weeklyReport.update({
     where: { id },
     data: { status: newStatus as "DRAFT" | "SUBMITTED" | "APPROVED" },
+  });
+
+  const actionMap: Record<string, string> = {
+    SUBMITTED: "RAPPORT_INLÄMNAD",
+    APPROVED: "RAPPORT_GODKÄND",
+    DRAFT: current === "APPROVED" ? "RAPPORT_UPPLÅST_ADMIN" : "RAPPORT_UPPLÅST",
+  };
+
+  await prisma.auditLog.create({
+    data: {
+      action: actionMap[newStatus] ?? newStatus,
+      entity: "WeeklyReport",
+      entityId: id,
+      userId: session.user.id ?? null,
+      userEmail: session.user.email ?? null,
+      details: JSON.stringify({
+        från: current,
+        till: newStatus,
+        districtId: report.districtId,
+        vecka: report.week,
+      }),
+    },
   });
 
   return NextResponse.json(updated);

@@ -173,24 +173,25 @@ export default function DistriktClient({ districts: initial }: Props) {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">MF-tak (SEK ex moms)</label>
+              <label className="block text-xs font-medium text-slate-600 mb-1">MF-tak (kr ex moms)</label>
               <input
                 type="number"
-                step="0.01"
+                step="1"
                 min="0"
-                value={feeForm.mfFeeCap.toFixed(2)}
+                value={Math.round(feeForm.mfFeeCap)}
                 onChange={e => setFeeForm(f => ({ ...f, mfFeeCap: Number(e.target.value) }))}
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Momssats (multiplikator)</label>
+              <label className="block text-xs font-medium text-slate-600 mb-1">Momssats (%)</label>
               <input
                 type="number"
-                step="0.05"
-                min="1"
-                value={feeForm.vatMultiplier.toFixed(2)}
-                onChange={e => setFeeForm(f => ({ ...f, vatMultiplier: Number(e.target.value) }))}
+                step="1"
+                min="0"
+                max="100"
+                value={Math.round((feeForm.vatMultiplier - 1) * 100)}
+                onChange={e => setFeeForm(f => ({ ...f, vatMultiplier: 1 + Number(e.target.value) / 100 }))}
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
