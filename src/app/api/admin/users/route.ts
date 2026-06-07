@@ -31,5 +31,7 @@ export async function POST(req: NextRequest) {
     include: { district: { select: { number: true, name: true } } },
   });
 
-  return NextResponse.json(user, { status: 201 });
+  // Returnera aldrig lösenordshash till klienten
+  const { passwordHash: _ph, ...safeUser } = user;
+  return NextResponse.json(safeUser, { status: 201 });
 }

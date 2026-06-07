@@ -39,7 +39,7 @@ export default function ProfilClient() {
     <div className="max-w-md">
       <div className="bg-white rounded-xl border border-slate-200 p-6">
         <h2 className="font-semibold text-slate-700 mb-4">Byt lösenord</h2>
-        <div className="space-y-4">
+        <form onSubmit={e => { e.preventDefault(); handleSave(); }} className="space-y-4">
           <div>
             <label className="block text-xs font-medium text-slate-600 mb-1">Nuvarande lösenord</label>
             <input
@@ -70,16 +70,17 @@ export default function ProfilClient() {
           </div>
         </div>
 
-        {error && <p className="text-red-600 text-sm mt-3">{error}</p>}
-        {success && <p className="text-green-600 text-sm mt-3">✓ Lösenordet har bytts</p>}
+          {error && <p className="text-red-600 text-sm mt-3">{error}</p>}
+          {success && <p className="text-green-600 text-sm mt-3">✓ Lösenordet har bytts</p>}
 
-        <button
-          onClick={handleSave}
-          disabled={saving || !form.currentPassword || !form.newPassword}
-          className="mt-4 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white text-sm font-medium px-5 py-2 rounded-lg"
-        >
-          {saving ? "Sparar..." : "Byt lösenord"}
-        </button>
+          <button
+            type="submit"
+            disabled={saving || !form.currentPassword || !form.newPassword}
+            className="mt-4 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white text-sm font-medium px-5 py-2 rounded-lg"
+          >
+            {saving ? "Sparar..." : "Byt lösenord"}
+          </button>
+        </form>
       </div>
     </div>
   );

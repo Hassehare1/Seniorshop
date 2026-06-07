@@ -26,5 +26,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     include: { district: { select: { number: true, name: true } } },
   });
 
-  return NextResponse.json(user);
+  // Returnera aldrig lösenordshash till klienten
+  const { passwordHash: _ph, ...safeUser } = user;
+  return NextResponse.json(safeUser);
 }

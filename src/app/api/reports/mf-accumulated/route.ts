@@ -7,9 +7,14 @@ export async function GET(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
-  const districtId = searchParams.get("districtId");
   const seasonId = searchParams.get("seasonId");
   const week = Number(searchParams.get("week") ?? 99);
+
+  // FT kan bara hämta sitt eget distrikt — admin kan ange valfritt
+  const districtId =
+    session.user.role === "ADMIN"
+      ? searchParams.get("districtId")
+      : session.user.districtId ?? null;
 
   if (!districtId || !seasonId) {
     return NextResponse.json({ accumulated: 0 });

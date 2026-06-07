@@ -11,7 +11,12 @@ interface Season {
   _count: { reports: number };
 }
 
-const currentYear = new Date().getFullYear();
+const now = new Date();
+const dayNum = now.getUTCDay() || 7;
+now.setUTCDate(now.getUTCDate() + 4 - dayNum);
+const yearStart = new Date(Date.UTC(now.getUTCFullYear(), 0, 1));
+const currentISOWeek = Math.ceil(((now.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+const currentYear = now.getUTCFullYear();
 
 const defaultWeeks = {
   VAR: { weekStart: 5, weekEnd: 26 },
@@ -77,8 +82,12 @@ export default function SasongerClient({ seasons: initial }: { seasons: Season[]
     setSaving(false);
   }
 
-  // Den aktiva säsongen är den med högst år+typ (samma logik som servern)
-  const activeSeason = seasons[0];
+  function seasonStatus(s: Season): "active" | "upcoming" | "ended" {
+    if (s.year > currentYear) return "upcoming";
+    if (s.year === currentYear && s.weekStart > currentISOWeek) return "upcoming";
+    if (s.year === currentYear && s.weekEnd >= currentISOWeek) return "active";
+    return "ended";
+  }
 
   return (
     <div className="space-y-4">
@@ -204,14 +213,14 @@ export default function SasongerClient({ seasons: initial }: { seasons: Season[]
                 <td className="px-4 py-3 text-slate-600">v.{s.weekStart}–{s.weekEnd}</td>
                 <td className="px-4 py-3 text-slate-600">{s._count.reports} st</td>
                 <td className="px-4 py-3">
-                  {s.id === activeSeason?.id ? (
-                    <span className="inline-block px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-medium">
-                      Aktiv
-                    </span>
-                  ) : (
-                    <span className="inline-block px-2 py-0.5 bg-slate-100 text-slate-500 rounded-full text-xs">
-                      Arkiverad
-                    </span>
+                  {seasonStatus(s) === "active" && (
+                    <span className="inline-block px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-medium">Aktiv</span>
+                  )}
+                  {seasonStatus(s) === "upcoming" && (
+                    <span className="inline-block px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">Kommande</span>
+                  )}
+                  {seasonStatus(s) === "ended" && (
+                    <span className="inline-block px-2 py-0.5 bg-slate-100 text-slate-500 rounded-full text-xs">Avslutad</span>
                   )}
                 </td>
               </tr>
@@ -223,7 +232,7 @@ export default function SasongerClient({ seasons: initial }: { seasons: Season[]
         </table>
         </div>
       </div>
-      <p className="text-xs text-slate-400">Den senaste säsongen (högst år + Höst före Vår) är alltid aktiv.</p>
+      <p className="text-xs text-slate-400">Aktiv = rapporteringsfönstret pågår idag. Kommande = säsongen är skapad men har inte startat ännu.</p>
     </div>
   );
 }

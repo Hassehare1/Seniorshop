@@ -123,7 +123,10 @@ export default function KunderClient({ customers: initial, districtId, typeLabel
       </div>
 
       {formOpen && (
-        <div className="bg-white border border-slate-200 rounded-xl p-6">
+        <form
+          onSubmit={e => { e.preventDefault(); handleSave(); }}
+          className="bg-white border border-slate-200 rounded-xl p-6"
+        >
           <h3 className="font-semibold text-slate-700 mb-4">
             {editingId ? "Redigera kund" : "Lägg till kund"}
           </h3>
@@ -211,20 +214,21 @@ export default function KunderClient({ customers: initial, districtId, typeLabel
           )}
           <div className="flex gap-2 mt-4">
             <button
-              onClick={handleSave}
+              type="submit"
               disabled={saving || !form.name}
               className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white text-sm font-medium px-4 py-2 rounded-lg"
             >
               {saving ? "Sparar..." : editingId ? "Spara ändringar" : "Spara kund"}
             </button>
             <button
+              type="button"
               onClick={editingId ? cancelEdit : () => { setShowForm(false); setSaveError(""); }}
               className="text-sm text-slate-500 hover:text-slate-700 px-4 py-2"
             >
               Avbryt
             </button>
           </div>
-        </div>
+        </form>
       )}
 
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">

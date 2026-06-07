@@ -3,6 +3,17 @@ import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import ReportForm from "./ReportForm";
 
+function getCurrentWeekAndYear() {
+  const d = new Date();
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return {
+    week: Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7),
+    year: d.getUTCFullYear(),
+  };
+}
+
 export default async function RapporteraPage() {
   const session = await auth();
   if (!session?.user.districtId) redirect("/dashboard");
@@ -18,7 +29,13 @@ export default async function RapporteraPage() {
     }),
   ]);
 
-  const currentSeason = seasons[0] ?? null;
+  // Aktiv säsong = den vars veckointervall + år matchar dagens datum
+  // Fallback till senaste om man befinner sig mellan säsonger
+  const { week: currentWeekNum, year: currentYear } = getCurrentWeekAndYear();
+  const currentSeason =
+    seasons.find(
+      s => s.year === currentYear && s.weekStart <= currentWeekNum && s.weekEnd >= currentWeekNum
+    ) ?? seasons[0] ?? null;
 
   if (!currentSeason) {
     return (
@@ -36,15 +53,18 @@ export default async function RapporteraPage() {
     );
   }
 
-  const existingReports = currentSeason
-    ? await prisma.weeklyReport.findMany({
-        where: {
-          districtId: session.user.districtId,
-          seasonId: currentSeason.id,
-        },
-        select: { id: true, week: true, status: true },
-      })
-    : [];
+  // Varning om valt säsong-fallback är framtida (admin skapade nästa säsong i förväg)
+  const isFutureSeason =
+    currentSeason.year > currentYear ||
+    (currentSeason.year === currentYear && currentSeason.weekStart > currentWeekNum);
+
+  const existingReports = await prisma.weeklyReport.findMany({
+    where: {
+      districtId: session.user.districtId,
+      seasonId: currentSeason.id,
+    },
+    select: { id: true, week: true, status: true },
+  });
 
   return (
     <div>
@@ -54,10 +74,15 @@ export default async function RapporteraPage() {
           Distrikt {session.user.districtNumber}
         </p>
       </div>
+      {isFutureSeason && (
+        <div className="mb-4 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800">
+          📅 Nästa säsong börjar vecka {currentSeason.weekStart} — du rapporterar i förväg.
+        </div>
+      )}
       <ReportForm
         customers={customers}
         seasons={seasons}
-        currentSeason={currentSeason ?? null}
+        currentSeason={currentSeason}
         existingReports={existingReports}
         districtId={session.user.districtId}
         feeConfig={

@@ -211,7 +211,7 @@ export default function ReportForm({
 
   // Load existing visits when switching to an already-reported week
   useEffect(() => {
-    const isReported = reports.some(r => r.week === selectedWeek);
+    const isReported = weekStatusMap.has(selectedWeek);
     if (!isReported) { setVisits([]); setLoadError(""); return; }
     setLoadingVisits(true);
     setLoadError("");
@@ -330,7 +330,7 @@ export default function ReportForm({
     }
   }
 
-  const reportedWeeks = new Set(reports.map((r) => r.week));
+  const weekStatusMap = new Map(reports.map(r => [r.week, r.status]));
   const weeks = currentSeason
     ? Array.from(
         { length: currentSeason.weekEnd - currentSeason.weekStart + 1 },
@@ -370,11 +370,13 @@ export default function ReportForm({
               }}
               className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              {weeks.map((w) => (
-                <option key={w} value={w}>
-                  Vecka {w} {reportedWeeks.has(w) ? "✓" : ""}
-                </option>
-              ))}
+              {weeks.map((w) => {
+                const st = weekStatusMap.get(w);
+                const marker = st === "APPROVED" ? " ✓" : st === "SUBMITTED" ? " 🔒" : st === "DRAFT" ? " ✏" : "";
+                return (
+                  <option key={w} value={w}>Vecka {w}{marker}</option>
+                );
+              })}
             </select>
           </div>
 
@@ -406,7 +408,7 @@ export default function ReportForm({
               🔒 Låst — lås upp för att redigera
             </span>
           )}
-          {currentStatus === "DRAFT" && reportedWeeks.has(selectedWeek) && (
+          {currentStatus === "DRAFT" && weekStatusMap.has(selectedWeek) && (
             <span className="text-xs bg-blue-50 text-blue-700 border border-blue-200 px-3 py-1.5 rounded-lg">
               Tidigare rapport laddad — lägg till eller redigera besök och spara igen
             </span>
@@ -504,18 +506,18 @@ export default function ReportForm({
 
       {(visits.length > 0 || currentReport) && (
         <div className="flex flex-wrap gap-3 items-center">
-          {/* Spara — dold när låst */}
+          {/* Spara utkast — dold när låst */}
           {!isLocked && (
             <button
               onClick={handleSubmit}
               disabled={saving || visits.length === 0}
               className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium px-6 py-2.5 rounded-lg transition-colors"
             >
-              {saving ? "Sparar..." : "Spara rapport"}
+              {saving ? "Sparar..." : "Spara utkast"}
             </button>
           )}
 
-          {/* Lås / Lås upp — ej tillgänglig om admin-godkänd */}
+          {/* Lämna in / Återta — ej tillgänglig om admin-godkänd */}
           {!isApproved && (currentReport || savedReportId) && (
             <button
               onClick={handleLockToggle}
@@ -523,10 +525,10 @@ export default function ReportForm({
               className={`font-medium px-6 py-2.5 rounded-lg transition-colors ${
                 currentStatus === "SUBMITTED"
                   ? "bg-amber-100 hover:bg-amber-200 text-amber-800"
-                  : "bg-slate-100 hover:bg-slate-200 text-slate-700"
+                  : "bg-green-600 hover:bg-green-700 text-white"
               }`}
             >
-              {locking ? "..." : currentStatus === "SUBMITTED" ? "🔓 Lås upp rapport" : "🔒 Lås rapport"}
+              {locking ? "..." : currentStatus === "SUBMITTED" ? "🔓 Återta rapport" : "✓ Lämna in rapport"}
             </button>
           )}
 

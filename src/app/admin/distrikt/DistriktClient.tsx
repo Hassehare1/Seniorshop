@@ -93,7 +93,7 @@ export default function DistriktClient({ districts: initial }: Props) {
       </div>
 
       {showNewForm && (
-        <div className="mb-6 bg-white border border-slate-200 rounded-xl p-6">
+        <form onSubmit={e => { e.preventDefault(); saveNewDistrict(); }} className="mb-6 bg-white border border-slate-200 rounded-xl p-6">
           <h3 className="font-semibold text-slate-700 mb-4">Skapa nytt distrikt</h3>
           <div className="grid grid-cols-3 gap-4">
             <div>
@@ -133,19 +133,19 @@ export default function DistriktClient({ districts: initial }: Props) {
           {newError && <p className="text-red-600 text-sm mt-2">{newError}</p>}
           <div className="flex gap-2 mt-4">
             <button
-              onClick={saveNewDistrict}
+              type="submit"
               disabled={newSaving || !newForm.number || !newForm.name}
               className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white text-sm font-medium px-4 py-2 rounded-lg"
             >
               {newSaving ? "Sparar..." : "Skapa distrikt"}
             </button>
-            <button onClick={() => setShowNewForm(false)} className="text-sm text-slate-500 hover:text-slate-700 px-4 py-2">Avbryt</button>
+            <button type="button" onClick={() => setShowNewForm(false)} className="text-sm text-slate-500 hover:text-slate-700 px-4 py-2">Avbryt</button>
           </div>
-        </div>
+        </form>
       )}
 
       {editingId && (
-        <div className="mb-6 bg-white border border-slate-200 rounded-xl p-6">
+        <form onSubmit={e => { e.preventDefault(); saveFee(); }} className="mb-6 bg-white border border-slate-200 rounded-xl p-6">
           <h3 className="font-semibold text-slate-700 mb-4">
             Justera avgifter – {districts.find(d => d.id === editingId)?.name}
           </h3>
@@ -198,20 +198,21 @@ export default function DistriktClient({ districts: initial }: Props) {
           </div>
           <div className="flex gap-2 mt-4">
             <button
-              onClick={saveFee}
+              type="submit"
               disabled={saving}
               className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white text-sm font-medium px-4 py-2 rounded-lg"
             >
               {saving ? "Sparar..." : "Spara avgifter"}
             </button>
             <button
+              type="button"
               onClick={() => setEditingId(null)}
               className="text-sm text-slate-500 hover:text-slate-700 px-4 py-2"
             >
               Avbryt
             </button>
           </div>
-        </div>
+        </form>
       )}
 
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
