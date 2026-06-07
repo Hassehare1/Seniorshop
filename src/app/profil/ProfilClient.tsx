@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import PasswordInput from "@/components/ui/PasswordInput";
 
 export default function ProfilClient() {
   const [form, setForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
@@ -42,30 +43,30 @@ export default function ProfilClient() {
         <form onSubmit={e => { e.preventDefault(); handleSave(); }} className="space-y-4">
           <div>
             <label className="block text-xs font-medium text-slate-600 mb-1">Nuvarande lösenord</label>
-            <input
-              type="password"
+            <PasswordInput
               value={form.currentPassword}
-              onChange={e => setForm(f => ({ ...f, currentPassword: e.target.value }))}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              onChange={v => setForm(f => ({ ...f, currentPassword: v }))}
+              autoComplete="current-password"
+              className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
           <div>
             <label className="block text-xs font-medium text-slate-600 mb-1">Nytt lösenord</label>
-            <input
-              type="password"
+            <PasswordInput
               value={form.newPassword}
-              onChange={e => setForm(f => ({ ...f, newPassword: e.target.value }))}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              onChange={v => setForm(f => ({ ...f, newPassword: v }))}
               placeholder="Minst 6 tecken"
+              autoComplete="new-password"
+              className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
           <div>
             <label className="block text-xs font-medium text-slate-600 mb-1">Bekräfta nytt lösenord</label>
-            <input
-              type="password"
+            <PasswordInput
               value={form.confirmPassword}
-              onChange={e => setForm(f => ({ ...f, confirmPassword: e.target.value }))}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              onChange={v => setForm(f => ({ ...f, confirmPassword: v }))}
+              autoComplete="new-password"
+              className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
         </div>

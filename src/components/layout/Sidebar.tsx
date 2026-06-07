@@ -83,6 +83,8 @@ export default function Sidebar() {
   }, [isAdmin, pathname]); // uppdatera vid navigation
 
   function SidebarFooter({ onNav }: { onNav?: () => void }) {
+    const [confirmLogout, setConfirmLogout] = useState(false);
+
     return (
       <div className="px-3 py-4 border-t border-slate-700">
         <p className="text-slate-400 text-xs px-3 mb-2 truncate">{session?.user.email}</p>
@@ -95,12 +97,32 @@ export default function Sidebar() {
         >
           Min profil
         </Link>
-        <button
-          onClick={() => { onNav?.(); if (confirm("Vill du logga ut?")) signOut({ callbackUrl: "/login" }); }}
-          className="w-full text-left px-3 py-2 rounded-lg text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
-        >
-          Logga ut
-        </button>
+        {confirmLogout ? (
+          <div className="px-3 py-2 space-y-1">
+            <p className="text-xs text-slate-400 mb-1">Logga ut?</p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => { onNav?.(); signOut({ callbackUrl: "/login" }); }}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white text-xs font-medium py-1.5 rounded-lg transition-colors"
+              >
+                Ja, logga ut
+              </button>
+              <button
+                onClick={() => setConfirmLogout(false)}
+                className="flex-1 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-medium py-1.5 rounded-lg transition-colors"
+              >
+                Avbryt
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={() => setConfirmLogout(true)}
+            className="w-full text-left px-3 py-2 rounded-lg text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
+          >
+            Logga ut
+          </button>
+        )}
       </div>
     );
   }

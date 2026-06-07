@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import PasswordInput from "@/components/ui/PasswordInput";
 
 interface District {
   id: string;
@@ -137,12 +138,12 @@ export default function AnvandareClient({ users: initial, districts }: Props) {
               <label className="block text-xs font-medium text-slate-600 mb-1">
                 {editingId ? "Nytt lösenord (lämna tomt = oförändrat)" : "Lösenord *"}
               </label>
-              <input
-                type="password"
+              <PasswordInput
                 value={form.password}
-                onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                onChange={v => setForm(f => ({ ...f, password: v }))}
                 placeholder={editingId ? "Lämna tomt för oförändrat" : "Minst 6 tecken"}
+                autoComplete="new-password"
+                className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
             <div>
