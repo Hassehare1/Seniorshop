@@ -14,9 +14,15 @@ function getCurrentWeekAndYear() {
   };
 }
 
-export default async function RapporteraPage() {
+export default async function RapporteraPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ week?: string; season?: string }>;
+}) {
   const session = await auth();
   if (!session?.user.districtId) redirect("/dashboard");
+
+  const { week: weekParam, season: seasonParam } = await searchParams;
 
   const [customers, seasons, feeConfig] = await Promise.all([
     prisma.customer.findMany({
@@ -30,7 +36,6 @@ export default async function RapporteraPage() {
   ]);
 
   // Aktiv säsong = den vars veckointervall + år matchar dagens datum
-  // Fallback till senaste om man befinner sig mellan säsonger
   const { week: currentWeekNum, year: currentYear } = getCurrentWeekAndYear();
   const currentSeason =
     seasons.find(
@@ -53,15 +58,22 @@ export default async function RapporteraPage() {
     );
   }
 
-  // Varning om valt säsong-fallback är framtida (admin skapade nästa säsong i förväg)
+  // Om URL innehåller ?season=... använd den säsongen (t.ex. länk från dashboard)
+  const initialSeason = seasonParam
+    ? seasons.find(s => s.id === seasonParam) ?? currentSeason
+    : currentSeason;
+
+  const initialWeek = weekParam ? parseInt(weekParam, 10) : undefined;
+
+  // Varning om vald säsong är framtida
   const isFutureSeason =
-    currentSeason.year > currentYear ||
-    (currentSeason.year === currentYear && currentSeason.weekStart > currentWeekNum);
+    initialSeason.year > currentYear ||
+    (initialSeason.year === currentYear && initialSeason.weekStart > currentWeekNum);
 
   const existingReports = await prisma.weeklyReport.findMany({
     where: {
       districtId: session.user.districtId,
-      seasonId: currentSeason.id,
+      seasonId: initialSeason.id,
     },
     select: { id: true, week: true, status: true },
   });
@@ -76,15 +88,17 @@ export default async function RapporteraPage() {
       </div>
       {isFutureSeason && (
         <div className="mb-4 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800">
-          📅 Nästa säsong börjar vecka {currentSeason.weekStart} — du rapporterar i förväg.
+          📅 Nästa säsong börjar vecka {initialSeason.weekStart} — du rapporterar i förväg.
         </div>
       )}
       <ReportForm
         customers={customers}
         seasons={seasons}
-        currentSeason={currentSeason}
+        currentSeason={initialSeason}
         existingReports={existingReports}
         districtId={session.user.districtId}
+        initialWeek={initialWeek}
+        initialSeasonId={initialSeason.id}
         feeConfig={
           feeConfig ?? {
             ftFeePercent: 0.075,

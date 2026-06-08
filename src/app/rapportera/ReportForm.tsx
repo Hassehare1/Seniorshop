@@ -25,6 +25,7 @@ interface VisitRowProps {
 function VisitRow({ index, visit, customers, feeRow, onUpdate, onRemove }: VisitRowProps) {
   const [inputValue, setInputValue] = useState(() => customers.find(c => c.id === visit.customerId)?.name ?? "");
   const [open, setOpen] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   const filtered = inputValue === ""
@@ -37,7 +38,6 @@ function VisitRow({ index, visit, customers, feeRow, onUpdate, onRemove }: Visit
   useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) {
-        // restore selected name if user blurred without picking
         const selected = customers.find(c => c.id === visit.customerId);
         setInputValue(selected?.name ?? "");
         setOpen(false);
@@ -57,7 +57,33 @@ function VisitRow({ index, visit, customers, feeRow, onUpdate, onRemove }: Visit
     <div className="p-4 md:p-6 space-y-4">
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium text-slate-600">Besök {index + 1}</span>
-        <button onClick={onRemove} className="text-xs text-red-500 hover:text-red-700">Ta bort</button>
+        {confirmRemove ? (
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-500">Ta bort besöket?</span>
+            <button
+              type="button"
+              onClick={onRemove}
+              className="text-xs text-red-600 font-semibold hover:text-red-800"
+            >
+              Ja
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmRemove(false)}
+              className="text-xs text-slate-400 hover:text-slate-600"
+            >
+              Nej
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setConfirmRemove(true)}
+            className="text-xs text-red-400 hover:text-red-600 transition-colors"
+          >
+            Ta bort
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -121,7 +147,6 @@ function VisitRow({ index, visit, customers, feeRow, onUpdate, onRemove }: Visit
         <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer w-fit">
           <input
             type="checkbox"
-            id={`fashionshow-${index}`}
             checked={visit.isFashionShow}
             onChange={e => onUpdate("isFashionShow", e.target.checked)}
             className="rounded"
@@ -159,6 +184,8 @@ interface Props {
   existingReports: { week: number; status: string; id: string }[];
   districtId: string;
   feeConfig: Pick<FeeConfig, "ftFeePercent" | "mfFeePercent" | "mfFeeCap" | "vatMultiplier">;
+  initialWeek?: number;
+  initialSeasonId?: string;
 }
 
 const customerTypeLabels: Record<string, string> = {
@@ -176,14 +203,17 @@ export default function ReportForm({
   existingReports,
   districtId,
   feeConfig,
+  initialWeek,
+  initialSeasonId,
 }: Props) {
   const [selectedSeasonId, setSelectedSeasonId] = useState(
-    currentSeason?.id ?? ""
+    initialSeasonId ?? currentSeason?.id ?? ""
   );
   const [selectedWeek, setSelectedWeek] = useState<number>(() => {
-    const week = new Date().getWeek();
-    if (!currentSeason) return week;
-    return Math.min(Math.max(week, currentSeason.weekStart), currentSeason.weekEnd);
+    const season = seasons.find(s => s.id === (initialSeasonId ?? currentSeason?.id)) ?? currentSeason;
+    const week = initialWeek ?? new Date().getWeek();
+    if (!season) return week;
+    return Math.min(Math.max(week, season.weekStart), season.weekEnd);
   });
   const [reports, setReports] = useState(existingReports);
   const [visits, setVisits] = useState<VisitRow[]>([]);
@@ -194,11 +224,18 @@ export default function ReportForm({
   const [savedReportId, setSavedReportId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [mfAccumulated, setMfAccumulated] = useState(0);
+  const [isDirty, setIsDirty] = useState(false);
+  const [pendingWeek, setPendingWeek] = useState<number | null>(null);
+
+  const selectedSeason = seasons.find(s => s.id === selectedSeasonId) ?? currentSeason;
+  const weekStart = selectedSeason?.weekStart ?? 1;
+  const weekEnd = selectedSeason?.weekEnd ?? 52;
 
   const currentReport = reports.find(r => r.week === selectedWeek) ?? null;
   const currentStatus = currentReport?.status ?? "DRAFT";
   const isLocked = currentStatus === "SUBMITTED" || currentStatus === "APPROVED";
   const isApproved = currentStatus === "APPROVED";
+  const reportId = currentReport?.id ?? savedReportId;
 
   useEffect(() => {
     fetch(
@@ -209,10 +246,10 @@ export default function ReportForm({
       .catch(() => {});
   }, [selectedSeasonId, selectedWeek, districtId]);
 
-  // Load existing visits when switching to an already-reported week
+  // Ladda befintliga besök när man byter till en redan rapporterad vecka
   useEffect(() => {
     const isReported = weekStatusMap.has(selectedWeek);
-    if (!isReported) { setVisits([]); setLoadError(""); return; }
+    if (!isReported) { setVisits([]); setLoadError(""); setIsDirty(false); return; }
     setLoadingVisits(true);
     setLoadError("");
     fetch(`/api/reports?districtId=${districtId}&seasonId=${selectedSeasonId}`)
@@ -228,12 +265,29 @@ export default function ReportForm({
             fashionShowSales: v.fashionShowSales,
             comment: v.comment ?? "",
           })));
+          setIsDirty(false);
         }
       })
       .catch(() => { setLoadError("Kunde inte ladda rapporten. Försök igen."); })
       .finally(() => setLoadingVisits(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedWeek, selectedSeasonId, districtId]);
+
+  // Begär vecko-byte — visar varning om det finns osparade ändringar
+  function requestWeekChange(newWeek: number) {
+    if (isDirty && visits.length > 0) {
+      setPendingWeek(newWeek);
+    } else {
+      applyWeekChange(newWeek);
+    }
+  }
+
+  function applyWeekChange(newWeek: number) {
+    setSelectedWeek(newWeek);
+    setSavedReportId(null);
+    setIsDirty(false);
+    setPendingWeek(null);
+  }
 
   function addVisit() {
     setVisits((v) => [
@@ -247,6 +301,7 @@ export default function ReportForm({
         comment: "",
       },
     ]);
+    setIsDirty(true);
   }
 
   function updateVisit(i: number, field: keyof VisitRow, value: unknown) {
@@ -255,10 +310,12 @@ export default function ReportForm({
       updated[i] = { ...updated[i], [field]: value };
       return updated;
     });
+    setIsDirty(true);
   }
 
   function removeVisit(i: number) {
     setVisits((v) => v.filter((_, idx) => idx !== i));
+    setIsDirty(true);
   }
 
   let runningMf = mfAccumulated;
@@ -293,8 +350,8 @@ export default function ReportForm({
       if (!res.ok) throw new Error(await res.text());
       const { id } = await res.json();
       setSavedReportId(id);
+      setIsDirty(false);
       setVisits([]);
-      // Uppdatera lokalt state utan prop-mutation
       setReports(prev => {
         const exists = prev.some(r => r.week === selectedWeek);
         if (exists) return prev.map(r => r.week === selectedWeek ? { ...r, id, status: "DRAFT" } : r);
@@ -308,7 +365,6 @@ export default function ReportForm({
   }
 
   async function handleLockToggle() {
-    const reportId = currentReport?.id ?? savedReportId;
     if (!reportId) return;
     setLocking(true);
     setError("");
@@ -320,7 +376,6 @@ export default function ReportForm({
         body: JSON.stringify({ status: newStatus }),
       });
       if (!res.ok) throw new Error(await res.text());
-      // Uppdatera lokalt state (immutable)
       setReports(prev => prev.map(r => r.week === selectedWeek ? { ...r, status: newStatus } : r));
       setSavedReportId(reportId);
     } catch (e: unknown) {
@@ -331,15 +386,34 @@ export default function ReportForm({
   }
 
   const weekStatusMap = new Map(reports.map(r => [r.week, r.status]));
-  const weeks = currentSeason
-    ? Array.from(
-        { length: currentSeason.weekEnd - currentSeason.weekStart + 1 },
-        (_, i) => i + currentSeason.weekStart
-      )
-    : Array.from({ length: 52 }, (_, i) => i + 1);
+  const weeks = Array.from({ length: weekEnd - weekStart + 1 }, (_, i) => i + weekStart);
 
   return (
     <div className="space-y-6">
+      {/* Osparade ändringar — bekräftelse */}
+      {pendingWeek !== null && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex flex-wrap items-center gap-3">
+          <svg className="w-5 h-5 text-amber-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+          </svg>
+          <span className="text-amber-800 text-sm flex-1">
+            Du har osparade ändringar — byt till vecka {pendingWeek} ändå?
+          </span>
+          <button
+            onClick={() => applyWeekChange(pendingWeek)}
+            className="bg-amber-500 hover:bg-amber-600 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
+          >
+            Byt ändå
+          </button>
+          <button
+            onClick={() => setPendingWeek(null)}
+            className="text-amber-700 hover:text-amber-900 text-xs font-medium px-2 py-1.5 transition-colors"
+          >
+            Avbryt
+          </button>
+        </div>
+      )}
+
       <div className="bg-white rounded-xl border border-slate-200 p-6">
         <div className="flex flex-wrap gap-4 items-end">
           {seasons.length > 1 && (
@@ -347,7 +421,12 @@ export default function ReportForm({
               <label className="block text-sm font-medium text-slate-700 mb-1">Säsong</label>
               <select
                 value={selectedSeasonId}
-                onChange={e => { setSelectedSeasonId(e.target.value); setSavedReportId(null); setVisits([]); }}
+                onChange={e => {
+                  setSelectedSeasonId(e.target.value);
+                  setSavedReportId(null);
+                  setVisits([]);
+                  setIsDirty(false);
+                }}
                 className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 {seasons.map(s => (
@@ -358,26 +437,42 @@ export default function ReportForm({
               </select>
             </div>
           )}
+
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              Vecka
-            </label>
-            <select
-              value={selectedWeek}
-              onChange={(e) => {
-                setSelectedWeek(Number(e.target.value));
-                setSavedReportId(null);
-              }}
-              className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {weeks.map((w) => {
-                const st = weekStatusMap.get(w);
-                const marker = st === "APPROVED" ? " ✓" : st === "SUBMITTED" ? " 🔒" : st === "DRAFT" ? " ✏" : "";
-                return (
-                  <option key={w} value={w}>Vecka {w}{marker}</option>
-                );
-              })}
-            </select>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Vecka</label>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => requestWeekChange(Math.max(weekStart, selectedWeek - 1))}
+                disabled={selectedWeek <= weekStart}
+                aria-label="Föregående vecka"
+                className="w-8 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-lg leading-none"
+              >
+                ‹
+              </button>
+              <select
+                value={selectedWeek}
+                onChange={(e) => requestWeekChange(Number(e.target.value))}
+                className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {weeks.map((w) => {
+                  const st = weekStatusMap.get(w);
+                  const marker = st === "APPROVED" ? " ✓" : st === "SUBMITTED" ? " 🔒" : st === "DRAFT" ? " ✏" : "";
+                  return (
+                    <option key={w} value={w}>Vecka {w}{marker}</option>
+                  );
+                })}
+              </select>
+              <button
+                type="button"
+                onClick={() => requestWeekChange(Math.min(weekEnd, selectedWeek + 1))}
+                disabled={selectedWeek >= weekEnd}
+                aria-label="Nästa vecka"
+                className="w-8 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-lg leading-none"
+              >
+                ›
+              </button>
+            </div>
           </div>
 
           <div className="text-sm text-slate-500 pb-1">
@@ -387,9 +482,7 @@ export default function ReportForm({
             </span>{" "}
             / {formatSEK(feeConfig.mfFeeCap)}
             {mfAccumulated >= feeConfig.mfFeeCap && (
-              <span className="ml-2 text-amber-600 font-medium">
-                (tak nått)
-              </span>
+              <span className="ml-2 text-amber-600 font-medium">(tak nått)</span>
             )}
           </div>
         </div>
@@ -448,6 +541,7 @@ export default function ReportForm({
         {!isLocked && (
           <div className="p-6 border-t border-slate-100">
             <button
+              type="button"
               onClick={addVisit}
               className="text-sm text-blue-600 hover:text-blue-700 font-medium"
             >
@@ -486,27 +580,22 @@ export default function ReportForm({
       )}
 
       {error && (
-        <p className="text-red-600 text-sm bg-red-50 px-4 py-3 rounded-lg">
-          {error}
-        </p>
+        <p className="text-red-600 text-sm bg-red-50 px-4 py-3 rounded-lg">{error}</p>
       )}
 
+      {/* Sparad-bekräftelse (utan Excel-knapp — finns i knapprad nedan) */}
       {savedReportId && !isLocked && (
-        <div className="flex items-center gap-4 bg-green-50 border border-green-200 px-4 py-3 rounded-lg">
-          <p className="text-green-700 text-sm font-medium flex-1">Rapporten sparades!</p>
-          <a
-            href={`/api/reports/${savedReportId}/export`}
-            download
-            className="bg-green-600 hover:bg-green-700 text-white text-sm font-medium px-4 py-1.5 rounded-lg"
-          >
-            Ladda ner Excel
-          </a>
+        <div className="flex items-center gap-3 bg-green-50 border border-green-200 px-4 py-3 rounded-lg">
+          <svg className="w-5 h-5 text-green-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          </svg>
+          <p className="text-green-700 text-sm font-medium">Rapporten sparades!</p>
         </div>
       )}
 
-      {(visits.length > 0 || currentReport) && (
+      {(visits.length > 0 || currentReport || savedReportId) && (
         <div className="flex flex-wrap gap-3 items-center">
-          {/* Spara utkast — dold när låst */}
+          {/* Spara utkast */}
           {!isLocked && (
             <button
               onClick={handleSubmit}
@@ -517,7 +606,7 @@ export default function ReportForm({
             </button>
           )}
 
-          {/* Lämna in / Återta — ej tillgänglig om admin-godkänd */}
+          {/* Lämna in / Återta */}
           {!isApproved && (currentReport || savedReportId) && (
             <button
               onClick={handleLockToggle}
@@ -532,13 +621,16 @@ export default function ReportForm({
             </button>
           )}
 
-          {/* Excel-länk när låst */}
-          {isLocked && (currentReport?.id ?? savedReportId) && (
+          {/* Excel — alltid synlig när rapporten finns sparad (oavsett status) */}
+          {reportId && (
             <a
-              href={`/api/reports/${currentReport?.id ?? savedReportId}/export`}
+              href={`/api/reports/${reportId}/export`}
               download
-              className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium px-4 py-2.5 rounded-lg"
+              className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium px-4 py-2.5 rounded-lg flex items-center gap-2 transition-colors"
             >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
               Ladda ner Excel
             </a>
           )}

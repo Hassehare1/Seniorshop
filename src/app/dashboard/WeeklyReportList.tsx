@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 
 const typeLabels: Record<string, string> = {
@@ -22,7 +23,13 @@ type ReportRow = {
   visits: Visit[];
 };
 
-export default function WeeklyReportList({ reports }: { reports: ReportRow[] }) {
+interface Props {
+  reports: ReportRow[];
+  seasonId: string;
+  showEditLink?: boolean;
+}
+
+export default function WeeklyReportList({ reports, seasonId, showEditLink }: Props) {
   const [open, setOpen] = useState<Set<string>>(new Set());
 
   function toggle(id: string) {
@@ -41,12 +48,14 @@ export default function WeeklyReportList({ reports }: { reports: ReportRow[] }) 
       <div className="divide-y divide-slate-100">
         {reports.map(r => {
           const isOpen = open.has(r.id);
+          const editHref = `/rapportera?week=${r.week}&season=${seasonId}`;
+
           return (
             <div key={r.id}>
-              {/* Summary row – mobile stacks, desktop is single line */}
-              <button
+              {/* Rad — klickbar yta för expand/collapse */}
+              <div
                 onClick={() => toggle(r.id)}
-                className="w-full px-4 md:px-6 py-3 md:py-4 hover:bg-slate-50 transition-colors text-left"
+                className="w-full px-4 md:px-6 py-3 md:py-4 hover:bg-slate-50 transition-colors cursor-pointer"
               >
                 {/* Mobile layout */}
                 <div className="flex items-start gap-3 md:hidden">
@@ -54,13 +63,24 @@ export default function WeeklyReportList({ reports }: { reports: ReportRow[] }) 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
                       <span className="font-medium text-slate-800 text-sm">Vecka {r.week}</span>
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium shrink-0 ${
-                        r.status === "APPROVED" ? "bg-green-100 text-green-700"
-                        : r.status === "SUBMITTED" ? "bg-blue-100 text-blue-600"
-                        : "bg-slate-100 text-slate-500"
-                      }`}>
-                        {r.status === "APPROVED" ? "Godkänd" : r.status === "SUBMITTED" ? "Inlämnad" : "Utkast"}
-                      </span>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                          r.status === "APPROVED" ? "bg-green-100 text-green-700"
+                          : r.status === "SUBMITTED" ? "bg-blue-100 text-blue-600"
+                          : "bg-slate-100 text-slate-500"
+                        }`}>
+                          {r.status === "APPROVED" ? "Godkänd" : r.status === "SUBMITTED" ? "Inlämnad" : "Utkast"}
+                        </span>
+                        {showEditLink && r.status !== "APPROVED" && (
+                          <Link
+                            href={editHref}
+                            onClick={e => e.stopPropagation()}
+                            className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                          >
+                            Öppna →
+                          </Link>
+                        )}
+                      </div>
                     </div>
                     <div className="flex items-center justify-between mt-1">
                       <span className="text-xs text-slate-500">{r.visits.length} besök · {r.totalCustomers} kunder</span>
@@ -68,6 +88,7 @@ export default function WeeklyReportList({ reports }: { reports: ReportRow[] }) 
                     </div>
                   </div>
                 </div>
+
                 {/* Desktop layout */}
                 <div className="hidden md:flex items-center gap-4">
                   <span className="text-slate-400 text-xs w-4">{isOpen ? "▾" : "▸"}</span>
@@ -82,8 +103,17 @@ export default function WeeklyReportList({ reports }: { reports: ReportRow[] }) 
                   }`}>
                     {r.status === "APPROVED" ? "Godkänd" : r.status === "SUBMITTED" ? "Inlämnad" : "Utkast"}
                   </span>
+                  {showEditLink && r.status !== "APPROVED" && (
+                    <Link
+                      href={editHref}
+                      onClick={e => e.stopPropagation()}
+                      className="text-xs text-blue-600 hover:text-blue-800 font-medium ml-1 shrink-0"
+                    >
+                      Öppna →
+                    </Link>
+                  )}
                 </div>
-              </button>
+              </div>
 
               {isOpen && (
                 <div className="bg-slate-50 border-t border-slate-100 px-4 md:px-6 py-4">

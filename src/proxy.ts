@@ -5,11 +5,21 @@ export default auth((req) => {
   const { pathname } = req.nextUrl;
   const session = req.auth;
 
-  if (!session && pathname !== "/login") {
-    return NextResponse.redirect(new URL("/login", req.url));
+  // Inloggningssidan — alltid tillåten
+  if (pathname === "/login") return NextResponse.next();
+
+  // API-routes har egna auth-checks — skippa proxy-skyddet
+  if (pathname.startsWith("/api")) return NextResponse.next();
+
+  // Allt annat kräver inloggning
+  if (!session) {
+    const loginUrl = new URL("/login", req.url);
+    loginUrl.searchParams.set("callbackUrl", pathname);
+    return NextResponse.redirect(loginUrl);
   }
 
-  if (session && pathname.startsWith("/admin") && session.user.role !== "ADMIN") {
+  // Admin-routes: kräver ADMIN-roll
+  if (pathname.startsWith("/admin") && session.user.role !== "ADMIN") {
     return NextResponse.redirect(new URL("/dashboard", req.url));
   }
 
@@ -17,5 +27,5 @@ export default auth((req) => {
 });
 
 export const config = {
-  matcher: ["/((?!api/auth|_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
 };

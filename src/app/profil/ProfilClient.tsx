@@ -69,7 +69,6 @@ export default function ProfilClient() {
               className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
-        </div>
 
           {error && <p className="text-red-600 text-sm mt-3">{error}</p>}
           {success && <p className="text-green-600 text-sm mt-3">✓ Lösenordet har bytts</p>}

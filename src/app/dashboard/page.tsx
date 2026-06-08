@@ -159,7 +159,13 @@ export default async function DashboardPage({
         </div>
       )}
 
-      {stats.reports.length > 0 && <WeeklyReportList reports={stats.reports} />}
+      {stats.reports.length > 0 && (
+        <WeeklyReportList
+          reports={stats.reports}
+          seasonId={currentSeason?.id ?? ""}
+          showEditLink={!isAdmin}
+        />
+      )}
 
       {stats.weeklyData.length === 0 && (
         <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
