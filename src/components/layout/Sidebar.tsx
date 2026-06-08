@@ -65,6 +65,7 @@ export default function Sidebar() {
   const nav = isAdmin ? adminNav : franchiseeNav;
   const [open, setOpen] = useState(false);
   const [submittedCount, setSubmittedCount] = useState(0);
+  const [confirmLogout, setConfirmLogout] = useState(false);
 
   useEffect(() => { setOpen(false); }, [pathname]);
 
@@ -83,8 +84,6 @@ export default function Sidebar() {
   }, [isAdmin, pathname]); // uppdatera vid navigation
 
   function SidebarFooter({ onNav }: { onNav?: () => void }) {
-    const [confirmLogout, setConfirmLogout] = useState(false);
-
     return (
       <div className="px-3 py-4 border-t border-slate-700">
         <p className="text-slate-400 text-xs px-3 mb-2 truncate">{session?.user.email}</p>
