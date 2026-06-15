@@ -40,6 +40,7 @@ export default async function DashboardPage({
 
   let stats = {
     totalSales: 0, totalFtFee: 0, totalMfFee: 0, totalVisits: 0, totalCustomers: 0,
+    besokCount: 0, fashionShows: 0,
     weeklyData: [] as { week: number; sales: number; accumulated: number }[],
     reports: [] as ReportRow[],
   };
@@ -69,6 +70,8 @@ export default async function DashboardPage({
     stats.totalMfFee = allVisits.reduce((s, v) => s + v.mfFee, 0);
     stats.totalVisits = reports.length;
     stats.totalCustomers = allVisits.reduce((s, v) => s + v.numberOfCustomers, 0);
+    stats.besokCount = allVisits.length;
+    stats.fashionShows = allVisits.filter(v => v.isFashionShow).length;
     stats.reports = reports.map(r => ({
       id: r.id,
       week: r.week,
@@ -133,7 +136,8 @@ export default async function DashboardPage({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6 md:mb-8">
+      <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-2">Ekonomi</p>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
         <StatCard label="Total försäljning" value={formatSEK(stats.totalSales)} sub="ink. moms" />
         <StatCard label="FT-avgift" value={formatSEK(stats.totalFtFee)} sub="ex. moms" />
         <StatCard label="MF-avgift" value={formatSEK(stats.totalMfFee)} sub="ex. moms" />
@@ -142,6 +146,22 @@ export default async function DashboardPage({
           value={stats.totalVisits.toString()}
           sub={`${stats.totalCustomers} seniorer besökta`}
         />
+      </div>
+
+      <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-2">Snitt &amp; aktivitet</p>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6 md:mb-8">
+        <StatCard
+          label="Snittkvitto"
+          value={formatSEK(stats.totalCustomers > 0 ? stats.totalSales / stats.totalCustomers : 0)}
+          sub="per kund"
+        />
+        <StatCard
+          label="Snitt / besök"
+          value={formatSEK(stats.besokCount > 0 ? stats.totalSales / stats.besokCount : 0)}
+          sub="per besök"
+        />
+        <StatCard label="Antal besök" value={stats.besokCount.toString()} sub="registrerade besök" />
+        <StatCard label="Modevisningar" value={stats.fashionShows.toString()} sub="av besöken" />
       </div>
 
       {stats.weeklyData.length > 0 && (
