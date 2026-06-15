@@ -30,5 +30,26 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     },
   });
 
+  const district = await prisma.district.findUnique({
+    where: { id: updated.districtId },
+    select: { number: true, name: true },
+  });
+  await prisma.auditLog.create({
+    data: {
+      action: "KUND_ÄNDRAD",
+      entity: "Customer",
+      entityId: updated.id,
+      userId: session.user.id ?? null,
+      userEmail: session.user.email ?? null,
+      details: JSON.stringify({
+        namn: updated.name,
+        typ: updated.type,
+        status: updated.active ? "aktiv" : "inaktiv",
+        districtNr: district?.number,
+        districtName: district?.name,
+      }),
+    },
+  });
+
   return NextResponse.json(updated);
 }

@@ -38,5 +38,25 @@ export async function POST(req: NextRequest) {
     data: { name, type, contactPerson, phone, address, notes, districtId: targetDistrictId },
   });
 
+  const district = await prisma.district.findUnique({
+    where: { id: targetDistrictId },
+    select: { number: true, name: true },
+  });
+  await prisma.auditLog.create({
+    data: {
+      action: "KUND_SKAPAD",
+      entity: "Customer",
+      entityId: customer.id,
+      userId: session.user.id ?? null,
+      userEmail: session.user.email ?? null,
+      details: JSON.stringify({
+        namn: customer.name,
+        typ: customer.type,
+        districtNr: district?.number,
+        districtName: district?.name,
+      }),
+    },
+  });
+
   return NextResponse.json(customer, { status: 201 });
 }

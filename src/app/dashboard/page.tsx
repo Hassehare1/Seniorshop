@@ -37,9 +37,7 @@ export default async function DashboardPage({
   };
 
   let stats = {
-    totalSales: 0, totalFtFee: 0, totalMfFee: 0, totalVisits: 0, totalCustomers: 0,
-    besokCount: 0, fashionShows: 0,
-    weeklyData: [] as { week: number; sales: number; accumulated: number }[],
+    weeks: [] as number[],
     byType: [] as TypeAgg[],
     reports: [] as ReportRow[],
   };
@@ -56,21 +54,7 @@ export default async function DashboardPage({
       orderBy: { week: "asc" },
     });
 
-    let accumulated = 0;
-    stats.weeklyData = reports.map(r => {
-      const weeklySales = r.visits.reduce((s, v) => s + v.sales + v.fashionShowSales, 0);
-      accumulated += weeklySales;
-      return { week: r.week, sales: weeklySales, accumulated };
-    });
-
-    const allVisits = reports.flatMap(r => r.visits);
-    stats.totalSales = allVisits.reduce((s, v) => s + v.sales + v.fashionShowSales, 0);
-    stats.totalFtFee = allVisits.reduce((s, v) => s + v.ftFee, 0);
-    stats.totalMfFee = allVisits.reduce((s, v) => s + v.mfFee, 0);
-    stats.totalVisits = reports.length;
-    stats.totalCustomers = allVisits.reduce((s, v) => s + v.numberOfCustomers, 0);
-    stats.besokCount = allVisits.length;
-    stats.fashionShows = allVisits.filter(v => v.isFashionShow).length;
+    stats.weeks = reports.map(r => r.week);
     stats.reports = reports.map(r => ({
       id: r.id,
       week: r.week,
@@ -93,7 +77,7 @@ export default async function DashboardPage({
     }));
 
     // Per kundtyp: aggregat + försäljning per vecka (för korsfiltrering)
-    const weeksOrder = stats.weeklyData.map(d => d.week);
+    const weeksOrder = stats.weeks;
     const weekIdx = new Map(weeksOrder.map((w, i) => [w, i]));
     const typeKeys = ["TRAFFPUNKT", "FORENING", "VARDHEM", "BOENDE_55", "OVRIGT"];
     const aggMap: Record<string, TypeAgg> = {};
@@ -159,9 +143,9 @@ export default async function DashboardPage({
         </div>
       </div>
 
-      {stats.weeklyData.length > 0 && (
+      {stats.weeks.length > 0 && (
         <>
-          <SalesAnalytics weeks={stats.weeklyData.map(d => d.week)} types={stats.byType} />
+          <SalesAnalytics weeks={stats.weeks} types={stats.byType} />
           {stats.reports.length > 0 && (
             <div className="mt-6">
               <WeeklyReportList
@@ -174,7 +158,7 @@ export default async function DashboardPage({
         </>
       )}
 
-      {stats.weeklyData.length === 0 && (
+      {stats.weeks.length === 0 && (
         <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
           <p className="text-slate-400">Ingen data rapporterad ännu denna säsong.</p>
         </div>

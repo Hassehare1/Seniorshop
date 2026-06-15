@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { customerTypeLabels } from "@/lib/customerTypes";
 
 const actionLabels: Record<string, { label: string; color: string }> = {
   RAPPORT_INLÄMNAD:      { label: "Rapport inlämnad",        color: "bg-blue-100 text-blue-700" },
@@ -10,6 +11,8 @@ const actionLabels: Record<string, { label: string; color: string }> = {
   AVGIFTER_UPPDATERADE:  { label: "Avgifter uppdaterade",    color: "bg-purple-100 text-purple-700" },
   ANVÄNDARE_SKAPAD:      { label: "Användare skapad",        color: "bg-teal-100 text-teal-700" },
   ANVÄNDARE_ÄNDRAD:      { label: "Användare ändrad",        color: "bg-indigo-100 text-indigo-700" },
+  KUND_SKAPAD:           { label: "Kund skapad",             color: "bg-emerald-100 text-emerald-700" },
+  KUND_ÄNDRAD:           { label: "Kund ändrad",             color: "bg-cyan-100 text-cyan-700" },
   LOGIN_FAILED:          { label: "Misslyckad inloggning",   color: "bg-red-100 text-red-700" },
 };
 
@@ -38,6 +41,14 @@ function describe(action: string, d: Record<string, unknown>): string {
       if (d.spärr) parts.push(`spärr: ${d.spärr}`);
       if (d.email) parts.push(`e-post: ${d.email}`);
       if (d.lösenord) parts.push("lösenord ändrat");
+      return parts.join(" · ");
+    }
+    case "KUND_SKAPAD":
+    case "KUND_ÄNDRAD": {
+      const parts: string[] = [];
+      if (d.namn) parts.push(String(d.namn));
+      if (d.typ) parts.push(customerTypeLabels[String(d.typ)] ?? String(d.typ));
+      if (d.status) parts.push(String(d.status));
       return parts.join(" · ");
     }
     case "LOGIN_FAILED":
