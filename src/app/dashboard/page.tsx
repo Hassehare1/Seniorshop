@@ -1,9 +1,7 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { formatSEK } from "@/lib/fees";
-import WeeklySalesChart from "@/components/charts/WeeklySalesChart";
-import AccumulatedChart from "@/components/charts/AccumulatedChart";
 import WeeklyReportList from "./WeeklyReportList";
+import SalesAnalytics, { type TypeAgg } from "./SalesAnalytics";
 import SeasonSwitcher from "./SeasonSwitcher";
 import DistrictSwitcher from "./DistrictSwitcher";
 
@@ -42,6 +40,7 @@ export default async function DashboardPage({
     totalSales: 0, totalFtFee: 0, totalMfFee: 0, totalVisits: 0, totalCustomers: 0,
     besokCount: 0, fashionShows: 0,
     weeklyData: [] as { week: number; sales: number; accumulated: number }[],
+    byType: [] as TypeAgg[],
     reports: [] as ReportRow[],
   };
 
@@ -92,6 +91,30 @@ export default async function DashboardPage({
         comment: v.comment,
       })),
     }));
+
+    // Per kundtyp: aggregat + försäljning per vecka (för korsfiltrering)
+    const weeksOrder = stats.weeklyData.map(d => d.week);
+    const weekIdx = new Map(weeksOrder.map((w, i) => [w, i]));
+    const typeKeys = ["TRAFFPUNKT", "FORENING", "VARDHEM", "BOENDE_55", "OVRIGT"];
+    const aggMap: Record<string, TypeAgg> = {};
+    for (const k of typeKeys) {
+      aggMap[k] = { type: k, sales: 0, ftFee: 0, mfFee: 0, customers: 0, besok: 0, fashionShows: 0, weekly: new Array(weeksOrder.length).fill(0) };
+    }
+    for (const r of reports) {
+      const wi = weekIdx.get(r.week);
+      for (const v of r.visits) {
+        const a = aggMap[v.customer.type] ?? aggMap.OVRIGT;
+        const sale = v.sales + v.fashionShowSales;
+        a.sales += sale;
+        a.ftFee += v.ftFee;
+        a.mfFee += v.mfFee;
+        a.customers += v.numberOfCustomers;
+        a.besok += 1;
+        if (v.isFashionShow) a.fashionShows += 1;
+        if (wi !== undefined) a.weekly[wi] += sale;
+      }
+    }
+    stats.byType = typeKeys.map(k => aggMap[k]).filter(a => a.besok > 0);
   }
 
   const seasonLabel = currentSeason
@@ -136,55 +159,19 @@ export default async function DashboardPage({
         </div>
       </div>
 
-      <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-2">Ekonomi</p>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
-        <StatCard label="Total försäljning" value={formatSEK(stats.totalSales)} sub="ink. moms" />
-        <StatCard label="FT-avgift" value={formatSEK(stats.totalFtFee)} sub="ex. moms" />
-        <StatCard label="MF-avgift" value={formatSEK(stats.totalMfFee)} sub="ex. moms" />
-        <StatCard
-          label="Rapporterade veckor"
-          value={stats.totalVisits.toString()}
-          sub={`${stats.totalCustomers} seniorer besökta`}
-        />
-      </div>
-
-      <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-2">Snitt &amp; aktivitet</p>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6 md:mb-8">
-        <StatCard
-          label="Snittkvitto"
-          value={formatSEK(stats.totalCustomers > 0 ? stats.totalSales / stats.totalCustomers : 0)}
-          sub="per kund"
-        />
-        <StatCard
-          label="Snitt / besök"
-          value={formatSEK(stats.besokCount > 0 ? stats.totalSales / stats.besokCount : 0)}
-          sub="per besök"
-        />
-        <StatCard label="Antal besök" value={stats.besokCount.toString()} sub="registrerade besök" />
-        <StatCard label="Modevisningar" value={stats.fashionShows.toString()} sub="av besöken" />
-      </div>
-
       {stats.weeklyData.length > 0 && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-          <div className="bg-white rounded-xl border border-slate-200 p-4 md:p-6">
-            <h2 className="text-sm font-semibold text-slate-700 mb-1">Försäljning per vecka</h2>
-            <p className="text-xs text-slate-400 mb-4">Mörkblå = utfall &nbsp;·&nbsp; Ljusblå = prognos (kommer)</p>
-            <WeeklySalesChart data={stats.weeklyData} />
-          </div>
-          <div className="bg-white rounded-xl border border-slate-200 p-4 md:p-6">
-            <h2 className="text-sm font-semibold text-slate-700 mb-1">Ackumulerad försäljning</h2>
-            <p className="text-xs text-slate-400 mb-4">Heldraget = utfall &nbsp;·&nbsp; Streckad = prognos (kommer)</p>
-            <AccumulatedChart data={stats.weeklyData} />
-          </div>
-        </div>
-      )}
-
-      {stats.reports.length > 0 && (
-        <WeeklyReportList
-          reports={stats.reports}
-          seasonId={currentSeason?.id ?? ""}
-          showEditLink={!isAdmin}
-        />
+        <>
+          <SalesAnalytics weeks={stats.weeklyData.map(d => d.week)} types={stats.byType} />
+          {stats.reports.length > 0 && (
+            <div className="mt-6">
+              <WeeklyReportList
+                reports={stats.reports}
+                seasonId={currentSeason?.id ?? ""}
+                showEditLink={!isAdmin}
+              />
+            </div>
+          )}
+        </>
       )}
 
       {stats.weeklyData.length === 0 && (
@@ -192,16 +179,6 @@ export default async function DashboardPage({
           <p className="text-slate-400">Ingen data rapporterad ännu denna säsong.</p>
         </div>
       )}
-    </div>
-  );
-}
-
-function StatCard({ label, value, sub }: { label: string; value: string; sub: string }) {
-  return (
-    <div className="bg-white rounded-xl border border-slate-200 p-4 md:p-5">
-      <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{label}</p>
-      <p className="text-xl md:text-2xl font-bold text-slate-800 mt-1 truncate">{value}</p>
-      <p className="text-xs text-slate-400 mt-0.5">{sub}</p>
     </div>
   );
 }

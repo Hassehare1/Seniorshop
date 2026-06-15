@@ -1,0 +1,204 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import {
+  ResponsiveContainer,
+  AreaChart, Area,
+  BarChart, Bar,
+  XAxis, YAxis, CartesianGrid, Tooltip, Cell,
+} from "recharts";
+import { formatSEK } from "@/lib/fees";
+import { customerTypeLabels } from "@/lib/customerTypes";
+
+export interface TypeAgg {
+  type: string;
+  sales: number;
+  ftFee: number;
+  mfFee: number;
+  customers: number;
+  besok: number;
+  fashionShows: number;
+  weekly: number[]; // försäljning per vecka, i samma ordning som `weeks`
+}
+
+interface Props {
+  weeks: number[];
+  types: TypeAgg[];
+}
+
+// Diagramfärger (hex) per kundtyp — speglar badge-färgerna
+const typeHex: Record<string, string> = {
+  TRAFFPUNKT: "#2563eb",
+  FORENING: "#16a34a",
+  VARDHEM: "#7c3aed",
+  BOENDE_55: "#ea580c",
+  OVRIGT: "#64748b",
+};
+const BLUE = "#1d4ed8";
+
+const formatK = (v: number) => (v >= 1000 ? `${Math.round(v / 1000)}k` : `${v}`);
+
+export default function SalesAnalytics({ weeks, types }: Props) {
+  const [selected, setSelected] = useState<string | null>(null);
+
+  const color = selected ? typeHex[selected] ?? BLUE : BLUE;
+
+  // Aggregat för aktuellt urval (vald typ, annars alla typer summerade)
+  const agg = useMemo(() => {
+    const src = selected ? types.filter(t => t.type === selected) : types;
+    const weekly = weeks.map((_, i) => src.reduce((s, t) => s + (t.weekly[i] ?? 0), 0));
+    const sum = (f: (t: TypeAgg) => number) => src.reduce((s, t) => s + f(t), 0);
+    return {
+      weekly,
+      sales: sum(t => t.sales),
+      ftFee: sum(t => t.ftFee),
+      mfFee: sum(t => t.mfFee),
+      customers: sum(t => t.customers),
+      besok: sum(t => t.besok),
+      fashionShows: sum(t => t.fashionShows),
+      reportedWeeks: weekly.filter(v => v > 0).length,
+    };
+  }, [selected, types, weeks]);
+
+  const weeklyData = useMemo(() => {
+    let acc = 0;
+    return weeks.map((w, i) => {
+      acc += agg.weekly[i];
+      return { week: w, sales: agg.weekly[i], accumulated: acc };
+    });
+  }, [weeks, agg]);
+
+  const typeData = useMemo(
+    () => types
+      .map(t => ({ type: t.type, label: customerTypeLabels[t.type] ?? t.type, sales: t.sales }))
+      .sort((a, b) => b.sales - a.sales),
+    [types]
+  );
+
+  const selectedLabel = selected ? customerTypeLabels[selected] ?? selected : null;
+  const tag = selectedLabel ? ` · ${selectedLabel}` : "";
+
+  function toggle(type: string) {
+    setSelected(prev => (prev === type ? null : type));
+  }
+
+  const tipStyle = { fontSize: 12, borderRadius: 8, border: "1px solid #e2e8f0" };
+  const weekLabel = (v: unknown) => `Vecka ${String(v)}`;
+
+  return (
+    <div className="space-y-6">
+      {selected && (
+        <div className="flex items-center gap-2 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg px-4 py-2.5 text-sm">
+          <span>Filter: <strong>{selectedLabel}</strong> — diagram och nyckeltal visar bara denna kundtyp</span>
+          <button
+            onClick={() => setSelected(null)}
+            className="ml-auto text-blue-700 hover:text-blue-900 font-medium"
+          >
+            Visa alla ✕
+          </button>
+        </div>
+      )}
+
+      {/* Ekonomi */}
+      <div>
+        <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-2">Ekonomi{tag}</p>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+          <StatCard label="Total försäljning" value={formatSEK(agg.sales)} sub="ink. moms" />
+          <StatCard label="FT-avgift" value={formatSEK(agg.ftFee)} sub="ex. moms" />
+          <StatCard label="MF-avgift" value={formatSEK(agg.mfFee)} sub="ex. moms" />
+          <StatCard label="Rapporterade veckor" value={String(agg.reportedWeeks)} sub={`${agg.customers} seniorer besökta`} />
+        </div>
+      </div>
+
+      {/* Snitt & aktivitet */}
+      <div>
+        <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-2">Snitt &amp; aktivitet{tag}</p>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+          <StatCard label="Snittkvitto" value={formatSEK(agg.customers > 0 ? agg.sales / agg.customers : 0)} sub="per kund" />
+          <StatCard label="Snitt / besök" value={formatSEK(agg.besok > 0 ? agg.sales / agg.besok : 0)} sub="per besök" />
+          <StatCard label="Antal besök" value={String(agg.besok)} sub="registrerade besök" />
+          <StatCard label="Modevisningar" value={String(agg.fashionShows)} sub="av besöken" />
+        </div>
+      </div>
+
+      {/* Hjälte: ackumulerad försäljning (full bredd) */}
+      <div className="bg-white rounded-xl border border-slate-200 p-4 md:p-6">
+        <h2 className="text-sm font-semibold text-slate-700 mb-1">Säsongstrend{tag}</h2>
+        <p className="text-xs text-slate-400 mb-4">Ackumulerad försäljning</p>
+        <ResponsiveContainer width="100%" height={240}>
+          <AreaChart data={weeklyData} margin={{ top: 4, right: 16, left: 8, bottom: 4 }}>
+            <defs>
+              <linearGradient id="gradAcc" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor={color} stopOpacity={0.15} />
+                <stop offset="95%" stopColor={color} stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+            <XAxis dataKey="week" tickFormatter={(v) => `v${v}`} tick={{ fontSize: 11, fill: "#94a3b8" }} />
+            <YAxis tickFormatter={formatK} tick={{ fontSize: 11, fill: "#94a3b8" }} width={40} />
+            <Tooltip contentStyle={tipStyle} labelFormatter={weekLabel} formatter={(value) => [formatSEK(Number(value)), "Ackumulerat"]} />
+            <Area type="monotone" dataKey="accumulated" stroke={color} strokeWidth={2.5} fill="url(#gradAcc)" dot={false} activeDot={{ r: 4, fill: color }} />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Två kompakta paneler */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="bg-white rounded-xl border border-slate-200 p-4 md:p-6">
+          <h2 className="text-sm font-semibold text-slate-700 mb-4">Veckoförsäljning{tag}</h2>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={weeklyData} margin={{ top: 4, right: 8, left: 8, bottom: 4 }} barCategoryGap="25%">
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+              <XAxis dataKey="week" tickFormatter={(v) => `v${v}`} tick={{ fontSize: 10, fill: "#94a3b8" }} />
+              <YAxis tickFormatter={formatK} tick={{ fontSize: 10, fill: "#94a3b8" }} width={36} />
+              <Tooltip contentStyle={tipStyle} labelFormatter={weekLabel} cursor={{ fill: "#f8fafc" }} formatter={(value) => [formatSEK(Number(value)), "Försäljning"]} />
+              <Bar dataKey="sales" fill={color} radius={[3, 3, 0, 0]} maxBarSize={28} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div className="bg-white rounded-xl border border-slate-200 p-4 md:p-6">
+          <h2 className="text-sm font-semibold text-slate-700 mb-1">Försäljning per kundtyp</h2>
+          <p className="text-xs text-slate-400 mb-4">Klicka på en stapel för att filtrera</p>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart
+              layout="vertical"
+              data={typeData}
+              margin={{ top: 4, right: 16, left: 8, bottom: 4 }}
+              onClick={(state) => {
+                const label = state?.activeLabel;
+                const entry = typeData.find(d => d.label === label);
+                if (entry) toggle(entry.type);
+              }}
+              style={{ cursor: "pointer" }}
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+              <XAxis type="number" tickFormatter={formatK} tick={{ fontSize: 10, fill: "#94a3b8" }} />
+              <YAxis type="category" dataKey="label" width={90} tick={{ fontSize: 11, fill: "#64748b" }} />
+              <Tooltip cursor={{ fill: "#f8fafc" }} contentStyle={tipStyle} formatter={(value) => [formatSEK(Number(value)), "Försäljning"]} />
+              <Bar dataKey="sales" radius={[0, 3, 3, 0]}>
+                {typeData.map(d => (
+                  <Cell
+                    key={d.type}
+                    fill={typeHex[d.type] ?? "#64748b"}
+                    fillOpacity={!selected || selected === d.type ? 1 : 0.3}
+                  />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StatCard({ label, value, sub }: { label: string; value: string; sub: string }) {
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 p-4 md:p-5">
+      <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{label}</p>
+      <p className="text-xl md:text-2xl font-bold text-slate-800 mt-1 truncate">{value}</p>
+      <p className="text-xs text-slate-400 mt-0.5">{sub}</p>
+    </div>
+  );
+}
