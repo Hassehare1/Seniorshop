@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "E-postadressen används redan" }, { status: 409 });
   }
 
-  const passwordHash = await bcrypt.hash(password, 10);
+  const passwordHash = await bcrypt.hash(password, 12);
   const user = await prisma.user.create({
     data: {
       name: name || null,
@@ -29,6 +29,21 @@ export async function POST(req: NextRequest) {
       districtId: districtId || null,
     },
     include: { district: { select: { number: true, name: true } } },
+  });
+
+  await prisma.auditLog.create({
+    data: {
+      action: "ANVÄNDARE_SKAPAD",
+      entity: "User",
+      entityId: user.id,
+      userId: session.user.id ?? null,
+      userEmail: session.user.email ?? null,
+      details: JSON.stringify({
+        email: user.email,
+        roll: user.role,
+        distrikt: user.district ? `D${user.district.number} – ${user.district.name}` : null,
+      }),
+    },
   });
 
   // Returnera aldrig lösenordshash till klienten

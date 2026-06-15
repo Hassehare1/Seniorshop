@@ -14,6 +14,7 @@ interface User {
   name: string | null;
   email: string;
   role: string;
+  active: boolean;
   districtId: string | null;
   district: { number: number; name: string } | null;
 }
@@ -23,7 +24,7 @@ interface Props {
   districts: District[];
 }
 
-const emptyForm = { name: "", email: "", password: "", role: "FRANCHISEE", districtId: "" };
+const emptyForm = { name: "", email: "", password: "", role: "FRANCHISEE", districtId: "", active: true };
 
 export default function AnvandareClient({ users: initial, districts }: Props) {
   const [users, setUsers] = useState(initial);
@@ -35,7 +36,7 @@ export default function AnvandareClient({ users: initial, districts }: Props) {
 
   function startEdit(u: User) {
     setEditingId(u.id);
-    setForm({ name: u.name ?? "", email: u.email, password: "", role: u.role, districtId: u.districtId ?? "" });
+    setForm({ name: u.name ?? "", email: u.email, password: "", role: u.role, districtId: u.districtId ?? "", active: u.active });
     setShowForm(false);
     setError("");
   }
@@ -58,6 +59,7 @@ export default function AnvandareClient({ users: initial, districts }: Props) {
       role: form.role,
       districtId: form.districtId || null,
     };
+    if (editingId) payload.active = form.active;
     if (form.password) payload.password = form.password;
 
     const url = editingId ? `/api/admin/users/${editingId}` : "/api/admin/users";
@@ -173,6 +175,21 @@ export default function AnvandareClient({ users: initial, districts }: Props) {
                 Kunder tillhör distriktet. Om FT byter distrikt får hen automatiskt alla kunder i det nya distriktet.
               </p>
             </div>
+            {editingId && (
+              <div className="col-span-2">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <div
+                    onClick={() => setForm(f => ({ ...f, active: !f.active }))}
+                    className={`relative w-10 h-6 rounded-full transition-colors ${form.active ? "bg-green-500" : "bg-slate-300"}`}
+                  >
+                    <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${form.active ? "left-5" : "left-1"}`} />
+                  </div>
+                  <span className="text-sm text-slate-700">
+                    {form.active ? "Aktivt konto" : "Spärrat (kan inte logga in)"}
+                  </span>
+                </label>
+              </div>
+            )}
           </div>
           {error && <p className="text-red-600 text-sm mt-3">{error}</p>}
           <div className="flex gap-2 mt-4">
@@ -199,12 +216,13 @@ export default function AnvandareClient({ users: initial, districts }: Props) {
               <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">E-post</th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Roll</th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Distrikt</th>
+              <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Status</th>
               <th className="px-4 py-3"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {users.map(u => (
-              <tr key={u.id} className="hover:bg-slate-50">
+              <tr key={u.id} className={`hover:bg-slate-50 ${!u.active ? "opacity-50" : ""}`}>
                 <td className="px-4 py-3 font-medium text-slate-800">{u.name ?? "–"}</td>
                 <td className="px-4 py-3 text-slate-600">{u.email}</td>
                 <td className="px-4 py-3">
@@ -214,6 +232,11 @@ export default function AnvandareClient({ users: initial, districts }: Props) {
                 </td>
                 <td className="px-4 py-3 text-slate-600">
                   {u.district ? `D${u.district.number} – ${u.district.name}` : "–"}
+                </td>
+                <td className="px-4 py-3">
+                  <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${u.active ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
+                    {u.active ? "Aktiv" : "Spärrad"}
+                  </span>
                 </td>
                 <td className="px-4 py-3 text-right">
                   <button

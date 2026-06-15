@@ -43,6 +43,7 @@ model User {
   name         String?
   passwordHash String
   role         Role           @default(FRANCHISEE)
+  active       Boolean        @default(true)
   districtId   String?
   district     District?      @relation(fields: [districtId], references: [id])
   reports      WeeklyReport[]

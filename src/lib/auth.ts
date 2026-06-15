@@ -33,6 +33,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           include: { district: true },
         });
 
+        // Spärrat konto — neka utan att räkna som lösenordsfel
+        if (user && !user.active) return null;
+
         const valid =
           user && (await bcrypt.compare(credentials.password as string, user.passwordHash));
 
@@ -61,12 +64,40 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     }),
   ],
   callbacks: {
-    jwt({ token, user }) {
+    async jwt({ token, user }) {
+      // Vid inloggning — fyll token från authorize-resultatet
       if (user) {
         token.id = user.id;
         token.role = (user as any).role;
         token.districtId = (user as any).districtId;
         token.districtNumber = (user as any).districtNumber;
+        token.active = true;
+        token.lastSync = Date.now();
+        return token;
+      }
+
+      // Synka roll/distrikt/aktiv-status från DB max var 60:e sekund.
+      // Gör att rollbyten och spärrade konton slår igenom utan ominloggning.
+      const STALE_MS = 60 * 1000;
+      const lastSync = typeof token.lastSync === "number" ? token.lastSync : 0;
+      if (token.id && Date.now() - lastSync > STALE_MS) {
+        try {
+          const fresh = await prisma.user.findUnique({
+            where: { id: token.id as string },
+            include: { district: { select: { number: true } } },
+          });
+          if (fresh) {
+            token.role = fresh.role;
+            token.districtId = fresh.districtId;
+            token.districtNumber = fresh.district?.number ?? null;
+            token.active = fresh.active;
+          } else {
+            token.active = false; // användaren borttagen
+          }
+          token.lastSync = Date.now();
+        } catch {
+          // Fail-open: vid DB-fel behålls befintlig token (loggar inte ut alla vid störning)
+        }
       }
       return token;
     },
@@ -75,6 +106,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       session.user.role = token.role as string;
       session.user.districtId = token.districtId as string | null;
       session.user.districtNumber = token.districtNumber as number | null;
+      session.user.active = token.active !== false;
       return session;
     },
   },
