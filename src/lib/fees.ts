@@ -38,11 +38,12 @@ export function calculateFees(
   };
 }
 
+// Enhetlig kr-formatering på skärmen — hela kronor (öre visas i Excel-export).
+// Centraliserad: vill man visa öre ändras det bara här.
 export function formatSEK(amount: number): string {
   return new Intl.NumberFormat("sv-SE", {
     style: "currency",
     currency: "SEK",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
+    maximumFractionDigits: 0,
   }).format(amount);
 }

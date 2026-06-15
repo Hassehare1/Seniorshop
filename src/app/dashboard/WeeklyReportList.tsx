@@ -2,14 +2,12 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { formatSEK as fmt } from "@/lib/fees";
 
 const typeLabels: Record<string, string> = {
   VARDHEM: "Vårdhem", FORENING: "Förening", TRAFFPUNKT: "Träffpunkt",
   BOENDE_55: "Boende +55", OVRIGT: "Övrigt",
 };
-
-const fmt = (n: number) =>
-  new Intl.NumberFormat("sv-SE", { style: "currency", currency: "SEK", maximumFractionDigits: 0 }).format(n);
 
 type Visit = {
   id: string; customerName: string; customerType: string;

@@ -136,6 +136,42 @@ export async function POST(req: NextRequest) {
     data: computedVisits.map((v) => ({ ...v, reportId: report.id })),
   });
 
+  // Pkt 7: räkna om MF-taket för efterföljande veckor — de kan ha
+  // påverkats om denna vecka matades in i efterhand (i oordning).
+  const laterReports = await prisma.weeklyReport.findMany({
+    where: { districtId, seasonId, week: { gt: week } },
+    include: { visits: { orderBy: { createdAt: "asc" } } },
+    orderBy: { week: "asc" },
+  });
+  if (laterReports.length > 0) {
+    // MF ackumulerat t.o.m. denna vecka = tidigare veckor + denna veckas omräknade
+    let mf =
+      priorReports.flatMap((r) => r.visits).reduce((s, v) => s + v.mfFee, 0) +
+      computedVisits.reduce((s, v) => s + v.mfFee, 0);
+
+    for (const r of laterReports) {
+      for (const v of r.visits) {
+        const fees = calculateFees(v.sales + v.fashionShowSales, mf, config);
+        mf = fees.mfFeeAccumulated;
+        if (
+          v.mfFee !== fees.mfFee ||
+          v.mfFeeAccumulated !== fees.mfFeeAccumulated ||
+          v.totalToPay !== fees.totalToPay
+        ) {
+          await prisma.visit.update({
+            where: { id: v.id },
+            data: {
+              ftFee: fees.ftFee,
+              mfFee: fees.mfFee,
+              mfFeeAccumulated: fees.mfFeeAccumulated,
+              totalToPay: fees.totalToPay,
+            },
+          });
+        }
+      }
+    }
+  }
+
   return NextResponse.json({ id: report.id });
 }
 

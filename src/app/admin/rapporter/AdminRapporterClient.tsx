@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { formatSEK as fmt } from "@/lib/fees";
 
 interface Report {
   id: string;
@@ -39,9 +40,6 @@ const statusStyle: Record<string, string> = {
   APPROVED: "bg-green-100 text-green-700",
 };
 
-const fmt = (n: number) =>
-  new Intl.NumberFormat("sv-SE", { style: "currency", currency: "SEK", maximumFractionDigits: 0 }).format(n);
-
 export default function AdminRapporterClient({
   districts: initial, weeks, currentWeek, seasonId, seasonLabel, allSeasons,
 }: Props) {
@@ -51,7 +49,13 @@ export default function AdminRapporterClient({
   const [bulkWorking, setBulkWorking] = useState(false);
   const [message, setMessage] = useState("");
 
-  async function setStatus(reportId: string, status: string) {
+  async function setStatus(reportId: string, status: string, currentStatus?: string) {
+    // Bekräfta innan en redan godkänd rapport låses upp (FT kan då ändra den)
+    if (status === "DRAFT" && currentStatus === "APPROVED") {
+      if (!confirm("Låsa upp en redan GODKÄND rapport? Franchisetagaren kan då ändra den igen.")) {
+        return;
+      }
+    }
     setWorking(reportId);
     setMessage("");
     const res = await fetch(`/api/reports/${reportId}/status`, {
@@ -206,7 +210,7 @@ export default function AdminRapporterClient({
                               )}
                               {report.status !== "DRAFT" && (
                                 <button
-                                  onClick={() => setStatus(report.id, "DRAFT")}
+                                  onClick={() => setStatus(report.id, "DRAFT", report.status)}
                                   disabled={working === report.id}
                                   className="text-xs text-slate-400 hover:text-slate-600 hover:underline whitespace-nowrap ml-1"
                                 >Lås upp</button>
