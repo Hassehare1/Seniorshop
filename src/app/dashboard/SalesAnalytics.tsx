@@ -84,9 +84,16 @@ export default function SalesAnalytics({ weeks, types }: Props) {
 
   const tipStyle = { fontSize: 12, borderRadius: 8, border: "1px solid #e2e8f0" };
   const weekLabel = (v: unknown) => `Vecka ${String(v)}`;
+  // "–" när underlag saknas, annars formaterat snitt
+  const fmtAvg = (num: number, den: number) => (den > 0 ? formatSEK(num / den) : "–");
 
   return (
     <div className="space-y-6">
+      <p className="sr-only">
+        {selectedLabel ? `Visar kundtyp ${selectedLabel}. ` : "Visar alla kundtyper. "}
+        Total försäljning {formatSEK(agg.sales)} över {agg.reportedWeeks} veckor och {agg.besok} besök.
+        Försäljning per kundtyp: {typeData.map(d => `${d.label} ${formatSEK(d.sales)}`).join(", ")}.
+      </p>
       {selected && (
         <div className="flex items-center gap-2 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg px-4 py-2.5 text-sm">
           <span>Filter: <strong>{selectedLabel}</strong> — diagram och nyckeltal visar bara denna kundtyp</span>
@@ -106,7 +113,11 @@ export default function SalesAnalytics({ weeks, types }: Props) {
           <StatCard label="Total försäljning" value={formatSEK(agg.sales)} sub="ink. moms" />
           <StatCard label="FT-avgift" value={formatSEK(agg.ftFee)} sub="ex. moms" />
           <StatCard label="MF-avgift" value={formatSEK(agg.mfFee)} sub="ex. moms" />
-          <StatCard label="Rapporterade veckor" value={String(agg.reportedWeeks)} sub={`${agg.customers} seniorer besökta`} />
+          <StatCard
+            label={selected ? "Veckor med försäljning" : "Rapporterade veckor"}
+            value={String(agg.reportedWeeks)}
+            sub={`${agg.customers} seniorer besökta`}
+          />
         </div>
       </div>
 
@@ -114,8 +125,8 @@ export default function SalesAnalytics({ weeks, types }: Props) {
       <div>
         <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-2">Snitt &amp; aktivitet{tag}</p>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-          <StatCard label="Snittkvitto" value={formatSEK(agg.customers > 0 ? agg.sales / agg.customers : 0)} sub="per kund" />
-          <StatCard label="Snitt / besök" value={formatSEK(agg.besok > 0 ? agg.sales / agg.besok : 0)} sub="per besök" />
+          <StatCard label="Snittkvitto" value={fmtAvg(agg.sales, agg.customers)} sub="per kund" />
+          <StatCard label="Snitt / besök" value={fmtAvg(agg.sales, agg.besok)} sub="per besök" />
           <StatCard label="Antal besök" value={String(agg.besok)} sub="registrerade besök" />
           <StatCard label="Modevisningar" value={String(agg.fashionShows)} sub="av besöken" />
         </div>
@@ -159,7 +170,7 @@ export default function SalesAnalytics({ weeks, types }: Props) {
 
         <div className="bg-white rounded-xl border border-slate-200 p-4 md:p-6">
           <h2 className="text-sm font-semibold text-slate-700 mb-1">Försäljning per kundtyp</h2>
-          <p className="text-xs text-slate-400 mb-4">Klicka på en stapel för att filtrera</p>
+          <p className="text-xs text-slate-400 mb-4">Klicka på en rad för att filtrera</p>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart
               layout="vertical"
