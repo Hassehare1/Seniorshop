@@ -1,23 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { customerTypeLabels, customerTypeColors, customerTypeOptions } from "@/lib/customerTypes";
 import type { Customer } from "@prisma/client";
-
-const customerTypes = [
-  { value: "TRAFFPUNKT", label: "Träffpunkt" },
-  { value: "FORENING", label: "Förening" },
-  { value: "VARDHEM", label: "Vårdhem" },
-  { value: "BOENDE_55", label: "Boende +55" },
-  { value: "OVRIGT", label: "Övrigt" },
-];
-
-const typeColors: Record<string, string> = {
-  TRAFFPUNKT: "bg-blue-100 text-blue-700",
-  FORENING: "bg-green-100 text-green-700",
-  VARDHEM: "bg-purple-100 text-purple-700",
-  BOENDE_55: "bg-orange-100 text-orange-700",
-  OVRIGT: "bg-slate-100 text-slate-600",
-};
 
 const emptyForm = {
   name: "", type: "TRAFFPUNKT", contactPerson: "", phone: "", address: "", notes: "", active: true,
@@ -26,10 +11,9 @@ const emptyForm = {
 interface Props {
   customers: Customer[];
   districtId: string;
-  typeLabels: Record<string, string>;
 }
 
-export default function KunderClient({ customers: initial, districtId, typeLabels }: Props) {
+export default function KunderClient({ customers: initial, districtId }: Props) {
   const [customers, setCustomers] = useState(initial);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -40,7 +24,7 @@ export default function KunderClient({ customers: initial, districtId, typeLabel
 
   const filtered = customers.filter(c =>
     c.name.toLowerCase().includes(filter.toLowerCase()) ||
-    typeLabels[c.type]?.toLowerCase().includes(filter.toLowerCase())
+    customerTypeLabels[c.type]?.toLowerCase().includes(filter.toLowerCase())
   );
 
   function startEdit(c: Customer) {
@@ -148,7 +132,7 @@ export default function KunderClient({ customers: initial, districtId, typeLabel
                 onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                {customerTypes.map(t => (
+                {customerTypeOptions.map(t => (
                   <option key={t.value} value={t.value}>{t.label}</option>
                 ))}
               </select>
@@ -249,8 +233,8 @@ export default function KunderClient({ customers: initial, districtId, typeLabel
               <tr key={c.id} className={`hover:bg-slate-50 ${!c.active ? "opacity-40" : ""}`}>
                 <td className="px-4 py-3 font-medium text-slate-800">{c.name}</td>
                 <td className="px-4 py-3">
-                  <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${typeColors[c.type] ?? "bg-slate-100 text-slate-600"}`}>
-                    {typeLabels[c.type] ?? c.type}
+                  <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${customerTypeColors[c.type] ?? "bg-slate-100 text-slate-600"}`}>
+                    {customerTypeLabels[c.type] ?? c.type}
                   </span>
                 </td>
                 <td className="px-4 py-3 text-slate-600">{c.contactPerson ?? "–"}</td>

@@ -3,14 +3,6 @@ import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import KunderClient from "./KunderClient";
 
-const typeLabels: Record<string, string> = {
-  VARDHEM: "Vårdhem",
-  FORENING: "Förening",
-  TRAFFPUNKT: "Träffpunkt",
-  BOENDE_55: "Boende +55",
-  OVRIGT: "Övrigt",
-};
-
 export default async function KunderPage() {
   const session = await auth();
   if (!session?.user.districtId) redirect("/dashboard");
@@ -30,7 +22,7 @@ export default async function KunderPage() {
           </p>
         </div>
       </div>
-      <KunderClient customers={customers} districtId={session.user.districtId} typeLabels={typeLabels} />
+      <KunderClient customers={customers} districtId={session.user.districtId} />
     </div>
   );
 }

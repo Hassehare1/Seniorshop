@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { customerTypeLabels as typeLabels } from "@/lib/customerTypes";
 import * as XLSX from "xlsx";
 
 export async function GET(req: NextRequest) {
@@ -25,11 +26,6 @@ export async function GET(req: NextRequest) {
 
   const fmtSEK = (n: number) =>
     new Intl.NumberFormat("sv-SE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
-
-  const typeLabels: Record<string, string> = {
-    VARDHEM: "Vårdhem", FORENING: "Förening", TRAFFPUNKT: "Träffpunkt",
-    BOENDE_55: "Boende +55", OVRIGT: "Övrigt",
-  };
 
   const rows: unknown[][] = [[
     "Distrikt", "Vecka", "Status", "Kund", "Kundtyp",

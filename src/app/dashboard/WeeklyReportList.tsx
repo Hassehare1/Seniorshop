@@ -3,11 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { formatSEK as fmt } from "@/lib/fees";
-
-const typeLabels: Record<string, string> = {
-  VARDHEM: "Vårdhem", FORENING: "Förening", TRAFFPUNKT: "Träffpunkt",
-  BOENDE_55: "Boende +55", OVRIGT: "Övrigt",
-};
+import { customerTypeLabels as typeLabels } from "@/lib/customerTypes";
 
 type Visit = {
   id: string; customerName: string; customerType: string;

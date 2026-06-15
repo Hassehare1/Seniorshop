@@ -1,19 +1,10 @@
 "use client";
 
 import { useState } from "react";
-
-const typeLabels: Record<string, string> = {
-  VARDHEM: "Vårdhem", FORENING: "Förening", TRAFFPUNKT: "Träffpunkt",
-  BOENDE_55: "Boende +55", OVRIGT: "Övrigt",
-};
-
-const typeColors: Record<string, string> = {
-  TRAFFPUNKT: "bg-blue-100 text-blue-700",
-  FORENING: "bg-green-100 text-green-700",
-  VARDHEM: "bg-purple-100 text-purple-700",
-  BOENDE_55: "bg-orange-100 text-orange-700",
-  OVRIGT: "bg-slate-100 text-slate-600",
-};
+import {
+  customerTypeLabels as typeLabels,
+  customerTypeColors as typeColors,
+} from "@/lib/customerTypes";
 
 interface Customer {
   id: string;

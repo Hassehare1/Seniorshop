@@ -1,18 +1,8 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
+import { getCurrentWeekAndYear } from "@/lib/week";
 import ReportForm from "./ReportForm";
-
-function getCurrentWeekAndYear() {
-  const d = new Date();
-  const dayNum = d.getUTCDay() || 7;
-  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-  return {
-    week: Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7),
-    year: d.getUTCFullYear(),
-  };
-}
 
 export default async function RapporteraPage({
   searchParams,

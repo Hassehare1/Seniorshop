@@ -1,0 +1,27 @@
+// Delad källa för kundtyper — används i kundlistor, rapportformulär,
+// dashboard och Excel-export. Ändra på ett ställe i stället för sex.
+
+export const customerTypeLabels: Record<string, string> = {
+  VARDHEM: "Vårdhem",
+  FORENING: "Förening",
+  TRAFFPUNKT: "Träffpunkt",
+  BOENDE_55: "Boende +55",
+  OVRIGT: "Övrigt",
+};
+
+export const customerTypeColors: Record<string, string> = {
+  TRAFFPUNKT: "bg-blue-100 text-blue-700",
+  FORENING: "bg-green-100 text-green-700",
+  VARDHEM: "bg-purple-100 text-purple-700",
+  BOENDE_55: "bg-orange-100 text-orange-700",
+  OVRIGT: "bg-slate-100 text-slate-600",
+};
+
+// Ordnade alternativ för formulär (select-dropdowns)
+export const customerTypeOptions = [
+  { value: "TRAFFPUNKT", label: "Träffpunkt" },
+  { value: "FORENING", label: "Förening" },
+  { value: "VARDHEM", label: "Vårdhem" },
+  { value: "BOENDE_55", label: "Boende +55" },
+  { value: "OVRIGT", label: "Övrigt" },
+];

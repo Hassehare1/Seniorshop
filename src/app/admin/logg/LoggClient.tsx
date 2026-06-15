@@ -3,11 +3,14 @@
 import { useState } from "react";
 
 const actionLabels: Record<string, { label: string; color: string }> = {
-  RAPPORT_INLÄMNAD:      { label: "Rapport inlämnad",       color: "bg-blue-100 text-blue-700" },
-  RAPPORT_GODKÄND:       { label: "Rapport godkänd",        color: "bg-green-100 text-green-700" },
-  RAPPORT_UPPLÅST:       { label: "Rapport upplåst (FT)",   color: "bg-amber-100 text-amber-700" },
+  RAPPORT_INLÄMNAD:      { label: "Rapport inlämnad",        color: "bg-blue-100 text-blue-700" },
+  RAPPORT_GODKÄND:       { label: "Rapport godkänd",         color: "bg-green-100 text-green-700" },
+  RAPPORT_UPPLÅST:       { label: "Rapport upplåst (FT)",    color: "bg-amber-100 text-amber-700" },
   RAPPORT_UPPLÅST_ADMIN: { label: "Rapport upplåst (admin)", color: "bg-orange-100 text-orange-700" },
-  AVGIFTER_UPPDATERADE:  { label: "Avgifter uppdaterade",   color: "bg-purple-100 text-purple-700" },
+  AVGIFTER_UPPDATERADE:  { label: "Avgifter uppdaterade",    color: "bg-purple-100 text-purple-700" },
+  ANVÄNDARE_SKAPAD:      { label: "Användare skapad",        color: "bg-teal-100 text-teal-700" },
+  ANVÄNDARE_ÄNDRAD:      { label: "Användare ändrad",        color: "bg-indigo-100 text-indigo-700" },
+  LOGIN_FAILED:          { label: "Misslyckad inloggning",   color: "bg-red-100 text-red-700" },
 };
 
 function fmt(d: Date) {
@@ -15,6 +18,43 @@ function fmt(d: Date) {
     year: "numeric", month: "2-digit", day: "2-digit",
     hour: "2-digit", minute: "2-digit",
   }).format(d);
+}
+
+// Bygg läsbar detaljtext per händelsetyp
+function describe(action: string, d: Record<string, unknown>): string {
+  switch (action) {
+    case "ANVÄNDARE_SKAPAD": {
+      const parts: string[] = [];
+      if (d.email) parts.push(String(d.email));
+      if (d.roll) parts.push(d.roll === "ADMIN" ? "Admin" : "Franchisetagare");
+      if (d.distrikt) parts.push(String(d.distrikt));
+      return parts.join(" · ");
+    }
+    case "ANVÄNDARE_ÄNDRAD": {
+      const parts: string[] = [];
+      if (d.konto) parts.push(String(d.konto));
+      if (d.roll) parts.push(`roll: ${d.roll}`);
+      if (d.distrikt) parts.push(`distrikt: ${d.distrikt}`);
+      if (d.spärr) parts.push(`spärr: ${d.spärr}`);
+      if (d.email) parts.push(`e-post: ${d.email}`);
+      if (d.lösenord) parts.push("lösenord ändrat");
+      return parts.join(" · ");
+    }
+    case "LOGIN_FAILED":
+      return "Fel e-post eller lösenord";
+    case "AVGIFTER_UPPDATERADE":
+      return d.ftFeePercent !== undefined
+        ? `FT ${(Number(d.ftFeePercent) * 100).toFixed(1)}% / MF ${(Number(d.mfFeePercent) * 100).toFixed(1)}%`
+        : "";
+    default: {
+      // Rapport-händelser
+      let t = "";
+      if (d.vecka) t += `Vecka ${d.vecka}`;
+      if (d.från && d.till) t += ` · ${d.från} → ${d.till}`;
+      if (d.bulk) t += " (bulk)";
+      return t;
+    }
+  }
 }
 
 interface LogEntry {
@@ -27,23 +67,48 @@ interface LogEntry {
 
 export default function LoggClient({ logs }: { logs: LogEntry[] }) {
   const [filter, setFilter] = useState("ALL");
+  const [showLogins, setShowLogins] = useState(false);
 
-  const filtered = filter === "ALL" ? logs : logs.filter(l => l.action === filter);
+  const loginFailCount = logs.filter(l => l.action === "LOGIN_FAILED").length;
+
+  let filtered = filter === "ALL" ? logs : logs.filter(l => l.action === filter);
+  // Dölj inloggningsbrus i totalvyn om inte uttryckligen påslaget
+  if (filter === "ALL" && !showLogins) {
+    filtered = filtered.filter(l => l.action !== "LOGIN_FAILED");
+  }
 
   return (
     <>
-      <div className="mb-4 flex items-center gap-2">
-        <span className="text-xs text-slate-500">Filtrera:</span>
-        <select
-          value={filter}
-          onChange={e => setFilter(e.target.value)}
-          className="px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-        >
-          <option value="ALL">Alla händelser</option>
-          {Object.entries(actionLabels).map(([key, { label }]) => (
-            <option key={key} value={key}>{label}</option>
-          ))}
-        </select>
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-slate-500">Filtrera:</span>
+          <select
+            value={filter}
+            onChange={e => setFilter(e.target.value)}
+            className="px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+          >
+            <option value="ALL">Alla händelser</option>
+            {Object.entries(actionLabels).map(([key, { label }]) => (
+              <option key={key} value={key}>{label}</option>
+            ))}
+          </select>
+        </div>
+
+        {filter === "ALL" && loginFailCount > 0 && (
+          <label className="flex items-center gap-2 text-xs text-slate-500 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={showLogins}
+              onChange={e => setShowLogins(e.target.checked)}
+              className="rounded"
+            />
+            Visa inloggningsförsök
+            <span className="inline-block px-1.5 py-0.5 rounded-full bg-red-100 text-red-700 font-medium">
+              {loginFailCount}
+            </span>
+          </label>
+        )}
+
         {filter !== "ALL" && (
           <span className="text-xs text-slate-400">{filtered.length} träff{filtered.length !== 1 ? "ar" : ""}</span>
         )}
@@ -61,7 +126,7 @@ export default function LoggClient({ logs }: { logs: LogEntry[] }) {
                 <tr className="border-b border-slate-100 bg-slate-50">
                   <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Tid</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Händelse</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Utförd av</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Utförd av / konto</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Distrikt</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Detaljer</th>
                 </tr>
@@ -76,13 +141,7 @@ export default function LoggClient({ logs }: { logs: LogEntry[] }) {
                     ? `D${details.districtNr}${details.districtName ? ` – ${details.districtName}` : ""}`
                     : null;
 
-                  let detailText = "";
-                  if (details.vecka) detailText += `Vecka ${details.vecka}`;
-                  if (details.från && details.till) detailText += ` · ${details.från} → ${details.till}`;
-                  if (details.bulk) detailText += " (bulk)";
-                  if (details.ftFeePercent !== undefined) {
-                    detailText += `FT ${((Number(details.ftFeePercent)) * 100).toFixed(1)}% / MF ${((Number(details.mfFeePercent)) * 100).toFixed(1)}%`;
-                  }
+                  const detailText = describe(log.action, details);
 
                   return (
                     <tr key={log.id} className="hover:bg-slate-50">

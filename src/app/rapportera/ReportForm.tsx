@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef } from "react";
 import { calculateFees, formatSEK, type FeeConfig } from "@/lib/fees";
+import { customerTypeLabels } from "@/lib/customerTypes";
+import { getISOWeek } from "@/lib/week";
 import type { Customer, Season } from "@prisma/client";
 
 interface VisitRow {
@@ -188,14 +190,6 @@ interface Props {
   initialSeasonId?: string;
 }
 
-const customerTypeLabels: Record<string, string> = {
-  VARDHEM: "Vårdhem",
-  FORENING: "Förening",
-  TRAFFPUNKT: "Träffpunkt",
-  BOENDE_55: "Boende +55",
-  OVRIGT: "Övrigt",
-};
-
 export default function ReportForm({
   customers,
   seasons,
@@ -211,7 +205,7 @@ export default function ReportForm({
   );
   const [selectedWeek, setSelectedWeek] = useState<number>(() => {
     const season = seasons.find(s => s.id === (initialSeasonId ?? currentSeason?.id)) ?? currentSeason;
-    const week = initialWeek ?? new Date().getWeek();
+    const week = initialWeek ?? getISOWeek();
     if (!season) return week;
     return Math.min(Math.max(week, season.weekStart), season.weekEnd);
   });
@@ -640,16 +634,3 @@ export default function ReportForm({
   );
 }
 
-declare global {
-  interface Date {
-    getWeek(): number;
-  }
-}
-
-Date.prototype.getWeek = function () {
-  const d = new Date(Date.UTC(this.getFullYear(), this.getMonth(), this.getDate()));
-  const dayNum = d.getUTCDay() || 7;
-  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-  return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
-};

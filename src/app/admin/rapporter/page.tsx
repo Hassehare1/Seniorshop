@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
+import { getISOWeek } from "@/lib/week";
 import AdminRapporterClient from "./AdminRapporterClient";
 
 export default async function AdminRapporterPage({
@@ -48,13 +49,7 @@ export default async function AdminRapporterPage({
     (_, i) => i + currentSeason.weekStart
   );
 
-  const currentWeek = (() => {
-    const d = new Date();
-    const dayNum = d.getUTCDay() || 7;
-    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-    return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
-  })();
+  const currentWeek = getISOWeek();
 
   return (
     <AdminRapporterClient
