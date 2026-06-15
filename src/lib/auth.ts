@@ -3,6 +3,10 @@ import Credentials from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 
+// Rate limiting för inloggning — bromsar lösenordsgissning
+const LOGIN_WINDOW_MS = 15 * 60 * 1000; // 15 minuter
+const LOGIN_MAX_ATTEMPTS = 8; // max misslyckade försök per e-post inom fönstret
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
     Credentials({
@@ -12,20 +16,38 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
+        const email = credentials.email as string;
+
+        // Spärr: för många misslyckade försök senaste 15 min
+        const since = new Date(Date.now() - LOGIN_WINDOW_MS);
+        const recentFailures = await prisma.auditLog.count({
+          where: { action: "LOGIN_FAILED", userEmail: email, createdAt: { gte: since } },
+        });
+        if (recentFailures >= LOGIN_MAX_ATTEMPTS) {
+          // Avslöja inte att kontot är spärrat — generiskt fel visas
+          return null;
+        }
 
         const user = await prisma.user.findUnique({
-          where: { email: credentials.email as string },
+          where: { email },
           include: { district: true },
         });
 
-        if (!user) return null;
+        const valid =
+          user && (await bcrypt.compare(credentials.password as string, user.passwordHash));
 
-        const valid = await bcrypt.compare(
-          credentials.password as string,
-          user.passwordHash
-        );
-
-        if (!valid) return null;
+        if (!user || !valid) {
+          // Logga misslyckat försök (bromsas själv av spärren ovan)
+          await prisma.auditLog.create({
+            data: {
+              action: "LOGIN_FAILED",
+              entity: "User",
+              entityId: user?.id ?? email,
+              userEmail: email,
+            },
+          });
+          return null;
+        }
 
         return {
           id: user.id,
