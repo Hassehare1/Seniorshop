@@ -14,7 +14,6 @@ declare module "next-auth" {
       role: string;
       districtId: string | null;
       districtNumber: number | null;
-      active: boolean;
     };
   }
 }
@@ -25,7 +24,5 @@ declare module "next-auth/jwt" {
     role: string;
     districtId: string | null;
     districtNumber: number | null;
-    active: boolean;
-    lastSync: number;
   }
 }

@@ -64,40 +64,15 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
-      // Vid inloggning — fyll token från authorize-resultatet
+    // OBS: jwt-callbacken körs även i proxyn/middleware. Gör INGA DB-anrop här —
+    // Prisma i middleware-kontext är instabilt på Vercel och orsakar sporadiska 500.
+    // Kontospärr/rollbyten enforced vid inloggning (authorize) i stället.
+    jwt({ token, user }) {
       if (user) {
         token.id = user.id;
         token.role = (user as any).role;
         token.districtId = (user as any).districtId;
         token.districtNumber = (user as any).districtNumber;
-        token.active = true;
-        token.lastSync = Date.now();
-        return token;
-      }
-
-      // Synka roll/distrikt/aktiv-status från DB max var 60:e sekund.
-      // Gör att rollbyten och spärrade konton slår igenom utan ominloggning.
-      const STALE_MS = 60 * 1000;
-      const lastSync = typeof token.lastSync === "number" ? token.lastSync : 0;
-      if (token.id && Date.now() - lastSync > STALE_MS) {
-        try {
-          const fresh = await prisma.user.findUnique({
-            where: { id: token.id as string },
-            include: { district: { select: { number: true } } },
-          });
-          if (fresh) {
-            token.role = fresh.role;
-            token.districtId = fresh.districtId;
-            token.districtNumber = fresh.district?.number ?? null;
-            token.active = fresh.active;
-          } else {
-            token.active = false; // användaren borttagen
-          }
-          token.lastSync = Date.now();
-        } catch {
-          // Fail-open: vid DB-fel behålls befintlig token (loggar inte ut alla vid störning)
-        }
       }
       return token;
     },
@@ -106,7 +81,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       session.user.role = token.role as string;
       session.user.districtId = token.districtId as string | null;
       session.user.districtNumber = token.districtNumber as number | null;
-      session.user.active = token.active !== false;
       return session;
     },
   },

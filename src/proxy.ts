@@ -18,11 +18,6 @@ export default auth((req) => {
     return NextResponse.redirect(loginUrl);
   }
 
-  // Spärrat konto — neka åtkomst trots aktiv session
-  if (session.user.active === false) {
-    return NextResponse.redirect(new URL("/login", req.url));
-  }
-
   // Admin-routes: kräver ADMIN-roll
   if (pathname.startsWith("/admin") && session.user.role !== "ADMIN") {
     return NextResponse.redirect(new URL("/dashboard", req.url));
