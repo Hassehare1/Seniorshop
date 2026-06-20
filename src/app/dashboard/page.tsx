@@ -14,6 +14,21 @@ interface TypeAgg {
   weekly: number[];
 }
 
+// Aggregat per distrikt (admin-översikt över alla distrikt)
+interface DistAgg {
+  id: string;
+  label: string;
+  sales: number; ftFee: number; mfFee: number;
+  customers: number; besok: number; fashionShows: number;
+  weekly: number[];
+}
+
+// Distinkta diagramfärger för distrikt (saknar fasta typfärger)
+const districtPalette = [
+  "#2563eb", "#16a34a", "#7c3aed", "#ea580c", "#0891b2",
+  "#db2777", "#65a30d", "#9333ea", "#dc2626", "#0d9488",
+];
+
 export default async function DashboardPage({
   searchParams,
 }: {
@@ -48,8 +63,12 @@ export default async function DashboardPage({
   let stats = {
     weeks: [] as number[],
     byType: [] as TypeAgg[],
+    byDistrict: [] as DistAgg[],
     reports: [] as ReportRow[],
   };
+
+  // Admin utan valt distrikt → bryt ned per distrikt i stället för kundtyp
+  const showDistrictBreakdown = isAdmin && !selectedDistrictId;
 
   if (currentSeason) {
     const where = {
@@ -59,7 +78,10 @@ export default async function DashboardPage({
 
     const reports = await prisma.weeklyReport.findMany({
       where,
-      include: { visits: { include: { customer: { select: { name: true, type: true } } } } },
+      include: {
+        district: { select: { number: true, name: true } },
+        visits: { include: { customer: { select: { name: true, type: true } } } },
+      },
       orderBy: { week: "asc" },
     });
 
@@ -108,13 +130,41 @@ export default async function DashboardPage({
       }
     }
     stats.byType = typeKeys.map(k => aggMap[k]).filter(a => a.besok > 0);
+
+    // Per distrikt (endast för admin-översikt över alla distrikt)
+    if (showDistrictBreakdown) {
+      const distMap: Record<string, DistAgg> = {};
+      for (const r of reports) {
+        let a = distMap[r.districtId];
+        if (!a) {
+          a = distMap[r.districtId] = {
+            id: r.districtId,
+            label: `D${r.district.number} – ${r.district.name}`,
+            sales: 0, ftFee: 0, mfFee: 0, customers: 0, besok: 0, fashionShows: 0,
+            weekly: new Array(weeksOrder.length).fill(0),
+          };
+        }
+        const wi = weekIdx.get(r.week);
+        for (const v of r.visits) {
+          const sale = v.sales + v.fashionShowSales;
+          a.sales += sale;
+          a.ftFee += v.ftFee;
+          a.mfFee += v.mfFee;
+          a.customers += v.numberOfCustomers;
+          a.besok += 1;
+          if (v.isFashionShow) a.fashionShows += 1;
+          if (wi !== undefined) a.weekly[wi] += sale;
+        }
+      }
+      stats.byDistrict = Object.values(distMap).sort((x, y) => x.label.localeCompare(y.label, "sv"));
+    }
   }
 
   const seasonLabel = currentSeason
     ? `${currentSeason.type === "VAR" ? "Vår" : "Höst"} ${currentSeason.year}`
     : "–";
 
-  // Bryt ned analysen per kundtyp
+  // Bryt ned analysen per kundtyp …
   const typeBreakdown: BreakdownItem[] = stats.byType.map(t => ({
     key: t.type,
     label: customerTypeLabels[t.type] ?? t.type,
@@ -127,6 +177,24 @@ export default async function DashboardPage({
     fashionShows: t.fashionShows,
     weekly: t.weekly,
   }));
+
+  // … eller per distrikt (admin-översikt)
+  const districtBreakdown: BreakdownItem[] = stats.byDistrict.map((d, i) => ({
+    key: d.id,
+    label: d.label,
+    color: districtPalette[i % districtPalette.length],
+    sales: d.sales,
+    ftFee: d.ftFee,
+    mfFee: d.mfFee,
+    customers: d.customers,
+    besok: d.besok,
+    fashionShows: d.fashionShows,
+    weekly: d.weekly,
+  }));
+
+  const breakdown = showDistrictBreakdown ? districtBreakdown : typeBreakdown;
+  const breakdownTitle = showDistrictBreakdown ? "Försäljning per distrikt" : "Försäljning per kundtyp";
+  const filterNoun = showDistrictBreakdown ? "distrikt" : "kundtyp";
 
   return (
     <div>
@@ -170,9 +238,9 @@ export default async function DashboardPage({
         <>
           <SalesAnalytics
             weeks={stats.weeks}
-            breakdown={typeBreakdown}
-            breakdownTitle="Försäljning per kundtyp"
-            filterNoun="kundtyp"
+            breakdown={breakdown}
+            breakdownTitle={breakdownTitle}
+            filterNoun={filterNoun}
           />
           {stats.reports.length > 0 && (
             <div className="mt-6">
