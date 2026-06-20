@@ -17,6 +17,15 @@ export const customerTypeColors: Record<string, string> = {
   OVRIGT: "bg-slate-100 text-slate-600",
 };
 
+// Hex-färger för diagram (recharts kan inte läsa Tailwind-klasser)
+export const customerTypeChartColors: Record<string, string> = {
+  TRAFFPUNKT: "#2563eb",
+  FORENING: "#16a34a",
+  VARDHEM: "#7c3aed",
+  BOENDE_55: "#ea580c",
+  OVRIGT: "#64748b",
+};
+
 // Ordnade alternativ för formulär (select-dropdowns)
 export const customerTypeOptions = [
   { value: "TRAFFPUNKT", label: "Träffpunkt" },

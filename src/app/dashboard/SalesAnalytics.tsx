@@ -8,57 +8,53 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Cell,
 } from "recharts";
 import { formatSEK } from "@/lib/fees";
-import { customerTypeLabels } from "@/lib/customerTypes";
 
-export interface TypeAgg {
-  type: string;
+// En post i den dimension man bryter ned på (kundtyp ELLER distrikt)
+export interface BreakdownItem {
+  key: string;       // unik nyckel (typ-enum eller distrikt-id)
+  label: string;     // visningsnamn
+  color: string;     // hex för diagram
   sales: number;
   ftFee: number;
   mfFee: number;
   customers: number;
   besok: number;
   fashionShows: number;
-  weekly: number[]; // försäljning per vecka, i samma ordning som `weeks`
+  weekly: number[];  // försäljning per vecka, i samma ordning som `weeks`
 }
 
 interface Props {
   weeks: number[];
-  types: TypeAgg[];
+  breakdown: BreakdownItem[];
+  breakdownTitle: string; // t.ex. "Försäljning per kundtyp"
+  filterNoun: string;     // t.ex. "kundtyp" eller "distrikt"
 }
 
-// Diagramfärger (hex) per kundtyp — speglar badge-färgerna
-const typeHex: Record<string, string> = {
-  TRAFFPUNKT: "#2563eb",
-  FORENING: "#16a34a",
-  VARDHEM: "#7c3aed",
-  BOENDE_55: "#ea580c",
-  OVRIGT: "#64748b",
-};
 const BLUE = "#1d4ed8";
-
 const formatK = (v: number) => (v >= 1000 ? `${Math.round(v / 1000)}k` : `${v}`);
 
-export default function SalesAnalytics({ weeks, types }: Props) {
+export default function SalesAnalytics({ weeks, breakdown, breakdownTitle, filterNoun }: Props) {
   const [selected, setSelected] = useState<string | null>(null);
 
-  const color = selected ? typeHex[selected] ?? BLUE : BLUE;
+  const selectedItem = selected ? breakdown.find(b => b.key === selected) ?? null : null;
+  const color = selectedItem?.color ?? BLUE;
 
-  // Aggregat för aktuellt urval (vald typ, annars alla typer summerade)
+  // Aggregat för aktuellt urval (vald post, annars alla summerade)
   const agg = useMemo(() => {
-    const src = selected ? types.filter(t => t.type === selected) : types;
-    const weekly = weeks.map((_, i) => src.reduce((s, t) => s + (t.weekly[i] ?? 0), 0));
-    const sum = (f: (t: TypeAgg) => number) => src.reduce((s, t) => s + f(t), 0);
+    const src = selected ? breakdown.filter(b => b.key === selected) : breakdown;
+    const weekly = weeks.map((_, i) => src.reduce((s, b) => s + (b.weekly[i] ?? 0), 0));
+    const sum = (f: (b: BreakdownItem) => number) => src.reduce((s, b) => s + f(b), 0);
     return {
       weekly,
-      sales: sum(t => t.sales),
-      ftFee: sum(t => t.ftFee),
-      mfFee: sum(t => t.mfFee),
-      customers: sum(t => t.customers),
-      besok: sum(t => t.besok),
-      fashionShows: sum(t => t.fashionShows),
+      sales: sum(b => b.sales),
+      ftFee: sum(b => b.ftFee),
+      mfFee: sum(b => b.mfFee),
+      customers: sum(b => b.customers),
+      besok: sum(b => b.besok),
+      fashionShows: sum(b => b.fashionShows),
       reportedWeeks: weekly.filter(v => v > 0).length,
     };
-  }, [selected, types, weeks]);
+  }, [selected, breakdown, weeks]);
 
   const weeklyData = useMemo(() => {
     let acc = 0;
@@ -68,35 +64,34 @@ export default function SalesAnalytics({ weeks, types }: Props) {
     });
   }, [weeks, agg]);
 
-  const typeData = useMemo(
-    () => types
-      .map(t => ({ type: t.type, label: customerTypeLabels[t.type] ?? t.type, sales: t.sales }))
+  const chartData = useMemo(
+    () => breakdown
+      .map(b => ({ key: b.key, label: b.label, color: b.color, sales: b.sales }))
       .sort((a, b) => b.sales - a.sales),
-    [types]
+    [breakdown]
   );
 
-  const selectedLabel = selected ? customerTypeLabels[selected] ?? selected : null;
+  const selectedLabel = selectedItem?.label ?? null;
   const tag = selectedLabel ? ` · ${selectedLabel}` : "";
 
-  function toggle(type: string) {
-    setSelected(prev => (prev === type ? null : type));
+  function toggle(key: string) {
+    setSelected(prev => (prev === key ? null : key));
   }
 
   const tipStyle = { fontSize: 12, borderRadius: 8, border: "1px solid #e2e8f0" };
   const weekLabel = (v: unknown) => `Vecka ${String(v)}`;
-  // "–" när underlag saknas, annars formaterat snitt
   const fmtAvg = (num: number, den: number) => (den > 0 ? formatSEK(num / den) : "–");
 
   return (
     <div className="space-y-6">
       <p className="sr-only">
-        {selectedLabel ? `Visar kundtyp ${selectedLabel}. ` : "Visar alla kundtyper. "}
+        {selectedLabel ? `Visar ${filterNoun} ${selectedLabel}. ` : `Visar alla. `}
         Total försäljning {formatSEK(agg.sales)} över {agg.reportedWeeks} veckor och {agg.besok} besök.
-        Försäljning per kundtyp: {typeData.map(d => `${d.label} ${formatSEK(d.sales)}`).join(", ")}.
+        Försäljning per {filterNoun}: {chartData.map(d => `${d.label} ${formatSEK(d.sales)}`).join(", ")}.
       </p>
       {selected && (
         <div className="flex items-center gap-2 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg px-4 py-2.5 text-sm">
-          <span>Filter: <strong>{selectedLabel}</strong> — diagram och nyckeltal visar bara denna kundtyp</span>
+          <span>Filter: <strong>{selectedLabel}</strong> — diagram och nyckeltal visar bara denna {filterNoun}</span>
           <button
             onClick={() => setSelected(null)}
             className="ml-auto text-blue-700 hover:text-blue-900 font-medium"
@@ -169,17 +164,17 @@ export default function SalesAnalytics({ weeks, types }: Props) {
         </div>
 
         <div className="bg-white rounded-xl border border-slate-200 p-4 md:p-6">
-          <h2 className="text-sm font-semibold text-slate-700 mb-1">Försäljning per kundtyp</h2>
+          <h2 className="text-sm font-semibold text-slate-700 mb-1">{breakdownTitle}</h2>
           <p className="text-xs text-slate-400 mb-4">Klicka på en rad för att filtrera</p>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart
               layout="vertical"
-              data={typeData}
+              data={chartData}
               margin={{ top: 4, right: 16, left: 8, bottom: 4 }}
               onClick={(state) => {
                 const label = state?.activeLabel;
-                const entry = typeData.find(d => d.label === label);
-                if (entry) toggle(entry.type);
+                const entry = chartData.find(d => d.label === label);
+                if (entry) toggle(entry.key);
               }}
               style={{ cursor: "pointer" }}
             >
@@ -188,11 +183,11 @@ export default function SalesAnalytics({ weeks, types }: Props) {
               <YAxis type="category" dataKey="label" width={90} tick={{ fontSize: 11, fill: "#64748b" }} />
               <Tooltip cursor={{ fill: "#f8fafc" }} contentStyle={tipStyle} formatter={(value) => [formatSEK(Number(value)), "Försäljning"]} />
               <Bar dataKey="sales" radius={[0, 3, 3, 0]}>
-                {typeData.map(d => (
+                {chartData.map(d => (
                   <Cell
-                    key={d.type}
-                    fill={typeHex[d.type] ?? "#64748b"}
-                    fillOpacity={!selected || selected === d.type ? 1 : 0.3}
+                    key={d.key}
+                    fill={d.color}
+                    fillOpacity={!selected || selected === d.key ? 1 : 0.3}
                   />
                 ))}
               </Bar>

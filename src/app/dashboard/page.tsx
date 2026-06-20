@@ -1,9 +1,18 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { customerTypeLabels, customerTypeChartColors } from "@/lib/customerTypes";
 import WeeklyReportList from "./WeeklyReportList";
-import SalesAnalytics, { type TypeAgg } from "./SalesAnalytics";
+import SalesAnalytics, { type BreakdownItem } from "./SalesAnalytics";
 import SeasonSwitcher from "./SeasonSwitcher";
 import DistrictSwitcher from "./DistrictSwitcher";
+
+// Aggregat per kundtyp (server-sidan), mappas sedan till BreakdownItem
+interface TypeAgg {
+  type: string;
+  sales: number; ftFee: number; mfFee: number;
+  customers: number; besok: number; fashionShows: number;
+  weekly: number[];
+}
 
 export default async function DashboardPage({
   searchParams,
@@ -105,6 +114,20 @@ export default async function DashboardPage({
     ? `${currentSeason.type === "VAR" ? "Vår" : "Höst"} ${currentSeason.year}`
     : "–";
 
+  // Bryt ned analysen per kundtyp
+  const typeBreakdown: BreakdownItem[] = stats.byType.map(t => ({
+    key: t.type,
+    label: customerTypeLabels[t.type] ?? t.type,
+    color: customerTypeChartColors[t.type] ?? "#64748b",
+    sales: t.sales,
+    ftFee: t.ftFee,
+    mfFee: t.mfFee,
+    customers: t.customers,
+    besok: t.besok,
+    fashionShows: t.fashionShows,
+    weekly: t.weekly,
+  }));
+
   return (
     <div>
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
@@ -145,7 +168,12 @@ export default async function DashboardPage({
 
       {stats.weeks.length > 0 && (
         <>
-          <SalesAnalytics weeks={stats.weeks} types={stats.byType} />
+          <SalesAnalytics
+            weeks={stats.weeks}
+            breakdown={typeBreakdown}
+            breakdownTitle="Försäljning per kundtyp"
+            filterNoun="kundtyp"
+          />
           {stats.reports.length > 0 && (
             <div className="mt-6">
               <WeeklyReportList
