@@ -23,11 +23,6 @@ interface DistAgg {
   weekly: number[];
 }
 
-// Distinkta diagramfärger för distrikt (saknar fasta typfärger)
-const districtPalette = [
-  "#2563eb", "#16a34a", "#7c3aed", "#ea580c", "#0891b2",
-  "#db2777", "#65a30d", "#9333ea", "#dc2626", "#0d9488",
-];
 
 export default async function DashboardPage({
   searchParams,
@@ -178,11 +173,11 @@ export default async function DashboardPage({
     weekly: t.weekly,
   }));
 
-  // … eller per distrikt (admin-översikt)
-  const districtBreakdown: BreakdownItem[] = stats.byDistrict.map((d, i) => ({
+  // … eller per distrikt (admin-översikt). Färg sätts av skalan i komponenten.
+  const districtBreakdown: BreakdownItem[] = stats.byDistrict.map(d => ({
     key: d.id,
     label: d.label,
-    color: districtPalette[i % districtPalette.length],
+    color: "#1d4ed8",
     sales: d.sales,
     ftFee: d.ftFee,
     mfFee: d.mfFee,
@@ -195,6 +190,7 @@ export default async function DashboardPage({
   const breakdown = showDistrictBreakdown ? districtBreakdown : typeBreakdown;
   const breakdownTitle = showDistrictBreakdown ? "Försäljning per distrikt" : "Försäljning per kundtyp";
   const filterNoun = showDistrictBreakdown ? "distrikt" : "kundtyp";
+  const colorMode = showDistrictBreakdown ? "scale" : "category";
 
   return (
     <div>
@@ -241,6 +237,7 @@ export default async function DashboardPage({
             breakdown={breakdown}
             breakdownTitle={breakdownTitle}
             filterNoun={filterNoun}
+            colorMode={colorMode}
           />
           {stats.reports.length > 0 && (
             <div className="mt-6">

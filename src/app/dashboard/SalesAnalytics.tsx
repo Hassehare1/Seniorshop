@@ -28,16 +28,16 @@ interface Props {
   breakdown: BreakdownItem[];
   breakdownTitle: string; // t.ex. "Försäljning per kundtyp"
   filterNoun: string;     // t.ex. "kundtyp" eller "distrikt"
+  colorMode?: "category" | "scale"; // fasta kategorifärger eller blå gradient efter rang
 }
 
 const BLUE = "#1d4ed8";
 const formatK = (v: number) => (v >= 1000 ? `${Math.round(v / 1000)}k` : `${v}`);
 
-export default function SalesAnalytics({ weeks, breakdown, breakdownTitle, filterNoun }: Props) {
+export default function SalesAnalytics({ weeks, breakdown, breakdownTitle, filterNoun, colorMode = "category" }: Props) {
   const [selected, setSelected] = useState<string | null>(null);
 
   const selectedItem = selected ? breakdown.find(b => b.key === selected) ?? null : null;
-  const color = selectedItem?.color ?? BLUE;
 
   // Aggregat för aktuellt urval (vald post, annars alla summerade)
   const agg = useMemo(() => {
@@ -70,6 +70,21 @@ export default function SalesAnalytics({ weeks, breakdown, breakdownTitle, filte
       .sort((a, b) => b.sales - a.sales),
     [breakdown]
   );
+
+  // Färgsättning: "category" = fasta typfärger, "scale" = blå gradient efter rang
+  const scaleBlue = ["#1e3a8a", "#1d4ed8", "#2563eb", "#3b82f6", "#60a5fa", "#93c5fd"];
+  const colorAt = (i: number) => {
+    if (colorMode === "category") return chartData[i]?.color ?? BLUE;
+    const n = chartData.length;
+    if (n <= 1) return scaleBlue[1];
+    return scaleBlue[Math.round((i / (n - 1)) * (scaleBlue.length - 1))];
+  };
+  const selectedIdx = selected ? chartData.findIndex(d => d.key === selected) : -1;
+  const color = selectedIdx >= 0 ? colorAt(selectedIdx) : BLUE;
+
+  // Anpassad höjd + etikettbredd för nedbrytningspanelen (fler poster → mer plats)
+  const breakdownHeight = Math.max(200, chartData.length * 34 + 48);
+  const labelWidth = Math.min(150, Math.max(80, Math.max(0, ...chartData.map(d => d.label.length)) * 7));
 
   const selectedLabel = selectedItem?.label ?? null;
   const tag = selectedLabel ? ` · ${selectedLabel}` : "";
@@ -166,7 +181,7 @@ export default function SalesAnalytics({ weeks, breakdown, breakdownTitle, filte
         <div className="bg-white rounded-xl border border-slate-200 p-4 md:p-6">
           <h2 className="text-sm font-semibold text-slate-700 mb-1">{breakdownTitle}</h2>
           <p className="text-xs text-slate-400 mb-4">Klicka på en rad för att filtrera</p>
-          <ResponsiveContainer width="100%" height={220}>
+          <ResponsiveContainer width="100%" height={breakdownHeight}>
             <BarChart
               layout="vertical"
               data={chartData}
@@ -180,13 +195,13 @@ export default function SalesAnalytics({ weeks, breakdown, breakdownTitle, filte
             >
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
               <XAxis type="number" tickFormatter={formatK} tick={{ fontSize: 10, fill: "#94a3b8" }} />
-              <YAxis type="category" dataKey="label" width={90} tick={{ fontSize: 11, fill: "#64748b" }} />
+              <YAxis type="category" dataKey="label" width={labelWidth} tick={{ fontSize: 11, fill: "#64748b" }} />
               <Tooltip cursor={{ fill: "#f8fafc" }} contentStyle={tipStyle} formatter={(value) => [formatSEK(Number(value)), "Försäljning"]} />
-              <Bar dataKey="sales" radius={[0, 3, 3, 0]}>
-                {chartData.map(d => (
+              <Bar dataKey="sales" radius={[0, 3, 3, 0]} maxBarSize={36}>
+                {chartData.map((d, i) => (
                   <Cell
                     key={d.key}
-                    fill={d.color}
+                    fill={colorAt(i)}
                     fillOpacity={!selected || selected === d.key ? 1 : 0.3}
                   />
                 ))}
