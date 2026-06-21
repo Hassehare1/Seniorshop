@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    # Dummy-värden: bygget kompilerar men kör inga DB-anrop. migrate deploy
+    # körs INTE här (npx next build, ej npm run build) — den hör till deploy.
+    env:
+      DATABASE_URL: postgresql://user:pass@localhost:5432/db
+      NEXTAUTH_SECRET: ci-dummy-secret-not-used
+      NEXTAUTH_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      # postinstall kör prisma generate automatiskt
+      - run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Enhetstester
+        run: npm test
+
+      - name: Bygg (utan migrate deploy)
+        run: npx next build
