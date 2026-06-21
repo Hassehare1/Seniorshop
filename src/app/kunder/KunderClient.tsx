@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { customerTypeLabels, customerTypeColors, customerTypeOptions } from "@/lib/customerTypes";
 import type { Customer } from "@prisma/client";
+import ImportKunder from "./ImportKunder";
 
 const emptyForm = {
   name: "", type: "TRAFFPUNKT", contactPerson: "", contactRole: "", email: "",
@@ -18,6 +19,7 @@ interface Props {
 export default function KunderClient({ customers: initial, districtId }: Props) {
   const [customers, setCustomers] = useState(initial);
   const [showForm, setShowForm] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
   const [saving, setSaving] = useState(false);
@@ -95,21 +97,31 @@ export default function KunderClient({ customers: initial, districtId }: Props) 
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-3">
+      <div className="flex flex-wrap gap-3">
         <input
           type="text"
           placeholder="Sök kund eller typ..."
           value={filter}
           onChange={e => setFilter(e.target.value)}
-          className="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="flex-1 min-w-[200px] px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
         <button
-          onClick={() => { setShowForm(!showForm); setEditingId(null); setForm(emptyForm); }}
+          onClick={() => { setShowImport(s => !s); setShowForm(false); setEditingId(null); }}
+          className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium px-4 py-2 rounded-lg"
+        >
+          Importera
+        </button>
+        <button
+          onClick={() => { setShowForm(!showForm); setShowImport(false); setEditingId(null); setForm(emptyForm); }}
           className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg"
         >
           + Ny kund
         </button>
       </div>
+
+      {showImport && (
+        <ImportKunder onImported={created => setCustomers(prev => [...created, ...prev])} />
+      )}
 
       {formOpen && (
         <form

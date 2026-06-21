@@ -13,6 +13,7 @@ const actionLabels: Record<string, { label: string; color: string }> = {
   ANVÄNDARE_ÄNDRAD:      { label: "Användare ändrad",        color: "bg-indigo-100 text-indigo-700" },
   KUND_SKAPAD:           { label: "Kund skapad",             color: "bg-emerald-100 text-emerald-700" },
   KUND_ÄNDRAD:           { label: "Kund ändrad",             color: "bg-cyan-100 text-cyan-700" },
+  KUNDER_IMPORTERADE:    { label: "Kunder importerade",      color: "bg-sky-100 text-sky-700" },
   LOGIN_FAILED:          { label: "Misslyckad inloggning",   color: "bg-red-100 text-red-700" },
 };
 
@@ -51,6 +52,8 @@ function describe(action: string, d: Record<string, unknown>): string {
       if (d.status) parts.push(String(d.status));
       return parts.join(" · ");
     }
+    case "KUNDER_IMPORTERADE":
+      return d.antal ? `${d.antal} kunder` : "";
     case "LOGIN_FAILED":
       return "Fel e-post eller lösenord";
     case "AVGIFTER_UPPDATERADE":
