@@ -11,7 +11,10 @@ interface Customer {
   name: string;
   type: string;
   contactPerson: string | null;
+  contactRole: string | null;
+  email: string | null;
   phone: string | null;
+  size: number | null;
   active: boolean;
   district: { number: number; name: string };
 }
@@ -71,14 +74,16 @@ export default function AdminKunderClient({ customers }: { customers: Customer[]
 
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm min-w-[580px]">
+          <table className="w-full text-sm min-w-[760px]">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50">
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Distrikt</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Namn</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Typ</th>
+                <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Storlek</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Kontakt</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Telefon</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">E-post</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Status</th>
               </tr>
             </thead>
@@ -94,8 +99,13 @@ export default function AdminKunderClient({ customers }: { customers: Customer[]
                       {typeLabels[c.type] ?? c.type}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-slate-600">{c.contactPerson ?? "–"}</td>
+                  <td className="px-4 py-3 text-right text-slate-600 tabular-nums">{c.size ?? "–"}</td>
+                  <td className="px-4 py-3 text-slate-600">
+                    {c.contactPerson ?? "–"}
+                    {c.contactRole && <span className="text-slate-400"> · {c.contactRole}</span>}
+                  </td>
                   <td className="px-4 py-3 text-slate-600">{c.phone ?? "–"}</td>
+                  <td className="px-4 py-3 text-slate-600">{c.email ?? "–"}</td>
                   <td className="px-4 py-3">
                     <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${c.active ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-500"}`}>
                       {c.active ? "Aktiv" : "Inaktiv"}
@@ -105,7 +115,7 @@ export default function AdminKunderClient({ customers }: { customers: Customer[]
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-10 text-center text-slate-400">
+                  <td colSpan={8} className="px-4 py-10 text-center text-slate-400">
                     Inga kunder matchar sökningen.
                   </td>
                 </tr>

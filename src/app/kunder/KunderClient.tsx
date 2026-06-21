@@ -5,7 +5,8 @@ import { customerTypeLabels, customerTypeColors, customerTypeOptions } from "@/l
 import type { Customer } from "@prisma/client";
 
 const emptyForm = {
-  name: "", type: "TRAFFPUNKT", contactPerson: "", phone: "", address: "", notes: "", active: true,
+  name: "", type: "TRAFFPUNKT", contactPerson: "", contactRole: "", email: "",
+  phone: "", address: "", size: "", notes: "", active: true,
 };
 
 interface Props {
@@ -33,8 +34,11 @@ export default function KunderClient({ customers: initial, districtId }: Props) 
       name: c.name,
       type: c.type,
       contactPerson: c.contactPerson ?? "",
+      contactRole: c.contactRole ?? "",
+      email: c.email ?? "",
       phone: c.phone ?? "",
       address: c.address ?? "",
+      size: c.size != null ? String(c.size) : "",
       notes: c.notes ?? "",
       active: c.active,
     });
@@ -138,6 +142,17 @@ export default function KunderClient({ customers: initial, districtId }: Props) 
               </select>
             </div>
             <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">Storlek (antal boende/medlemmar)</label>
+              <input
+                type="number"
+                min={0}
+                value={form.size}
+                onChange={e => setForm(f => ({ ...f, size: e.target.value }))}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="t.ex. 40"
+              />
+            </div>
+            <div>
               <label className="block text-xs font-medium text-slate-600 mb-1">Kontaktperson</label>
               <input
                 type="text"
@@ -145,6 +160,16 @@ export default function KunderClient({ customers: initial, districtId }: Props) 
                 onChange={e => setForm(f => ({ ...f, contactPerson: e.target.value }))}
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Förnamn Efternamn"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">Kontaktroll</label>
+              <input
+                type="text"
+                value={form.contactRole}
+                onChange={e => setForm(f => ({ ...f, contactRole: e.target.value }))}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="t.ex. Aktivitetsansvarig"
               />
             </div>
             <div>
@@ -158,6 +183,16 @@ export default function KunderClient({ customers: initial, districtId }: Props) 
               />
             </div>
             <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">E-post</label>
+              <input
+                type="email"
+                value={form.email}
+                onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="namn@exempel.se"
+              />
+            </div>
+            <div className="col-span-2">
               <label className="block text-xs font-medium text-slate-600 mb-1">Adress</label>
               <input
                 type="text"
@@ -237,7 +272,10 @@ export default function KunderClient({ customers: initial, districtId }: Props) 
                     {customerTypeLabels[c.type] ?? c.type}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-slate-600">{c.contactPerson ?? "–"}</td>
+                <td className="px-4 py-3 text-slate-600">
+                  {c.contactPerson ?? "–"}
+                  {c.contactRole && <span className="text-slate-400"> · {c.contactRole}</span>}
+                </td>
                 <td className="px-4 py-3 text-slate-600">{c.phone ?? "–"}</td>
                 <td className="px-4 py-3 text-slate-500 max-w-xs truncate">{c.notes ?? "–"}</td>
                 <td className="px-4 py-3 text-right">

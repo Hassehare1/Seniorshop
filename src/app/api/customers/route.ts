@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
-  const { name, type, contactPerson, phone, address, notes, districtId } = body;
+  const { name, type, contactPerson, contactRole, email, phone, address, size, notes, districtId } = body;
 
   const targetDistrictId =
     session.user.role === "ADMIN" ? districtId : session.user.districtId;
@@ -34,8 +34,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Saknade fält" }, { status: 400 });
   }
 
+  const parsedSize = size === "" || size === null || size === undefined ? null : Number(size);
+  if (parsedSize !== null && (!Number.isFinite(parsedSize) || parsedSize < 0)) {
+    return NextResponse.json({ error: "Storlek måste vara ett positivt tal" }, { status: 400 });
+  }
+
   const customer = await prisma.customer.create({
-    data: { name, type, contactPerson, phone, address, notes, districtId: targetDistrictId },
+    data: {
+      name, type, contactPerson, contactRole, email, phone, address, notes,
+      size: parsedSize,
+      districtId: targetDistrictId,
+    },
   });
 
   const district = await prisma.district.findUnique({

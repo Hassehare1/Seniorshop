@@ -8,7 +8,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const { id } = await params;
   const body = await req.json();
-  const { name, type, contactPerson, phone, address, notes, active } = body;
+  const { name, type, contactPerson, contactRole, email, phone, address, size, notes, active } = body;
 
   const customer = await prisma.customer.findUnique({ where: { id } });
   if (!customer) return NextResponse.json({ error: "Kund hittades inte" }, { status: 404 });
@@ -17,14 +17,25 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
+  let parsedSize: number | null | undefined = undefined;
+  if (size !== undefined) {
+    parsedSize = size === "" || size === null ? null : Number(size);
+    if (parsedSize !== null && (!Number.isFinite(parsedSize) || parsedSize < 0)) {
+      return NextResponse.json({ error: "Storlek måste vara ett positivt tal" }, { status: 400 });
+    }
+  }
+
   const updated = await prisma.customer.update({
     where: { id },
     data: {
       ...(name !== undefined && { name }),
       ...(type !== undefined && { type }),
       ...(contactPerson !== undefined && { contactPerson }),
+      ...(contactRole !== undefined && { contactRole }),
+      ...(email !== undefined && { email }),
       ...(phone !== undefined && { phone }),
       ...(address !== undefined && { address }),
+      ...(parsedSize !== undefined && { size: parsedSize }),
       ...(notes !== undefined && { notes }),
       ...(active !== undefined && { active }),
     },

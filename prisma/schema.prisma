@@ -81,8 +81,11 @@ model Customer {
   name          String
   type          CustomerType
   contactPerson String?
+  contactRole   String?
+  email         String?
   phone         String?
   address       String?
+  size          Int?
   notes         String?
   active        Boolean      @default(true)
   districtId    String
