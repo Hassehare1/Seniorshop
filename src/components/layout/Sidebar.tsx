@@ -141,7 +141,7 @@ export default function Sidebar() {
   return (
     <>
       {/* ── MOBILE top bar ── */}
-      <header className="md:hidden fixed top-0 left-0 right-0 z-40 bg-slate-900 flex items-center h-14 px-4 border-b border-slate-700">
+      <header className="md:hidden fixed top-0 left-0 right-0 z-40 bg-slate-900 flex items-center h-14 px-4 border-b border-slate-700 print:hidden">
         <button onClick={() => setOpen(true)} aria-label="Öppna meny" className="text-slate-300 hover:text-white p-1 mr-3">
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
@@ -158,7 +158,7 @@ export default function Sidebar() {
 
       {/* ── MOBILE drawer overlay ── */}
       {open && (
-        <div className="md:hidden fixed inset-0 z-50 flex" onClick={() => setOpen(false)}>
+        <div className="md:hidden fixed inset-0 z-50 flex print:hidden" onClick={() => setOpen(false)}>
           <div className="absolute inset-0 bg-black/50" />
           <aside
             className="relative w-64 max-w-[80vw] bg-slate-900 flex flex-col h-full shadow-2xl"
@@ -193,7 +193,7 @@ export default function Sidebar() {
       )}
 
       {/* ── DESKTOP sidebar ── */}
-      <aside className="hidden md:flex w-56 min-h-screen bg-slate-900 flex-col shrink-0">
+      <aside className="hidden md:flex w-56 min-h-screen bg-slate-900 flex-col shrink-0 print:hidden">
         <div className="px-6 py-5 border-b border-slate-700">
           <span className="text-white font-bold text-lg">SeniorShop</span>
           {session?.user.districtNumber && (
