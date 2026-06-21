@@ -9,10 +9,14 @@ export default async function CustomerCardPage({ params }: { params: Promise<{ i
   const session = await auth();
   if (!session) redirect("/login");
 
-  const { id } = await params;
+  const { id: rawId } = await params;
+  // Tål specialtecken i id (ä/ö/å): avkoda URL + testa båda Unicode-formerna (NFC/NFD)
+  let decoded = rawId;
+  try { decoded = decodeURIComponent(rawId); } catch { /* lämna oavkodat */ }
+  const idCandidates = Array.from(new Set([decoded, decoded.normalize("NFC"), decoded.normalize("NFD")]));
 
-  const customer = await prisma.customer.findUnique({
-    where: { id },
+  const customer = await prisma.customer.findFirst({
+    where: { id: { in: idCandidates } },
     include: {
       district: { select: { number: true, name: true } },
       visits: {
