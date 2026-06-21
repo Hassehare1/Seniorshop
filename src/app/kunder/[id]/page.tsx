@@ -72,6 +72,9 @@ export default async function CustomerCardPage({ params }: { params: Promise<{ i
             <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${customer.active ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-500"}`}>
               {customer.active ? "Aktiv" : "Inaktiv"}
             </span>
+            <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${customer.approved ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}`}>
+              {customer.approved ? "Godkänd" : "Väntar granskning"}
+            </span>
           </div>
         </div>
       </div>

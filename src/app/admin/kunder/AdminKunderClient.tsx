@@ -17,13 +17,20 @@ interface Customer {
   phone: string | null;
   size: number | null;
   active: boolean;
+  approved: boolean;
   district: { number: number; name: string };
 }
 
-export default function AdminKunderClient({ customers }: { customers: Customer[] }) {
+export default function AdminKunderClient({ customers: initial }: { customers: Customer[] }) {
+  const [customers, setCustomers] = useState(initial);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState("active");
+  const [reviewFilter, setReviewFilter] = useState("ALL");
+  const [working, setWorking] = useState<string | null>(null);
+  const [message, setMessage] = useState("");
+
+  const pendingCount = customers.filter(c => !c.approved).length;
 
   const filtered = customers.filter(c => {
     const matchSearch =
@@ -35,11 +42,53 @@ export default function AdminKunderClient({ customers }: { customers: Customer[]
       statusFilter === "ALL" ||
       (statusFilter === "active" && c.active) ||
       (statusFilter === "inactive" && !c.active);
-    return matchSearch && matchType && matchStatus;
+    const matchReview =
+      reviewFilter === "ALL" ||
+      (reviewFilter === "pending" && !c.approved) ||
+      (reviewFilter === "approved" && c.approved);
+    return matchSearch && matchType && matchStatus && matchReview;
   });
+
+  async function approve(ids?: string[]) {
+    setWorking(ids && ids.length === 1 ? ids[0] : "bulk");
+    setMessage("");
+    const res = await fetch("/api/admin/customers/approve", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(ids ? { ids } : {}),
+    });
+    if (res.ok) {
+      const { count } = await res.json();
+      setCustomers(prev => prev.map(c =>
+        (ids ? ids.includes(c.id) : !c.approved) ? { ...c, approved: true } : c
+      ));
+      setMessage(`${count} kund${count === 1 ? "" : "er"} godkänd${count === 1 ? "" : "a"}.`);
+    } else {
+      setMessage("Något gick fel vid godkännande.");
+    }
+    setWorking(null);
+  }
 
   return (
     <>
+      {/* Granskningsbanner */}
+      {pendingCount > 0 && (
+        <div className="mb-4 flex flex-wrap items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+          <span className="text-sm text-amber-800">
+            <strong>{pendingCount}</strong> kund{pendingCount === 1 ? "" : "er"} väntar på granskning.
+          </span>
+          <button
+            onClick={() => approve()}
+            disabled={working === "bulk"}
+            className="ml-auto bg-green-600 hover:bg-green-700 disabled:bg-slate-300 text-white text-sm font-medium px-4 py-2 rounded-lg"
+          >
+            {working === "bulk" ? "Godkänner..." : `Godkänn alla väntande (${pendingCount})`}
+          </button>
+        </div>
+      )}
+
+      {message && <p className="mb-4 text-sm text-green-700 bg-green-50 px-4 py-2 rounded-lg">{message}</p>}
+
       {/* Filter-rad */}
       <div className="mb-4 flex flex-wrap gap-3 items-center">
         <input
@@ -60,6 +109,15 @@ export default function AdminKunderClient({ customers }: { customers: Customer[]
           ))}
         </select>
         <select
+          value={reviewFilter}
+          onChange={e => setReviewFilter(e.target.value)}
+          className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+        >
+          <option value="ALL">All granskning</option>
+          <option value="pending">Väntar granskning</option>
+          <option value="approved">Godkända</option>
+        </select>
+        <select
           value={statusFilter}
           onChange={e => setStatusFilter(e.target.value)}
           className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
@@ -75,7 +133,7 @@ export default function AdminKunderClient({ customers }: { customers: Customer[]
 
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm min-w-[760px]">
+          <table className="w-full text-sm min-w-[820px]">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50">
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Distrikt</th>
@@ -84,8 +142,8 @@ export default function AdminKunderClient({ customers }: { customers: Customer[]
                 <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Storlek</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Kontakt</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Telefon</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">E-post</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Status</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Granskning</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -110,11 +168,26 @@ export default function AdminKunderClient({ customers }: { customers: Customer[]
                     {c.contactRole && <span className="text-slate-400"> · {c.contactRole}</span>}
                   </td>
                   <td className="px-4 py-3 text-slate-600">{c.phone ?? "–"}</td>
-                  <td className="px-4 py-3 text-slate-600">{c.email ?? "–"}</td>
                   <td className="px-4 py-3">
                     <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${c.active ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-500"}`}>
                       {c.active ? "Aktiv" : "Inaktiv"}
                     </span>
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    {c.approved ? (
+                      <span className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">Godkänd</span>
+                    ) : (
+                      <span className="inline-flex items-center gap-2">
+                        <span className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">Väntar</span>
+                        <button
+                          onClick={() => approve([c.id])}
+                          disabled={working === c.id}
+                          className="text-xs text-green-700 hover:underline font-medium"
+                        >
+                          {working === c.id ? "..." : "Godkänn"}
+                        </button>
+                      </span>
+                    )}
                   </td>
                 </tr>
               ))}

@@ -283,6 +283,11 @@ export default function KunderClient({ customers: initial, districtId }: Props) 
                   <Link href={`/kunder/${c.id}`} className="text-slate-800 hover:text-blue-700 hover:underline">
                     {c.name}
                   </Link>
+                  {!c.approved && (
+                    <span className="ml-2 inline-block px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 text-amber-700 align-middle">
+                      Väntar granskning
+                    </span>
+                  )}
                 </td>
                 <td className="px-4 py-3">
                   <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${customerTypeColors[c.type] ?? "bg-slate-100 text-slate-600"}`}>

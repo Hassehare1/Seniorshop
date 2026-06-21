@@ -88,6 +88,7 @@ model Customer {
   size          Int?
   notes         String?
   active        Boolean      @default(true)
+  approved      Boolean      @default(false)
   districtId    String
   district      District     @relation(fields: [districtId], references: [id])
   visits        Visit[]
