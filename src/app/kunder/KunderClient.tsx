@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { customerTypeLabels, customerTypeColors, customerTypeOptions } from "@/lib/customerTypes";
 import type { Customer } from "@prisma/client";
 
@@ -266,7 +267,11 @@ export default function KunderClient({ customers: initial, districtId }: Props) 
           <tbody className="divide-y divide-slate-100">
             {filtered.map(c => (
               <tr key={c.id} className={`hover:bg-slate-50 ${!c.active ? "opacity-40" : ""}`}>
-                <td className="px-4 py-3 font-medium text-slate-800">{c.name}</td>
+                <td className="px-4 py-3 font-medium">
+                  <Link href={`/kunder/${c.id}`} className="text-slate-800 hover:text-blue-700 hover:underline">
+                    {c.name}
+                  </Link>
+                </td>
                 <td className="px-4 py-3">
                   <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${customerTypeColors[c.type] ?? "bg-slate-100 text-slate-600"}`}>
                     {customerTypeLabels[c.type] ?? c.type}

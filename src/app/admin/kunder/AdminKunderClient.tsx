@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import {
   customerTypeLabels as typeLabels,
   customerTypeColors as typeColors,
@@ -93,7 +94,11 @@ export default function AdminKunderClient({ customers }: { customers: Customer[]
                   <td className="px-4 py-3 text-slate-500 text-xs font-medium whitespace-nowrap">
                     D{c.district.number} – {c.district.name}
                   </td>
-                  <td className="px-4 py-3 font-medium text-slate-800">{c.name}</td>
+                  <td className="px-4 py-3 font-medium">
+                    <Link href={`/kunder/${c.id}`} className="text-slate-800 hover:text-blue-700 hover:underline">
+                      {c.name}
+                    </Link>
+                  </td>
                   <td className="px-4 py-3">
                     <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${typeColors[c.type] ?? "bg-slate-100 text-slate-600"}`}>
                       {typeLabels[c.type] ?? c.type}
