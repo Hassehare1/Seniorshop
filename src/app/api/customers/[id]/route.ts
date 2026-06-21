@@ -6,11 +6,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { id } = await params;
+  const { id: rawId } = await params;
   const body = await req.json();
   const { name, type, contactPerson, contactRole, email, phone, address, size, notes, active } = body;
 
-  const customer = await prisma.customer.findUnique({ where: { id } });
+  // Tål id med svenska tecken (URL-kodning + NFC/NFD)
+  let decoded = rawId;
+  try { decoded = decodeURIComponent(rawId); } catch { /* lämna oavkodat */ }
+  const idCandidates = Array.from(new Set([decoded, decoded.normalize("NFC"), decoded.normalize("NFD")]));
+
+  const customer = await prisma.customer.findFirst({ where: { id: { in: idCandidates } } });
   if (!customer) return NextResponse.json({ error: "Kund hittades inte" }, { status: 404 });
 
   if (session.user.role !== "ADMIN" && session.user.districtId !== customer.districtId) {
@@ -26,7 +31,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 
   const updated = await prisma.customer.update({
-    where: { id },
+    where: { id: customer.id },
     data: {
       ...(name !== undefined && { name }),
       ...(type !== undefined && { type }),
