@@ -55,7 +55,7 @@ export default async function DashboardPage({
     visits: { id: string; customerName: string; customerType: string; numberOfCustomers: number; sales: number; isFashionShow: boolean; ftFee: number; mfFee: number; totalToPay: number; comment: string | null }[];
   };
 
-  let stats = {
+  const stats = {
     weeks: [] as number[],
     byType: [] as TypeAgg[],
     byDistrict: [] as DistAgg[],

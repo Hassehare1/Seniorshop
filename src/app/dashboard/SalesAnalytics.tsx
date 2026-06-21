@@ -57,11 +57,12 @@ export default function SalesAnalytics({ weeks, breakdown, breakdownTitle, filte
   }, [selected, breakdown, weeks]);
 
   const weeklyData = useMemo(() => {
-    let acc = 0;
-    return weeks.map((w, i) => {
-      acc += agg.weekly[i];
-      return { week: w, sales: agg.weekly[i], accumulated: acc };
-    });
+    // Prefix-summa utan muterbar ackumulator (få veckor → ofarligt O(n²))
+    return weeks.map((w, i) => ({
+      week: w,
+      sales: agg.weekly[i],
+      accumulated: agg.weekly.slice(0, i + 1).reduce((s, v) => s + v, 0),
+    }));
   }, [weeks, agg]);
 
   const chartData = useMemo(

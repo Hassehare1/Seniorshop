@@ -69,10 +69,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     // Kontospärr/rollbyten enforced vid inloggning (authorize) i stället.
     jwt({ token, user }) {
       if (user) {
-        token.id = user.id;
-        token.role = (user as any).role;
-        token.districtId = (user as any).districtId;
-        token.districtNumber = (user as any).districtNumber;
+        const u = user as { id: string; role: string; districtId: string | null; districtNumber: number | null };
+        token.id = u.id;
+        token.role = u.role;
+        token.districtId = u.districtId;
+        token.districtNumber = u.districtNumber;
       }
       return token;
     },
@@ -87,5 +88,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   pages: {
     signIn: "/login",
   },
-  session: { strategy: "jwt" },
+  // 7 dagars livslängd: roll-/spärrändringar (enforced vid login) slår igenom snabbare
+  session: { strategy: "jwt", maxAge: 7 * 24 * 60 * 60 },
 });
