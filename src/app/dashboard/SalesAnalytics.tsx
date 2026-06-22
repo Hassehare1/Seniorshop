@@ -137,12 +137,12 @@ export default function SalesAnalytics({ weeks, breakdown, breakdownTitle, filte
       {/* Snitt & aktivitet */}
       <div>
         <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-2">Snitt &amp; aktivitet{tag}</p>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-          <StatCard label="Snittkvitto" value={fmtAvg(agg.sales, agg.customers)} sub="per kund" />
-          <StatCard label="Snitt / besök" value={fmtAvg(agg.sales, agg.besok)} sub="per besök" />
-          <StatCard label="Antal besök" value={String(agg.besok)} sub="registrerade besök" />
-          <StatCard label="Modevisningar" value={String(agg.fashionShows)} sub="av besöken" />
-          <StatCard label="Galgvisningar" value={String(agg.hangerShows)} sub="av besöken" />
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-2 md:gap-3">
+          <StatCard compact label="Snittkvitto" value={fmtAvg(agg.sales, agg.customers)} sub="per kund" />
+          <StatCard compact label="Snitt / besök" value={fmtAvg(agg.sales, agg.besok)} sub="per besök" />
+          <StatCard compact label="Antal besök" value={String(agg.besok)} sub="registrerade besök" />
+          <StatCard compact label="Modevisningar" value={String(agg.fashionShows)} sub="av besöken" />
+          <StatCard compact label="Galgvisningar" value={String(agg.hangerShows)} sub="av besöken" />
         </div>
       </div>
 
@@ -218,12 +218,12 @@ export default function SalesAnalytics({ weeks, breakdown, breakdownTitle, filte
   );
 }
 
-function StatCard({ label, value, sub }: { label: string; value: string; sub: string }) {
+function StatCard({ label, value, sub, compact }: { label: string; value: string; sub: string; compact?: boolean }) {
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-4 md:p-5">
-      <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{label}</p>
-      <p className="text-xl md:text-2xl font-bold text-slate-800 mt-1 truncate">{value}</p>
-      <p className="text-xs text-slate-400 mt-0.5">{sub}</p>
+    <div className={`bg-white rounded-xl border border-slate-200 ${compact ? "p-3" : "p-4 md:p-5"}`}>
+      <p className="text-xs font-medium text-slate-500 uppercase tracking-wide truncate">{label}</p>
+      <p className={`font-bold text-slate-800 mt-1 truncate ${compact ? "text-lg" : "text-xl md:text-2xl"}`}>{value}</p>
+      <p className="text-xs text-slate-400 mt-0.5 truncate">{sub}</p>
     </div>
   );
 }
