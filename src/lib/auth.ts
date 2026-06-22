@@ -1,4 +1,4 @@
-import NextAuth from "next-auth";
+import NextAuth, { CredentialsSignin } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
@@ -6,6 +6,14 @@ import bcrypt from "bcryptjs";
 // Rate limiting för inloggning — bromsar lösenordsgissning
 const LOGIN_WINDOW_MS = 15 * 60 * 1000; // 15 minuter
 const LOGIN_MAX_ATTEMPTS = 8; // max misslyckade försök per e-post inom fönstret
+
+// Tillfällig spärr efter för många försök. `code` följer med till klienten
+// (?code=too_many_attempts) så login-sidan kan visa ett tydligt meddelande i
+// stället för det generiska "fel lösenord". Avslöjar inte om kontot finns —
+// spärren gäller varje e-post som hamrats, oavsett om den existerar.
+class TooManyAttemptsError extends CredentialsSignin {
+  code = "too_many_attempts";
+}
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
@@ -24,8 +32,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           where: { action: "LOGIN_FAILED", userEmail: email, createdAt: { gte: since } },
         });
         if (recentFailures >= LOGIN_MAX_ATTEMPTS) {
-          // Avslöja inte att kontot är spärrat — generiskt fel visas
-          return null;
+          // Signalera spärren till klienten — så användaren förstår att det är
+          // en tillfällig spärr, inte fel lösenord. (Avslöjar inte kontostatus.)
+          throw new TooManyAttemptsError();
         }
 
         const user = await prisma.user.findUnique({

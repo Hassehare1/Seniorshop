@@ -10,12 +10,14 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [locked, setLocked] = useState(false);
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError("");
+    setLocked(false);
 
     const res = await signIn("credentials", {
       email,
@@ -24,7 +26,14 @@ export default function LoginPage() {
     });
 
     if (res?.error) {
-      setError("Fel e-post eller lösenord");
+      // Tillfällig spärr efter för många försök — eget, tydligt meddelande så
+      // att rätt lösenord inte misstas för fel. Allt annat: generiskt fel.
+      if (res.code === "too_many_attempts") {
+        setLocked(true);
+        setError("För många misslyckade försök. Vänta omkring 15 minuter och försök sedan igen.");
+      } else {
+        setError("Fel e-post eller lösenord");
+      }
       setLoading(false);
     } else {
       router.push("/dashboard");
@@ -69,7 +78,13 @@ export default function LoginPage() {
           </div>
 
           {error && (
-            <p className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg">
+            <p
+              className={
+                locked
+                  ? "text-amber-700 text-sm bg-amber-50 border border-amber-200 px-3 py-2 rounded-lg"
+                  : "text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg"
+              }
+            >
               {error}
             </p>
           )}
