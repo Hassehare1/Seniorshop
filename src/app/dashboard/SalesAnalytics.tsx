@@ -20,6 +20,7 @@ export interface BreakdownItem {
   customers: number;
   besok: number;
   fashionShows: number;
+  hangerShows: number;
   weekly: number[];  // försäljning per vecka, i samma ordning som `weeks`
 }
 
@@ -52,6 +53,7 @@ export default function SalesAnalytics({ weeks, breakdown, breakdownTitle, filte
       customers: sum(b => b.customers),
       besok: sum(b => b.besok),
       fashionShows: sum(b => b.fashionShows),
+      hangerShows: sum(b => b.hangerShows),
       reportedWeeks: weekly.filter(v => v > 0).length,
     };
   }, [selected, breakdown, weeks]);
@@ -140,6 +142,7 @@ export default function SalesAnalytics({ weeks, breakdown, breakdownTitle, filte
           <StatCard label="Snitt / besök" value={fmtAvg(agg.sales, agg.besok)} sub="per besök" />
           <StatCard label="Antal besök" value={String(agg.besok)} sub="registrerade besök" />
           <StatCard label="Modevisningar" value={String(agg.fashionShows)} sub="av besöken" />
+          <StatCard label="Galgvisningar" value={String(agg.hangerShows)} sub="av besöken" />
         </div>
       </div>
 

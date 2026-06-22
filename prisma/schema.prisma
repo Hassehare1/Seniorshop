@@ -134,6 +134,7 @@ model Visit {
   sales             Float        @default(0)
   isFashionShow     Boolean      @default(false)
   fashionShowSales  Float        @default(0)
+  isHangerShow      Boolean      @default(false)
   ftFee             Float        @default(0)
   mfFee             Float        @default(0)
   mfFeeAccumulated  Float        @default(0)

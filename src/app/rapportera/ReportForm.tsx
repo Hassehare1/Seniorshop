@@ -12,6 +12,7 @@ interface VisitRow {
   sales: number;
   isFashionShow: boolean;
   fashionShowSales: number;
+  isHangerShow: boolean;
   comment: string;
 }
 
@@ -146,15 +147,27 @@ function VisitRow({ index, visit, customers, feeRow, onUpdate, onRemove }: Visit
       </div>
 
       <div className="flex flex-col gap-3">
-        <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer w-fit">
-          <input
-            type="checkbox"
-            checked={visit.isFashionShow}
-            onChange={e => onUpdate("isFashionShow", e.target.checked)}
-            className="rounded"
-          />
-          Modevisning
-        </label>
+        <div className="flex flex-wrap gap-x-6 gap-y-2">
+          <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer w-fit">
+            <input
+              type="checkbox"
+              checked={visit.isFashionShow}
+              onChange={e => onUpdate("isFashionShow", e.target.checked)}
+              className="rounded"
+            />
+            Modevisning
+          </label>
+
+          <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer w-fit">
+            <input
+              type="checkbox"
+              checked={visit.isHangerShow}
+              onChange={e => onUpdate("isHangerShow", e.target.checked)}
+              className="rounded"
+            />
+            Visning på galge
+          </label>
+        </div>
 
         <div>
           <label className="block text-xs font-medium text-slate-600 mb-1">Kommentar</label>
@@ -257,6 +270,7 @@ export default function ReportForm({
             sales: v.sales,
             isFashionShow: v.isFashionShow,
             fashionShowSales: v.fashionShowSales,
+            isHangerShow: v.isHangerShow,
             comment: v.comment ?? "",
           })));
           setIsDirty(false);
@@ -292,6 +306,7 @@ export default function ReportForm({
         sales: 0,
         isFashionShow: false,
         fashionShowSales: 0,
+        isHangerShow: false,
         comment: "",
       },
     ]);

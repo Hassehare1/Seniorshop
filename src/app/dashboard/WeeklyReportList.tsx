@@ -7,7 +7,7 @@ import { customerTypeLabels as typeLabels } from "@/lib/customerTypes";
 
 type Visit = {
   id: string; customerName: string; customerType: string;
-  numberOfCustomers: number; sales: number; isFashionShow: boolean;
+  numberOfCustomers: number; sales: number; isFashionShow: boolean; isHangerShow: boolean;
   ftFee: number; mfFee: number; totalToPay: number; comment: string | null;
 };
 
@@ -132,6 +132,7 @@ export default function WeeklyReportList({ reports, seasonId, showEditLink }: Pr
                             <td className="py-2 font-medium">
                               {v.customerName}
                               {v.isFashionShow && <span className="ml-1 text-xs text-purple-600 font-normal">(modevisning)</span>}
+                              {v.isHangerShow && <span className="ml-1 text-xs text-teal-600 font-normal">(galge)</span>}
                             </td>
                             <td className="py-2 text-slate-500 text-xs">{typeLabels[v.customerType] ?? v.customerType}</td>
                             <td className="py-2 text-right">{v.numberOfCustomers}</td>

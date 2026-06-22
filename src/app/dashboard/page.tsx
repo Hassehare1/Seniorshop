@@ -10,7 +10,7 @@ import DistrictSwitcher from "./DistrictSwitcher";
 interface TypeAgg {
   type: string;
   sales: number; ftFee: number; mfFee: number;
-  customers: number; besok: number; fashionShows: number;
+  customers: number; besok: number; fashionShows: number; hangerShows: number;
   weekly: number[];
 }
 
@@ -19,7 +19,7 @@ interface DistAgg {
   id: string;
   label: string;
   sales: number; ftFee: number; mfFee: number;
-  customers: number; besok: number; fashionShows: number;
+  customers: number; besok: number; fashionShows: number; hangerShows: number;
   weekly: number[];
 }
 
@@ -52,7 +52,7 @@ export default async function DashboardPage({
   type ReportRow = {
     id: string; week: number; status: string;
     totalSales: number; totalToPay: number; totalCustomers: number;
-    visits: { id: string; customerName: string; customerType: string; numberOfCustomers: number; sales: number; isFashionShow: boolean; ftFee: number; mfFee: number; totalToPay: number; comment: string | null }[];
+    visits: { id: string; customerName: string; customerType: string; numberOfCustomers: number; sales: number; isFashionShow: boolean; isHangerShow: boolean; ftFee: number; mfFee: number; totalToPay: number; comment: string | null }[];
   };
 
   const stats = {
@@ -95,6 +95,7 @@ export default async function DashboardPage({
         numberOfCustomers: v.numberOfCustomers,
         sales: v.sales + v.fashionShowSales,
         isFashionShow: v.isFashionShow,
+        isHangerShow: v.isHangerShow,
         ftFee: v.ftFee,
         mfFee: v.mfFee,
         totalToPay: v.totalToPay,
@@ -108,7 +109,7 @@ export default async function DashboardPage({
     const typeKeys = ["TRAFFPUNKT", "FORENING", "VARDHEM", "BOENDE_55", "OVRIGT"];
     const aggMap: Record<string, TypeAgg> = {};
     for (const k of typeKeys) {
-      aggMap[k] = { type: k, sales: 0, ftFee: 0, mfFee: 0, customers: 0, besok: 0, fashionShows: 0, weekly: new Array(weeksOrder.length).fill(0) };
+      aggMap[k] = { type: k, sales: 0, ftFee: 0, mfFee: 0, customers: 0, besok: 0, fashionShows: 0, hangerShows: 0, weekly: new Array(weeksOrder.length).fill(0) };
     }
     for (const r of reports) {
       const wi = weekIdx.get(r.week);
@@ -121,6 +122,7 @@ export default async function DashboardPage({
         a.customers += v.numberOfCustomers;
         a.besok += 1;
         if (v.isFashionShow) a.fashionShows += 1;
+        if (v.isHangerShow) a.hangerShows += 1;
         if (wi !== undefined) a.weekly[wi] += sale;
       }
     }
@@ -135,7 +137,7 @@ export default async function DashboardPage({
           a = distMap[r.districtId] = {
             id: r.districtId,
             label: `D${r.district.number} – ${r.district.name}`,
-            sales: 0, ftFee: 0, mfFee: 0, customers: 0, besok: 0, fashionShows: 0,
+            sales: 0, ftFee: 0, mfFee: 0, customers: 0, besok: 0, fashionShows: 0, hangerShows: 0,
             weekly: new Array(weeksOrder.length).fill(0),
           };
         }
@@ -148,6 +150,7 @@ export default async function DashboardPage({
           a.customers += v.numberOfCustomers;
           a.besok += 1;
           if (v.isFashionShow) a.fashionShows += 1;
+        if (v.isHangerShow) a.hangerShows += 1;
           if (wi !== undefined) a.weekly[wi] += sale;
         }
       }
@@ -170,6 +173,7 @@ export default async function DashboardPage({
     customers: t.customers,
     besok: t.besok,
     fashionShows: t.fashionShows,
+    hangerShows: t.hangerShows,
     weekly: t.weekly,
   }));
 
@@ -184,6 +188,7 @@ export default async function DashboardPage({
     customers: d.customers,
     besok: d.besok,
     fashionShows: d.fashionShows,
+    hangerShows: d.hangerShows,
     weekly: d.weekly,
   }));
 

@@ -111,6 +111,7 @@ export async function POST(req: NextRequest) {
       sales,
       isFashionShow: !!v.isFashionShow,
       fashionShowSales,
+      isHangerShow: !!v.isHangerShow,
       ftFee: fees.ftFee,
       mfFee: fees.mfFee,
       mfFeeAccumulated: fees.mfFeeAccumulated,
