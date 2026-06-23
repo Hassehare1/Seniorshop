@@ -154,4 +154,9 @@ model AuditLog {
   userEmail String?
   details   String?
   createdAt DateTime @default(now())
+
+  // Login-spärren räknar LOGIN_FAILED per e-post inom ett tidsfönster
+  @@index([userEmail, action, createdAt])
+  // Admin-loggvyn hämtar senaste N sorterat på tid
+  @@index([createdAt])
 }
