@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { Role } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -28,6 +29,19 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (role !== undefined && role !== "ADMIN") {
       return NextResponse.json({ error: "Du kan inte ta bort din egen admin-roll." }, { status: 400 });
     }
+  }
+
+  if (role !== undefined && !Object.values(Role).includes(role)) {
+    return NextResponse.json({ error: "Ogiltig roll." }, { status: 400 });
+  }
+  if (password && password.length < 6) {
+    return NextResponse.json({ error: "Lösenordet måste vara minst 6 tecken." }, { status: 400 });
+  }
+  // Slutläget måste vara konsekvent: en franchisetagare måste ha ett distrikt
+  const effectiveRole = role !== undefined ? role : before.role;
+  const effectiveDistrictId = "districtId" in body ? (districtId || null) : before.districtId;
+  if (effectiveRole === "FRANCHISEE" && !effectiveDistrictId) {
+    return NextResponse.json({ error: "En franchisetagare måste vara kopplad till ett distrikt." }, { status: 400 });
   }
 
   const data: Record<string, unknown> = {};

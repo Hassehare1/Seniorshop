@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { CustomerType } from "@prisma/client";
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -20,6 +21,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   if (session.user.role !== "ADMIN" && session.user.districtId !== customer.districtId) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  if (type !== undefined && !Object.values(CustomerType).includes(type)) {
+    return NextResponse.json({ error: "Ogiltig kundtyp." }, { status: 400 });
   }
 
   let parsedSize: number | null | undefined = undefined;

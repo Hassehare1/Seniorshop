@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { Role } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
 export async function POST(req: NextRequest) {
@@ -12,6 +13,15 @@ export async function POST(req: NextRequest) {
   const { name, email, password, role, districtId } = await req.json();
   if (!email || !password || !role) {
     return NextResponse.json({ error: "Saknade fält" }, { status: 400 });
+  }
+  if (!Object.values(Role).includes(role)) {
+    return NextResponse.json({ error: "Ogiltig roll." }, { status: 400 });
+  }
+  if (password.length < 6) {
+    return NextResponse.json({ error: "Lösenordet måste vara minst 6 tecken." }, { status: 400 });
+  }
+  if (role === "FRANCHISEE" && !districtId) {
+    return NextResponse.json({ error: "En franchisetagare måste kopplas till ett distrikt." }, { status: 400 });
   }
 
   const existing = await prisma.user.findUnique({ where: { email } });

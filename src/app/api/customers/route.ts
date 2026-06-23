@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { CustomerType } from "@prisma/client";
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -32,6 +33,9 @@ export async function POST(req: NextRequest) {
 
   if (!targetDistrictId || !name || !type) {
     return NextResponse.json({ error: "Saknade fält" }, { status: 400 });
+  }
+  if (!Object.values(CustomerType).includes(type)) {
+    return NextResponse.json({ error: "Ogiltig kundtyp." }, { status: 400 });
   }
 
   const parsedSize = size === "" || size === null || size === undefined ? null : Number(size);
