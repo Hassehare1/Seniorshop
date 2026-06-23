@@ -9,6 +9,7 @@ import { useState, useEffect } from "react";
 const franchiseeNav = [
   { href: "/dashboard", label: "Översikt" },
   { href: "/rapportera", label: "Rapportera vecka" },
+  { href: "/forsaljning", label: "Försäljning" },
   { href: "/kunder", label: "Mina kunder" },
 ];
 
@@ -16,6 +17,7 @@ const adminNav = [
   { href: "/dashboard", label: "Översikt" },
   { href: "/admin/distrikt", label: "Distrikt & avgifter" },
   { href: "/admin/rapporter", label: "Rapportstatus", badge: true },
+  { href: "/forsaljning", label: "Försäljning" },
   { href: "/admin/sasonger", label: "Säsonger" },
   { href: "/admin/anvandare", label: "Användare" },
   { href: "/admin/kunder", label: "Alla kunder" },
