@@ -90,90 +90,97 @@ export async function POST(req: NextRequest) {
 
   const config = feeConfig ?? DEFAULT_FEE_CONFIG;
 
-  // MF ackumulerat från tidigare veckor (samma distrikt + säsong, vecka < denna)
-  const priorReports = await prisma.weeklyReport.findMany({
-    where: { districtId, seasonId, week: { lt: week } },
-    include: { visits: { select: { mfFee: true } } },
-  });
-  let runningMf = priorReports
-    .flatMap((r) => r.visits)
-    .reduce((s, v) => s + v.mfFee, 0);
+  // Allt skrivande sker i EN transaktion. Annars är "ta bort + återskapa besök
+  // + räkna om MF-taket för senare veckor" icke-atomärt: ett avbrott mitt i
+  // skulle kunna tömma rapporten på besök eller lämna fel MF på efterföljande
+  // veckor. MF-läsningarna ligger inne i transaktionen för en konsistent bild.
+  const reportId = await prisma.$transaction(async (tx) => {
+    // MF ackumulerat från tidigare veckor (samma distrikt + säsong, vecka < denna)
+    const priorReports = await tx.weeklyReport.findMany({
+      where: { districtId, seasonId, week: { lt: week } },
+      include: { visits: { select: { mfFee: true } } },
+    });
+    const priorMf = priorReports
+      .flatMap((r) => r.visits)
+      .reduce((s, v) => s + v.mfFee, 0);
 
-  // Räkna om avgifterna server-sidan — klientens värden ignoreras
-  const computedVisits = visits.map((v: Record<string, unknown>) => {
-    const sales = Number(v.sales);
-    const fashionShowSales = Number(v.fashionShowSales ?? 0);
-    const fees = calculateFees(sales + fashionShowSales, runningMf, config);
-    runningMf = fees.mfFeeAccumulated;
-    return {
-      customerId: v.customerId as string,
-      numberOfCustomers: Number(v.numberOfCustomers),
-      sales,
-      isFashionShow: !!v.isFashionShow,
-      fashionShowSales,
-      isHangerShow: !!v.isHangerShow,
-      ftFee: fees.ftFee,
-      mfFee: fees.mfFee,
-      mfFeeAccumulated: fees.mfFeeAccumulated,
-      totalToPay: fees.totalToPay,
-      comment: (v.comment as string) || null,
-    };
-  });
+    // Räkna om avgifterna server-sidan — klientens värden ignoreras
+    let runningMf = priorMf;
+    const computedVisits = visits.map((v: Record<string, unknown>) => {
+      const sales = Number(v.sales);
+      const fashionShowSales = Number(v.fashionShowSales ?? 0);
+      const fees = calculateFees(sales + fashionShowSales, runningMf, config);
+      runningMf = fees.mfFeeAccumulated;
+      return {
+        customerId: v.customerId as string,
+        numberOfCustomers: Number(v.numberOfCustomers),
+        sales,
+        isFashionShow: !!v.isFashionShow,
+        fashionShowSales,
+        isHangerShow: !!v.isHangerShow,
+        ftFee: fees.ftFee,
+        mfFee: fees.mfFee,
+        mfFeeAccumulated: fees.mfFeeAccumulated,
+        totalToPay: fees.totalToPay,
+        comment: (v.comment as string) || null,
+      };
+    });
 
-  const report = await prisma.weeklyReport.upsert({
-    where: { districtId_seasonId_week: { districtId, seasonId, week } },
-    update: { status: "DRAFT", updatedAt: new Date() },
-    create: {
-      district: { connect: { id: districtId } },
-      season: { connect: { id: seasonId } },
-      week,
-      user: { connect: { id: userId } },
-      status: "DRAFT",
-    },
-  });
+    const report = await tx.weeklyReport.upsert({
+      where: { districtId_seasonId_week: { districtId, seasonId, week } },
+      update: { status: "DRAFT", updatedAt: new Date() },
+      create: {
+        district: { connect: { id: districtId } },
+        season: { connect: { id: seasonId } },
+        week,
+        user: { connect: { id: userId } },
+        status: "DRAFT",
+      },
+    });
 
-  await prisma.visit.deleteMany({ where: { reportId: report.id } });
-  await prisma.visit.createMany({
-    data: computedVisits.map((v) => ({ ...v, reportId: report.id })),
-  });
+    await tx.visit.deleteMany({ where: { reportId: report.id } });
+    await tx.visit.createMany({
+      data: computedVisits.map((v) => ({ ...v, reportId: report.id })),
+    });
 
-  // Pkt 7: räkna om MF-taket för efterföljande veckor — de kan ha
-  // påverkats om denna vecka matades in i efterhand (i oordning).
-  const laterReports = await prisma.weeklyReport.findMany({
-    where: { districtId, seasonId, week: { gt: week } },
-    include: { visits: { orderBy: { createdAt: "asc" } } },
-    orderBy: { week: "asc" },
-  });
-  if (laterReports.length > 0) {
-    // MF ackumulerat t.o.m. denna vecka = tidigare veckor + denna veckas omräknade
-    let mf =
-      priorReports.flatMap((r) => r.visits).reduce((s, v) => s + v.mfFee, 0) +
-      computedVisits.reduce((s, v) => s + v.mfFee, 0);
+    // Pkt 7: räkna om MF-taket för efterföljande veckor — de kan ha
+    // påverkats om denna vecka matades in i efterhand (i oordning).
+    const laterReports = await tx.weeklyReport.findMany({
+      where: { districtId, seasonId, week: { gt: week } },
+      include: { visits: { orderBy: { createdAt: "asc" } } },
+      orderBy: { week: "asc" },
+    });
+    if (laterReports.length > 0) {
+      // MF ackumulerat t.o.m. denna vecka = tidigare veckor + denna veckas omräknade
+      let mf = priorMf + computedVisits.reduce((s, v) => s + v.mfFee, 0);
 
-    for (const r of laterReports) {
-      for (const v of r.visits) {
-        const fees = calculateFees(v.sales + v.fashionShowSales, mf, config);
-        mf = fees.mfFeeAccumulated;
-        if (
-          v.mfFee !== fees.mfFee ||
-          v.mfFeeAccumulated !== fees.mfFeeAccumulated ||
-          v.totalToPay !== fees.totalToPay
-        ) {
-          await prisma.visit.update({
-            where: { id: v.id },
-            data: {
-              ftFee: fees.ftFee,
-              mfFee: fees.mfFee,
-              mfFeeAccumulated: fees.mfFeeAccumulated,
-              totalToPay: fees.totalToPay,
-            },
-          });
+      for (const r of laterReports) {
+        for (const v of r.visits) {
+          const fees = calculateFees(v.sales + v.fashionShowSales, mf, config);
+          mf = fees.mfFeeAccumulated;
+          if (
+            v.mfFee !== fees.mfFee ||
+            v.mfFeeAccumulated !== fees.mfFeeAccumulated ||
+            v.totalToPay !== fees.totalToPay
+          ) {
+            await tx.visit.update({
+              where: { id: v.id },
+              data: {
+                ftFee: fees.ftFee,
+                mfFee: fees.mfFee,
+                mfFeeAccumulated: fees.mfFeeAccumulated,
+                totalToPay: fees.totalToPay,
+              },
+            });
+          }
         }
       }
     }
-  }
 
-  return NextResponse.json({ id: report.id });
+    return report.id;
+  }, { timeout: 15000 });
+
+  return NextResponse.json({ id: reportId });
 }
 
 export async function GET(req: NextRequest) {
