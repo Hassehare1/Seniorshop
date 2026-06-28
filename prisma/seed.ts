@@ -20,7 +20,7 @@ async function main() {
       districtId: district6.id,
       ftFeePercent: 0.075,
       mfFeePercent: 0.01,
-      mfFeeCap: 5999.812,
+      mfFeeCap: 6000,
       vatMultiplier: 1.25,
     },
   });

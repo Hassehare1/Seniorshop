@@ -26,7 +26,7 @@ interface Props {
 export default function DistriktClient({ districts: initial }: Props) {
   const [districts, setDistricts] = useState(initial);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [feeForm, setFeeForm] = useState<FeeConfig>({ ftFeePercent: 0.075, mfFeePercent: 0.01, mfFeeCap: 5999.812, vatMultiplier: 1.25 });
+  const [feeForm, setFeeForm] = useState<FeeConfig>({ ftFeePercent: 0.075, mfFeePercent: 0.01, mfFeeCap: 6000, vatMultiplier: 1.25 });
   const [saving, setSaving] = useState(false);
   const [showNewForm, setShowNewForm] = useState(false);
   const [newForm, setNewForm] = useState({ number: "", name: "", region: "SE" });
@@ -35,7 +35,7 @@ export default function DistriktClient({ districts: initial }: Props) {
 
   function startEdit(d: District) {
     setEditingId(d.id);
-    setFeeForm(d.feeConfig ?? { ftFeePercent: 0.075, mfFeePercent: 0.01, mfFeeCap: 5999.812, vatMultiplier: 1.25 });
+    setFeeForm(d.feeConfig ?? { ftFeePercent: 0.075, mfFeePercent: 0.01, mfFeeCap: 6000, vatMultiplier: 1.25 });
   }
 
   async function saveFee() {
@@ -173,7 +173,7 @@ export default function DistriktClient({ districts: initial }: Props) {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">MF-tak (kr ex moms)</label>
+              <label className="block text-xs font-medium text-slate-600 mb-1">MF-tak (kr ink moms)</label>
               <input
                 type="number"
                 step="1"
@@ -225,7 +225,7 @@ export default function DistriktClient({ districts: initial }: Props) {
               <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Region</th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">FT-avgift</th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">MF-avgift</th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">MF-tak</th>
+              <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">MF-tak (ink moms)</th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Kunder</th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Användare</th>
               <th className="px-4 py-3"></th>

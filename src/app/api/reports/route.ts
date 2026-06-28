@@ -6,7 +6,7 @@ import { calculateFees, type FeeConfig } from "@/lib/fees";
 const DEFAULT_FEE_CONFIG: FeeConfig = {
   ftFeePercent: 0.075,
   mfFeePercent: 0.01,
-  mfFeeCap: 5999.812,
+  mfFeeCap: 6000, // ink moms
   vatMultiplier: 1.25,
 };
 

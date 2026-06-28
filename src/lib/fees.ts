@@ -21,7 +21,10 @@ export function calculateFees(
   const ftFeeExVat = sales / config.vatMultiplier * config.ftFeePercent;
   const mfFeeExVat = sales / config.vatMultiplier * config.mfFeePercent;
 
-  const remainingMfCap = Math.max(0, config.mfFeeCap - currentMfAccumulated);
+  // MF-taket lagras ink moms (avgiftskonfig), men MF ackumuleras ex moms —
+  // konvertera taket till ex moms innan jämförelsen.
+  const mfFeeCapExVat = config.mfFeeCap / config.vatMultiplier;
+  const remainingMfCap = Math.max(0, mfFeeCapExVat - currentMfAccumulated);
   const mfFeeExVatCapped = Math.min(mfFeeExVat, remainingMfCap);
 
   const mfFeeAccumulated = currentMfAccumulated + mfFeeExVatCapped;

@@ -5,9 +5,13 @@ import { calculateFees, type FeeConfig } from "./fees.ts";
 const config: FeeConfig = {
   ftFeePercent: 0.075,
   mfFeePercent: 0.01,
-  mfFeeCap: 5999.812,
+  mfFeeCap: 6000, // ink moms
   vatMultiplier: 1.25,
 };
+
+// Taket lagras ink moms men MF ackumuleras ex moms — det ex moms-tak
+// som beräkningen faktiskt jämför mot (6000 / 1,25 = 4800).
+const mfCapExVat = config.mfFeeCap / config.vatMultiplier;
 
 // Approximativ jämförelse (flyttal)
 function close(actual: number, expected: number, msg?: string) {
@@ -35,19 +39,19 @@ test("grundberäkning under taket (12 500 ink. moms)", () => {
 
 test("MF kapas delvis när ackumulerat närmar sig taket", () => {
   // 50 kr kvar till taket, men MF-avgiften skulle bli 100
-  const accumulated = config.mfFeeCap - 50;
+  const accumulated = mfCapExVat - 50;
   const r = calculateFees(12500, accumulated, config);
   close(r.mfFee, 50, "MF kapad till återstående utrymme");
-  close(r.mfFeeAccumulated, config.mfFeeCap, "ackumulerat når exakt taket");
+  close(r.mfFeeAccumulated, mfCapExVat, "ackumulerat når exakt taket");
   close(r.ftFee, 750, "FT-avgift opåverkad av taket");
   // moms = (750+50) * 0.25 = 200 → totalt = 1000
   close(r.totalToPay, 1000, "att betala");
 });
 
 test("MF blir noll när taket redan är nått", () => {
-  const r = calculateFees(12500, config.mfFeeCap, config);
+  const r = calculateFees(12500, mfCapExVat, config);
   close(r.mfFee, 0, "ingen MF-avgift över taket");
-  close(r.mfFeeAccumulated, config.mfFeeCap, "ackumulerat oförändrat vid taket");
+  close(r.mfFeeAccumulated, mfCapExVat, "ackumulerat oförändrat vid taket");
   close(r.ftFee, 750, "FT-avgift fortsätter alltid");
   // moms = 750 * 0.25 = 187,5 → totalt = 937,5
   close(r.totalToPay, 937.5, "att betala (endast FT + moms)");
@@ -55,6 +59,6 @@ test("MF blir noll när taket redan är nått", () => {
 
 test("MF överskrider aldrig taket även vid stor försäljning", () => {
   const r = calculateFees(10_000_000, 0, config);
-  close(r.mfFee, config.mfFeeCap, "MF kapas till taket");
-  close(r.mfFeeAccumulated, config.mfFeeCap, "ackumulerat = taket");
+  close(r.mfFee, mfCapExVat, "MF kapas till taket");
+  close(r.mfFeeAccumulated, mfCapExVat, "ackumulerat = taket");
 });

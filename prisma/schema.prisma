@@ -73,7 +73,7 @@ model FeeConfig {
   district      District @relation(fields: [districtId], references: [id])
   ftFeePercent  Float    @default(0.075)
   mfFeePercent  Float    @default(0.01)
-  mfFeeCap      Float    @default(5999.812)
+  mfFeeCap      Float    @default(6000)
   vatMultiplier Float    @default(1.25)
   updatedBy     String?
   updatedAt     DateTime @updatedAt
