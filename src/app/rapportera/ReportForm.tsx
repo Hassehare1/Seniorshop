@@ -483,17 +483,6 @@ export default function ReportForm({
               </button>
             </div>
           </div>
-
-          <div className="text-sm text-slate-500 pb-1">
-            MF ackumulerat hittills:{" "}
-            <span className="font-medium text-slate-700">
-              {formatSEK(mfAccumulated)}
-            </span>{" "}
-            / {formatSEK(feeConfig.mfFeeCap)}
-            {mfAccumulated >= feeConfig.mfFeeCap && (
-              <span className="ml-2 text-amber-600 font-medium">(tak nått)</span>
-            )}
-          </div>
         </div>
       </div>
 
