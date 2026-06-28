@@ -96,6 +96,10 @@ export default function LoginPage() {
           >
             {loading ? "Loggar in..." : "Logga in"}
           </button>
+
+          <p className="text-center text-sm text-slate-500 pt-1">
+            Glömt lösenordet? Kontakta din administratör — hen kan återställa det åt dig.
+          </p>
         </form>
       </div>
     </div>
