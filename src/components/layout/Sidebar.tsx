@@ -21,6 +21,7 @@ const adminNav = [
   { href: "/admin/sasonger", label: "Säsonger" },
   { href: "/admin/anvandare", label: "Användare" },
   { href: "/admin/kunder", label: "Alla kunder" },
+  { href: "/admin/import", label: "Importera" },
   { href: "/admin/logg", label: "Händelselogg" },
 ];
 
