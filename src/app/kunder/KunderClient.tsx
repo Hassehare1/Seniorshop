@@ -11,12 +11,17 @@ const emptyForm = {
   phone: "", address: "", size: "", notes: "", active: true,
 };
 
+export type VisitMap = Record<string, Record<string, { count: number; lastWeek: number }>>;
+
 interface Props {
   customers: Customer[];
   districtId: string;
+  seasons: { id: string; label: string }[];
+  visitMap: VisitMap;
+  defaultSeasonId: string;
 }
 
-export default function KunderClient({ customers: initial, districtId }: Props) {
+export default function KunderClient({ customers: initial, districtId, seasons, visitMap, defaultSeasonId }: Props) {
   const [customers, setCustomers] = useState(initial);
   const [showForm, setShowForm] = useState(false);
   const [showImport, setShowImport] = useState(false);
@@ -25,11 +30,64 @@ export default function KunderClient({ customers: initial, districtId }: Props) 
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [form, setForm] = useState(emptyForm);
+  const [season, setSeason] = useState(defaultSeasonId);
+  const [visitFilter, setVisitFilter] = useState("all");
+  const [exporting, setExporting] = useState(false);
 
-  const filtered = customers.filter(c =>
-    c.name.toLowerCase().includes(filter.toLowerCase()) ||
-    customerTypeLabels[c.type]?.toLowerCase().includes(filter.toLowerCase())
-  );
+  const visitCount = (id: string) => visitMap[id]?.[season]?.count ?? 0;
+  const lastWeek = (id: string) => visitMap[id]?.[season]?.lastWeek ?? 0;
+  const besokBadge = (n: number) =>
+    n >= 2
+      ? <span className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-blue-600 text-white">{n} besök</span>
+      : n === 1
+        ? <span className="text-slate-500 text-xs">1 besök</span>
+        : <span className="text-slate-300 text-xs">—</span>;
+
+  const filtered = customers.filter(c => {
+    const q = filter.toLowerCase();
+    const matchSearch =
+      c.name.toLowerCase().includes(q) || (customerTypeLabels[c.type]?.toLowerCase().includes(q) ?? false);
+    const n = visitCount(c.id);
+    const matchVisit =
+      visitFilter === "all" ||
+      (visitFilter === "none" && n === 0) ||
+      (visitFilter === "one" && n === 1) ||
+      (visitFilter === "multi" && n >= 2);
+    return matchSearch && matchVisit;
+  });
+
+  const seasonStats = season
+    ? customers.reduce(
+        (a, c) => {
+          const n = visitCount(c.id);
+          if (n >= 2) a.multi++;
+          else if (n === 0) a.none++;
+          return a;
+        },
+        { multi: 0, none: 0 }
+      )
+    : null;
+
+  async function exportXlsx() {
+    setExporting(true);
+    try {
+      const XLSX = await import("xlsx");
+      const label = seasons.find(s => s.id === season)?.label ?? "";
+      const rows = filtered.map(c => ({
+        Namn: c.name,
+        Typ: customerTypeLabels[c.type] ?? c.type,
+        [`Besök ${label}`]: visitCount(c.id),
+        "Senaste vecka": lastWeek(c.id) || "",
+        Status: c.active ? "Aktiv" : "Inaktiv",
+      }));
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Kunder");
+      XLSX.writeFile(wb, `Kunder_besok_${label.replace(/\s+/g, "_") || "lista"}.xlsx`);
+    } finally {
+      setExporting(false);
+    }
+  }
 
   function startEdit(c: Customer) {
     setEditingId(c.id);
@@ -97,14 +155,30 @@ export default function KunderClient({ customers: initial, districtId }: Props) 
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap gap-3 items-center">
         <input
           type="text"
           placeholder="Sök kund eller typ..."
           value={filter}
           onChange={e => setFilter(e.target.value)}
-          className="flex-1 min-w-[200px] px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="flex-1 min-w-[160px] px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
+        {seasons.length > 0 && (
+          <>
+            <select value={season} onChange={e => setSeason(e.target.value)} aria-label="Säsong" className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+              {seasons.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+            </select>
+            <select value={visitFilter} onChange={e => setVisitFilter(e.target.value)} aria-label="Filtrera på besök" className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+              <option value="all">Alla besök</option>
+              <option value="none">Ej besökta</option>
+              <option value="one">1 besök</option>
+              <option value="multi">Återbesök (≥2)</option>
+            </select>
+            <button onClick={exportXlsx} disabled={exporting} className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium px-4 py-2 rounded-lg">
+              {exporting ? "Exporterar…" : "Excel"}
+            </button>
+          </>
+        )}
         <button
           onClick={() => { setShowImport(s => !s); setShowForm(false); setEditingId(null); }}
           className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium px-4 py-2 rounded-lg"
@@ -118,6 +192,12 @@ export default function KunderClient({ customers: initial, districtId }: Props) 
           + Ny kund
         </button>
       </div>
+
+      {seasonStats && (
+        <p className="text-xs text-slate-500 -mt-1">
+          {seasons.find(s => s.id === season)?.label}: {customers.length} kunder · <span className="text-blue-600 font-medium">{seasonStats.multi} med återbesök</span> · {seasonStats.none} ej besökta
+        </p>
+      )}
 
       {showImport && (
         <ImportKunder onImported={created => setCustomers(prev => [...created, ...prev])} />
@@ -270,6 +350,7 @@ export default function KunderClient({ customers: initial, districtId }: Props) 
             <tr className="border-b border-slate-100 bg-slate-50">
               <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Namn</th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Typ</th>
+              {seasons.length > 0 && <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Besök</th>}
               <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Kontakt</th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Telefon</th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Kommentar</th>
@@ -278,7 +359,7 @@ export default function KunderClient({ customers: initial, districtId }: Props) 
           </thead>
           <tbody className="divide-y divide-slate-100">
             {filtered.map(c => (
-              <tr key={c.id} className={`hover:bg-slate-50 ${!c.active ? "opacity-40" : ""}`}>
+              <tr key={c.id} className={`hover:bg-slate-50 ${!c.active ? "opacity-40" : ""} ${seasons.length > 0 && visitCount(c.id) >= 2 ? "bg-blue-50" : ""}`}>
                 <td className="px-4 py-3 font-medium">
                   <Link href={`/kunder/${c.id}`} className="text-slate-800 hover:text-blue-700 hover:underline">
                     {c.name}
@@ -294,6 +375,7 @@ export default function KunderClient({ customers: initial, districtId }: Props) 
                     {customerTypeLabels[c.type] ?? c.type}
                   </span>
                 </td>
+                {seasons.length > 0 && <td className="px-4 py-3">{besokBadge(visitCount(c.id))}</td>}
                 <td className="px-4 py-3 text-slate-600">
                   {c.contactPerson ?? "–"}
                   {c.contactRole && <span className="text-slate-400"> · {c.contactRole}</span>}
@@ -312,7 +394,7 @@ export default function KunderClient({ customers: initial, districtId }: Props) 
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-slate-400">Inga kunder hittades.</td>
+                <td colSpan={seasons.length > 0 ? 7 : 6} className="px-4 py-8 text-center text-slate-400">Inga kunder hittades.</td>
               </tr>
             )}
           </tbody>

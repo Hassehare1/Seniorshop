@@ -1,16 +1,40 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
-import KunderClient from "./KunderClient";
+import KunderClient, { type VisitMap } from "./KunderClient";
 
 export default async function KunderPage() {
   const session = await auth();
   if (!session?.user.districtId) redirect("/dashboard");
+  const districtId = session.user.districtId;
 
-  const customers = await prisma.customer.findMany({
-    where: { districtId: session.user.districtId },
-    orderBy: [{ active: "desc" }, { name: "asc" }],
-  });
+  const [customers, reports, seasons] = await Promise.all([
+    prisma.customer.findMany({
+      where: { districtId },
+      orderBy: [{ active: "desc" }, { name: "asc" }],
+    }),
+    prisma.weeklyReport.findMany({
+      where: { districtId },
+      select: { seasonId: true, week: true, visits: { select: { customerId: true } } },
+    }),
+    prisma.season.findMany({ orderBy: [{ year: "desc" }, { type: "desc" }] }),
+  ]);
+
+  // Antal besök + senaste vecka per kund och säsong
+  const visitMap: VisitMap = {};
+  for (const r of reports) {
+    for (const v of r.visits) {
+      const byCustomer = visitMap[v.customerId] ?? (visitMap[v.customerId] = {});
+      const info = byCustomer[r.seasonId] ?? (byCustomer[r.seasonId] = { count: 0, lastWeek: 0 });
+      info.count++;
+      if (r.week > info.lastWeek) info.lastWeek = r.week;
+    }
+  }
+
+  const seasonsWithData = new Set(reports.map(r => r.seasonId));
+  const seasonOptions = seasons
+    .filter(s => seasonsWithData.has(s.id))
+    .map(s => ({ id: s.id, label: `${s.type === "VAR" ? "Vår" : "Höst"} ${s.year}` }));
 
   return (
     <div>
@@ -22,7 +46,13 @@ export default async function KunderPage() {
           </p>
         </div>
       </div>
-      <KunderClient customers={customers} districtId={session.user.districtId} />
+      <KunderClient
+        customers={customers}
+        districtId={districtId}
+        seasons={seasonOptions}
+        visitMap={visitMap}
+        defaultSeasonId={seasonOptions[0]?.id ?? ""}
+      />
     </div>
   );
 }

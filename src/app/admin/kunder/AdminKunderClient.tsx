@@ -21,7 +21,16 @@ interface Customer {
   district: { number: number; name: string };
 }
 
-export default function AdminKunderClient({ customers: initial }: { customers: Customer[] }) {
+export type VisitMap = Record<string, Record<string, { count: number; lastWeek: number }>>;
+
+interface Props {
+  customers: Customer[];
+  seasons: { id: string; label: string }[];
+  visitMap: VisitMap;
+  defaultSeasonId: string;
+}
+
+export default function AdminKunderClient({ customers: initial, seasons, visitMap, defaultSeasonId }: Props) {
   const [customers, setCustomers] = useState(initial);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("ALL");
@@ -29,6 +38,18 @@ export default function AdminKunderClient({ customers: initial }: { customers: C
   const [reviewFilter, setReviewFilter] = useState("ALL");
   const [working, setWorking] = useState<string | null>(null);
   const [message, setMessage] = useState("");
+  const [season, setSeason] = useState(defaultSeasonId);
+  const [visitFilter, setVisitFilter] = useState("all");
+  const [exporting, setExporting] = useState(false);
+
+  const visitCount = (id: string) => visitMap[id]?.[season]?.count ?? 0;
+  const lastWeek = (id: string) => visitMap[id]?.[season]?.lastWeek ?? 0;
+  const besokBadge = (n: number) =>
+    n >= 2
+      ? <span className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-blue-600 text-white">{n} besök</span>
+      : n === 1
+        ? <span className="text-slate-500 text-xs">1 besök</span>
+        : <span className="text-slate-300 text-xs">—</span>;
 
   const pendingCount = customers.filter(c => !c.approved).length;
 
@@ -46,8 +67,48 @@ export default function AdminKunderClient({ customers: initial }: { customers: C
       reviewFilter === "ALL" ||
       (reviewFilter === "pending" && !c.approved) ||
       (reviewFilter === "approved" && c.approved);
-    return matchSearch && matchType && matchStatus && matchReview;
+    const n = visitCount(c.id);
+    const matchVisit =
+      visitFilter === "all" ||
+      (visitFilter === "none" && n === 0) ||
+      (visitFilter === "one" && n === 1) ||
+      (visitFilter === "multi" && n >= 2);
+    return matchSearch && matchType && matchStatus && matchReview && matchVisit;
   });
+
+  const seasonStats = season
+    ? customers.reduce(
+        (a, c) => {
+          const n = visitCount(c.id);
+          if (n >= 2) a.multi++;
+          else if (n === 0) a.none++;
+          return a;
+        },
+        { multi: 0, none: 0 }
+      )
+    : null;
+
+  async function exportXlsx() {
+    setExporting(true);
+    try {
+      const XLSX = await import("xlsx");
+      const label = seasons.find(s => s.id === season)?.label ?? "";
+      const rows = filtered.map(c => ({
+        Distrikt: `D${c.district.number} – ${c.district.name}`,
+        Namn: c.name,
+        Typ: typeLabels[c.type] ?? c.type,
+        [`Besök ${label}`]: visitCount(c.id),
+        "Senaste vecka": lastWeek(c.id) || "",
+        Status: c.active ? "Aktiv" : "Inaktiv",
+      }));
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Kunder");
+      XLSX.writeFile(wb, `Alla_kunder_besok_${label.replace(/\s+/g, "_") || "lista"}.xlsx`);
+    } finally {
+      setExporting(false);
+    }
+  }
 
   async function approve(ids?: string[]) {
     setWorking(ids && ids.length === 1 ? ids[0] : "bulk");
@@ -126,10 +187,31 @@ export default function AdminKunderClient({ customers: initial }: { customers: C
           <option value="inactive">Inaktiva</option>
           <option value="ALL">Alla</option>
         </select>
+        {seasons.length > 0 && (
+          <>
+            <select value={season} onChange={e => setSeason(e.target.value)} aria-label="Säsong" className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+              {seasons.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+            </select>
+            <select value={visitFilter} onChange={e => setVisitFilter(e.target.value)} aria-label="Filtrera på besök" className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+              <option value="all">Alla besök</option>
+              <option value="none">Ej besökta</option>
+              <option value="one">1 besök</option>
+              <option value="multi">Återbesök (≥2)</option>
+            </select>
+            <button onClick={exportXlsx} disabled={exporting} className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium px-4 py-2 rounded-lg">
+              {exporting ? "Exporterar…" : "Excel"}
+            </button>
+          </>
+        )}
         <span className="text-xs text-slate-400 whitespace-nowrap">
           {filtered.length} av {customers.length}
         </span>
       </div>
+      {seasonStats && (
+        <p className="mb-4 -mt-2 text-xs text-slate-500">
+          {seasons.find(s => s.id === season)?.label}: <span className="text-blue-600 font-medium">{seasonStats.multi} med återbesök</span> · {seasonStats.none} ej besökta
+        </p>
+      )}
 
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
         <div className="overflow-x-auto">
@@ -139,6 +221,7 @@ export default function AdminKunderClient({ customers: initial }: { customers: C
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Distrikt</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Namn</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Typ</th>
+                {seasons.length > 0 && <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Besök</th>}
                 <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Storlek</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Kontakt</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Telefon</th>
@@ -148,7 +231,7 @@ export default function AdminKunderClient({ customers: initial }: { customers: C
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filtered.map(c => (
-                <tr key={c.id} className={`hover:bg-slate-50 ${!c.active ? "opacity-50" : ""}`}>
+                <tr key={c.id} className={`hover:bg-slate-50 ${!c.active ? "opacity-50" : ""} ${seasons.length > 0 && visitCount(c.id) >= 2 ? "bg-blue-50" : ""}`}>
                   <td className="px-4 py-3 text-slate-500 text-xs font-medium whitespace-nowrap">
                     D{c.district.number} – {c.district.name}
                   </td>
@@ -162,6 +245,7 @@ export default function AdminKunderClient({ customers: initial }: { customers: C
                       {typeLabels[c.type] ?? c.type}
                     </span>
                   </td>
+                  {seasons.length > 0 && <td className="px-4 py-3">{besokBadge(visitCount(c.id))}</td>}
                   <td className="px-4 py-3 text-right text-slate-600 tabular-nums">{c.size ?? "–"}</td>
                   <td className="px-4 py-3 text-slate-600">
                     {c.contactPerson ?? "–"}
@@ -193,7 +277,7 @@ export default function AdminKunderClient({ customers: initial }: { customers: C
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-4 py-10 text-center text-slate-400">
+                  <td colSpan={seasons.length > 0 ? 9 : 8} className="px-4 py-10 text-center text-slate-400">
                     Inga kunder matchar sökningen.
                   </td>
                 </tr>
