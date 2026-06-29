@@ -128,6 +128,16 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // Räkna faktiskt rapporterade veckor för just detta distrikt × säsong.
+  // Säsongen är global (delas av alla distrikt), så att den finns betyder INTE
+  // att D{n} har rapporterat — det avgörs bara av befintliga weeklyReport-poster.
+  const existingReports =
+    existingDistrict && existingSeason
+      ? await prisma.weeklyReport.count({
+          where: { districtId: existingDistrict.id, seasonId: existingSeason.id },
+        })
+      : 0;
+
   const summary = {
     districtNumber,
     districtName: existingDistrict?.name ?? districtName,
@@ -138,7 +148,8 @@ export async function POST(req: NextRequest) {
     customers: customerNames.length,
     visits: parsed.length,
     totalSales: parsed.reduce((s, p) => s + p.sales, 0),
-    willOverwrite: !!(existingDistrict && existingSeason),
+    willOverwrite: existingReports > 0,
+    existingReports,
     warnings,
   };
 

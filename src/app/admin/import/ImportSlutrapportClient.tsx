@@ -13,6 +13,7 @@ interface Summary {
   visits: number;
   totalSales: number;
   willOverwrite: boolean;
+  existingReports: number;
   warnings: string[];
 }
 
@@ -166,9 +167,13 @@ export default function ImportSlutrapportClient({ districts }: Props) {
             <Stat label="Försäljning" value={fmtSEK(preview.totalSales)} sub="ink moms" />
           </div>
 
-          {preview.willOverwrite && (
+          {preview.willOverwrite ? (
             <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 px-3 py-2 rounded-lg">
-              ⚠️ Ersätter all tidigare rapporterad försäljning för {preview.seasonLabel} i D{preview.districtNumber}. Kunderna behålls.
+              ⚠️ Ersätter {preview.existingReports} tidigare rapporterade vecka(or) för {preview.seasonLabel} i D{preview.districtNumber}. Kunderna behålls.
+            </p>
+          ) : (
+            <p className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-2 rounded-lg">
+              ✓ Ny rapportering för {preview.seasonLabel} i D{preview.districtNumber} — inget tidigare rapporterat skrivs över.
             </p>
           )}
 
