@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import ImportSlutrapportClient from "./ImportSlutrapportClient";
+import ResetReports from "./ResetReports";
 
 export default async function ImportPage() {
   const session = await auth();
@@ -21,6 +22,7 @@ export default async function ImportPage() {
         </p>
       </div>
       <ImportSlutrapportClient districts={districts} />
+      <ResetReports />
     </div>
   );
 }
