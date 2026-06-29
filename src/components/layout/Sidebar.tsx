@@ -14,14 +14,17 @@ const franchiseeNav = [
 ];
 
 const adminNav = [
+  // Daglig uppföljning
   { href: "/dashboard", label: "Översikt" },
-  { href: "/admin/distrikt", label: "Distrikt & avgifter" },
-  { href: "/admin/rapporter", label: "Rapportstatus", badge: true },
   { href: "/forsaljning", label: "Försäljning" },
+  { href: "/admin/rapporter", label: "Rapportstatus", badge: true },
+  { href: "/admin/kunder", label: "Alla kunder" },
+  // Engångsinställningar (sällan, sätts upp en gång)
+  { href: "/admin/distrikt", label: "Distrikt & avgifter", section: "Inställningar" },
   { href: "/admin/sasonger", label: "Säsonger" },
   { href: "/admin/anvandare", label: "Användare" },
-  { href: "/admin/kunder", label: "Alla kunder" },
-  { href: "/admin/import", label: "Importera" },
+  // System
+  { href: "/admin/import", label: "Importera", divider: true },
   { href: "/admin/logg", label: "Händelselogg" },
 ];
 
@@ -31,7 +34,7 @@ function NavLinks({
   submittedCount,
   onNavigate,
 }: {
-  nav: { href: string; label: string; badge?: boolean }[];
+  nav: { href: string; label: string; badge?: boolean; section?: string; divider?: boolean }[];
   pathname: string;
   submittedCount: number;
   onNavigate?: () => void;
@@ -39,23 +42,30 @@ function NavLinks({
   return (
     <>
       {nav.map((item) => (
-        <Link
-          key={item.href}
-          href={item.href}
-          onClick={onNavigate}
-          className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors ${
-            pathname === item.href || pathname.startsWith(item.href + "/")
-              ? "bg-blue-600 text-white"
-              : "text-slate-300 hover:bg-slate-800 hover:text-white"
-          }`}
-        >
-          <span>{item.label}</span>
-          {item.badge && submittedCount > 0 && (
-            <span className="bg-amber-400 text-slate-900 text-xs font-bold px-1.5 py-0.5 rounded-full leading-none">
-              {submittedCount}
-            </span>
+        <div key={item.href}>
+          {item.section && (
+            <p className="text-slate-500 text-[11px] font-semibold uppercase tracking-wider px-3 pt-4 pb-1 mt-3 border-t border-slate-700">
+              {item.section}
+            </p>
           )}
-        </Link>
+          {item.divider && <div className="mt-3 pt-3 border-t border-slate-800/80" />}
+          <Link
+            href={item.href}
+            onClick={onNavigate}
+            className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors ${
+              pathname === item.href || pathname.startsWith(item.href + "/")
+                ? "bg-blue-600 text-white"
+                : "text-slate-300 hover:bg-slate-800 hover:text-white"
+            }`}
+          >
+            <span>{item.label}</span>
+            {item.badge && submittedCount > 0 && (
+              <span className="bg-amber-400 text-slate-900 text-xs font-bold px-1.5 py-0.5 rounded-full leading-none">
+                {submittedCount}
+              </span>
+            )}
+          </Link>
+        </div>
       ))}
     </>
   );
