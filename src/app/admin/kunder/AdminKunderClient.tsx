@@ -10,6 +10,7 @@ import {
 interface Customer {
   id: string;
   name: string;
+  customerNumber: number;
   type: string;
   contactPerson: string | null;
   contactRole: string | null;
@@ -239,6 +240,7 @@ export default function AdminKunderClient({ customers: initial, seasons, visitMa
                     <Link href={`/kunder/${c.id}`} className="text-slate-800 hover:text-blue-700 hover:underline">
                       {c.name}
                     </Link>
+                    <span className="block text-[11px] text-slate-400 font-normal">D{c.district.number}-{c.customerNumber}</span>
                   </td>
                   <td className="px-4 py-3">
                     <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${typeColors[c.type] ?? "bg-slate-100 text-slate-600"}`}>

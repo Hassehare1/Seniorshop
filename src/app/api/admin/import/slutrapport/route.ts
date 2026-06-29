@@ -166,6 +166,7 @@ export async function POST(req: NextRequest) {
       // Kunder: behåll befintliga (matcha på normaliserat namn), skapa saknade
       const existing = await tx.customer.findMany({ where: { districtId: district.id } });
       const byName = new Map(existing.map((c) => [norm(c.name), c.id]));
+      let nextNr = existing.reduce((m, c) => Math.max(m, c.customerNumber), 0) + 1;
       const idByName = new Map<string, string>();
       for (const p of parsed) {
         if (idByName.has(p.name)) continue;
@@ -173,7 +174,7 @@ export async function POST(req: NextRequest) {
         if (exId) idByName.set(p.name, exId);
         else {
           const c = await tx.customer.create({
-            data: { name: p.name, type: p.type, districtId: district.id, approved: true },
+            data: { name: p.name, type: p.type, districtId: district.id, approved: true, customerNumber: nextNr++ },
           });
           idByName.set(p.name, c.id);
         }

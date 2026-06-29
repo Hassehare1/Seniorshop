@@ -43,11 +43,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Storlek måste vara ett positivt tal" }, { status: 400 });
   }
 
+  const maxNr = await prisma.customer.aggregate({
+    where: { districtId: targetDistrictId },
+    _max: { customerNumber: true },
+  });
   const customer = await prisma.customer.create({
     data: {
       name, type, contactPerson, contactRole, email, phone, address, notes,
       size: parsedSize,
       districtId: targetDistrictId,
+      customerNumber: (maxNr._max.customerNumber ?? 0) + 1,
     },
   });
 

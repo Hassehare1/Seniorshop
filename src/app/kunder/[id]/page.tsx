@@ -67,7 +67,9 @@ export default async function CustomerCardPage({ params }: { params: Promise<{ i
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold text-slate-800">{customer.name}</h1>
-            <p className="text-slate-500 text-sm mt-1">D{customer.district.number} – {customer.district.name}</p>
+            <p className="text-slate-500 text-sm mt-1">
+              <span className="font-medium text-slate-600">D{customer.district.number}-{customer.customerNumber}</span> · {customer.district.name}
+            </p>
           </div>
           <div className="flex flex-wrap gap-2">
             <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${customerTypeColors[customer.type] ?? "bg-slate-100 text-slate-600"}`}>

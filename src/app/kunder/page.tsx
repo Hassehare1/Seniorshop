@@ -49,6 +49,7 @@ export default async function KunderPage() {
       <KunderClient
         customers={customers}
         districtId={districtId}
+        districtNumber={session.user.districtNumber ?? 0}
         seasons={seasonOptions}
         visitMap={visitMap}
         defaultSeasonId={seasonOptions[0]?.id ?? ""}

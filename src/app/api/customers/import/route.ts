@@ -87,9 +87,11 @@ export async function POST(req: NextRequest) {
     });
   });
 
+  const maxNr = await prisma.customer.aggregate({ where: { districtId }, _max: { customerNumber: true } });
+  let nextNr = (maxNr._max.customerNumber ?? 0) + 1;
   const created = [];
   for (const data of toCreate) {
-    created.push(await prisma.customer.create({ data: data as never }));
+    created.push(await prisma.customer.create({ data: { ...data, customerNumber: nextNr++ } as never }));
   }
 
   if (created.length > 0) {

@@ -16,12 +16,13 @@ export type VisitMap = Record<string, Record<string, { count: number; lastWeek: 
 interface Props {
   customers: Customer[];
   districtId: string;
+  districtNumber: number;
   seasons: { id: string; label: string }[];
   visitMap: VisitMap;
   defaultSeasonId: string;
 }
 
-export default function KunderClient({ customers: initial, districtId, seasons, visitMap, defaultSeasonId }: Props) {
+export default function KunderClient({ customers: initial, districtId, districtNumber, seasons, visitMap, defaultSeasonId }: Props) {
   const [customers, setCustomers] = useState(initial);
   const [showForm, setShowForm] = useState(false);
   const [showImport, setShowImport] = useState(false);
@@ -369,6 +370,7 @@ export default function KunderClient({ customers: initial, districtId, seasons, 
                       Väntar granskning
                     </span>
                   )}
+                  <span className="block text-[11px] text-slate-400 font-normal">D{districtNumber}-{c.customerNumber}</span>
                 </td>
                 <td className="px-4 py-3">
                   <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${customerTypeColors[c.type] ?? "bg-slate-100 text-slate-600"}`}>

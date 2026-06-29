@@ -80,9 +80,10 @@ model FeeConfig {
 }
 
 model Customer {
-  id            String       @id @default(cuid())
-  name          String
-  type          CustomerType
+  id             String      @id @default(cuid())
+  name           String
+  customerNumber Int         // löpnummer per distrikt, visas som D{distriktsnr}-{customerNumber}
+  type           CustomerType
   contactPerson String?
   contactRole   String?
   email         String?
@@ -97,6 +98,8 @@ model Customer {
   visits        Visit[]
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
+
+  @@unique([districtId, customerNumber])
 }
 
 model Season {

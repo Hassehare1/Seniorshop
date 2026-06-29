@@ -91,6 +91,7 @@ async function main() {
     { name: "Närheten", type: "FORENING" as const },
   ];
 
+  let nr = 1;
   for (const c of customers) {
     await prisma.customer.upsert({
       where: { id: `seed-${c.name.toLowerCase().replace(/\s+/g, "-")}` },
@@ -99,6 +100,7 @@ async function main() {
         id: `seed-${c.name.toLowerCase().replace(/\s+/g, "-")}`,
         ...c,
         districtId: district6.id,
+        customerNumber: nr++,
       },
     });
   }
