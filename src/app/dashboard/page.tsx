@@ -51,6 +51,7 @@ export default async function DashboardPage({
 
   type ReportRow = {
     id: string; week: number; status: string;
+    districtNumber: number; districtName: string;
     totalSales: number; totalToPay: number; totalCustomers: number;
     visits: { id: string; customerName: string; customerType: string; numberOfCustomers: number; sales: number; isFashionShow: boolean; isHangerShow: boolean; ftFee: number; mfFee: number; totalToPay: number; comment: string | null }[];
   };
@@ -85,6 +86,8 @@ export default async function DashboardPage({
       id: r.id,
       week: r.week,
       status: r.status,
+      districtNumber: r.district.number,
+      districtName: r.district.name,
       totalSales: r.visits.reduce((s, v) => s + v.sales + v.fashionShowSales, 0),
       totalToPay: r.visits.reduce((s, v) => s + v.totalToPay, 0),
       totalCustomers: r.visits.reduce((s, v) => s + v.numberOfCustomers, 0),
@@ -250,6 +253,7 @@ export default async function DashboardPage({
                 reports={stats.reports}
                 seasonId={currentSeason?.id ?? ""}
                 showEditLink={!isAdmin}
+                showDistrict={showDistrictBreakdown}
               />
             </div>
           )}

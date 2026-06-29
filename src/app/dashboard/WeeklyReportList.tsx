@@ -13,6 +13,7 @@ type Visit = {
 
 type ReportRow = {
   id: string; week: number; status: string;
+  districtNumber: number; districtName: string;
   totalSales: number; totalToPay: number; totalCustomers: number;
   visits: Visit[];
 };
@@ -21,9 +22,10 @@ interface Props {
   reports: ReportRow[];
   seasonId: string;
   showEditLink?: boolean;
+  showDistrict?: boolean;
 }
 
-export default function WeeklyReportList({ reports, seasonId, showEditLink }: Props) {
+export default function WeeklyReportList({ reports, seasonId, showEditLink, showDistrict }: Props) {
   const [open, setOpen] = useState<Set<string>>(new Set());
 
   function toggle(id: string) {
@@ -35,10 +37,31 @@ export default function WeeklyReportList({ reports, seasonId, showEditLink }: Pr
     });
   }
 
+  const totals = reports.reduce(
+    (acc, r) => {
+      acc.sales += r.totalSales;
+      acc.toPay += r.totalToPay;
+      acc.visits += r.visits.length;
+      acc.customers += r.totalCustomers;
+      return acc;
+    },
+    { sales: 0, toPay: 0, visits: 0, customers: 0 },
+  );
+
   return (
     <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
       <div className="px-4 md:px-6 py-4 border-b border-slate-100">
         <h2 className="text-sm font-semibold text-slate-700">Rapporterade veckor</h2>
+      </div>
+      {/* Kolumnrubriker — desktop */}
+      <div className="hidden md:flex items-center gap-4 px-6 py-2 border-b border-slate-100 text-xs font-semibold text-slate-400 uppercase tracking-wide">
+        <span className="w-4" />
+        {showDistrict && <span className="w-40">Distrikt</span>}
+        <span className="w-20">Vecka</span>
+        <span className="flex-1">Aktivitet</span>
+        <span className="w-32 text-right">Försäljning</span>
+        <span className="w-32 text-right">Avgift</span>
+        <span className="w-24 text-right">Status</span>
       </div>
       <div className="divide-y divide-slate-100">
         {reports.map(r => {
@@ -57,7 +80,10 @@ export default function WeeklyReportList({ reports, seasonId, showEditLink }: Pr
                   <span className="text-slate-400 text-xs mt-0.5 shrink-0">{isOpen ? "▾" : "▸"}</span>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="font-medium text-slate-800 text-sm">Vecka {r.week}</span>
+                      <span className="font-medium text-slate-800 text-sm">
+                        {showDistrict && <span className="text-slate-400 font-normal">D{r.districtNumber} · </span>}
+                        Vecka {r.week}
+                      </span>
                       <div className="flex items-center gap-2 shrink-0">
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                           r.status === "APPROVED" ? "bg-green-100 text-green-700"
@@ -87,16 +113,21 @@ export default function WeeklyReportList({ reports, seasonId, showEditLink }: Pr
                 {/* Desktop layout */}
                 <div className="hidden md:flex items-center gap-4">
                   <span className="text-slate-400 text-xs w-4">{isOpen ? "▾" : "▸"}</span>
+                  {showDistrict && (
+                    <span className="w-40 text-sm text-slate-500 truncate">D{r.districtNumber} – {r.districtName}</span>
+                  )}
                   <span className="font-medium text-slate-800 w-20">Vecka {r.week}</span>
                   <span className="flex-1 text-sm text-slate-500">{r.visits.length} besök · {r.totalCustomers} kunder</span>
-                  <span className="text-sm font-medium text-slate-700">{fmt(r.totalSales)}</span>
-                  <span className="text-sm font-bold text-blue-700 w-32 text-right">{fmt(r.totalToPay)} att betala</span>
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ml-2 ${
-                    r.status === "APPROVED" ? "bg-green-100 text-green-700"
-                    : r.status === "SUBMITTED" ? "bg-blue-100 text-blue-600"
-                    : "bg-slate-100 text-slate-500"
-                  }`}>
-                    {r.status === "APPROVED" ? "Godkänd" : r.status === "SUBMITTED" ? "Inlämnad" : "Utkast"}
+                  <span className="w-32 text-right text-sm font-medium text-slate-700">{fmt(r.totalSales)}</span>
+                  <span className="w-32 text-right text-sm font-bold text-blue-700">{fmt(r.totalToPay)}</span>
+                  <span className="w-24 flex justify-end">
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                      r.status === "APPROVED" ? "bg-green-100 text-green-700"
+                      : r.status === "SUBMITTED" ? "bg-blue-100 text-blue-600"
+                      : "bg-slate-100 text-slate-500"
+                    }`}>
+                      {r.status === "APPROVED" ? "Godkänd" : r.status === "SUBMITTED" ? "Inlämnad" : "Utkast"}
+                    </span>
                   </span>
                   {showEditLink && r.status !== "APPROVED" && (
                     <Link
@@ -161,6 +192,27 @@ export default function WeeklyReportList({ reports, seasonId, showEditLink }: Pr
           );
         })}
       </div>
+
+      {/* Summarad — totalt för säsongen (efter ev. distriktsfilter) */}
+      {reports.length > 0 && (
+        <>
+          {/* Desktop */}
+          <div className="hidden md:flex items-center gap-4 px-6 py-3 border-t border-slate-200 bg-slate-50 text-sm font-semibold text-slate-700">
+            <span className="w-4" />
+            {showDistrict && <span className="w-40" />}
+            <span className="w-20">Totalt</span>
+            <span className="flex-1 font-normal text-slate-500">{totals.visits} besök · {totals.customers} kunder</span>
+            <span className="w-32 text-right">{fmt(totals.sales)}</span>
+            <span className="w-32 text-right text-blue-700">{fmt(totals.toPay)}</span>
+            <span className="w-24" />
+          </div>
+          {/* Mobil */}
+          <div className="md:hidden flex items-center justify-between px-4 py-3 border-t border-slate-200 bg-slate-50 text-sm">
+            <span className="font-semibold text-slate-700">Totalt · {totals.visits} besök</span>
+            <span className="font-bold text-blue-700">{fmt(totals.toPay)}</span>
+          </div>
+        </>
+      )}
     </div>
   );
 }
