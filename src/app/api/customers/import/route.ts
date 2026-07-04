@@ -5,6 +5,7 @@ import { customerTypeLabels } from "@/lib/customerTypes";
 import * as XLSX from "xlsx";
 
 const MAX_ROWS = 500;
+const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5 MB — kollas FÖRE inläsning i minnet
 
 // Matcha typ mot etikett ("Träffpunkt") eller enum-nyckel ("TRAFFPUNKT"), skiftlägesokänsligt
 function parseType(raw: unknown): string | null {
@@ -32,6 +33,9 @@ export async function POST(req: NextRequest) {
   const file = formData.get("file");
   if (!(file instanceof File)) {
     return NextResponse.json({ error: "Ingen fil bifogad." }, { status: 400 });
+  }
+  if (file.size > MAX_FILE_BYTES) {
+    return NextResponse.json({ error: "Filen är för stor (max 5 MB)." }, { status: 400 });
   }
 
   let rows: Record<string, unknown>[];

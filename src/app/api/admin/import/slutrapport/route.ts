@@ -48,6 +48,7 @@ export async function POST(req: NextRequest) {
 
   // --- Validera indata ---
   if (!(file instanceof Blob)) return err("Ingen fil bifogad.");
+  if (file.size > 5 * 1024 * 1024) return err("Filen är för stor (max 5 MB)."); // före inläsning i minnet
   if (!Number.isInteger(year) || year < 2000 || year > 2100) return err("Ogiltigt år.");
   if (!Number.isInteger(districtNumber) || districtNumber <= 0) return err("Ogiltigt distriktsnummer.");
   if (seasonType !== "VAR" && seasonType !== "HOST") return err("Välj säsong (Vår eller Höst).");
