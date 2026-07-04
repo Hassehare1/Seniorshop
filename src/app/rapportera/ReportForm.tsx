@@ -281,6 +281,16 @@ export default function ReportForm({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedWeek, selectedSeasonId, districtId]);
 
+  // Varna innan fliken stängs/laddas om med osparade ändringar — en hel veckas
+  // inmatning ska inte kunna försvinna på ett felklick. (Vecko-byte inom sidan
+  // har redan egen varning nedan.)
+  useEffect(() => {
+    if (!isDirty) return;
+    const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [isDirty]);
+
   // Begär vecko-byte — visar varning om det finns osparade ändringar
   function requestWeekChange(newWeek: number) {
     if (isDirty && visits.length > 0) {
