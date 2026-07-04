@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { customerTypeLabels, customerTypeChartColors } from "@/lib/customerTypes";
 import WeeklyReportList from "./WeeklyReportList";
+import ReportNudge from "./ReportNudge";
 import SalesAnalytics, { type BreakdownItem } from "./SalesAnalytics";
 import SeasonSwitcher from "./SeasonSwitcher";
 import DistrictSwitcher from "./DistrictSwitcher";
@@ -237,6 +238,8 @@ export default async function DashboardPage({
           )}
         </div>
       </div>
+
+      {!isAdmin && selectedDistrictId && <ReportNudge districtId={selectedDistrictId} />}
 
       {stats.weeks.length > 0 && (
         <>
