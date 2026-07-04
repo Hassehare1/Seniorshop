@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { useSession } from "next-auth/react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 const franchiseeNav = [
   { href: "/dashboard", label: "Översikt" },
@@ -73,12 +73,14 @@ function NavLinks({
 
 function SidebarFooter({
   pathname,
+  name,
   email,
   confirmLogout,
   setConfirmLogout,
   onNav,
 }: {
   pathname: string;
+  name?: string | null;
   email?: string | null;
   confirmLogout: boolean;
   setConfirmLogout: (v: boolean) => void;
@@ -86,6 +88,7 @@ function SidebarFooter({
 }) {
   return (
     <div className="px-3 py-4 border-t border-slate-700">
+      {name && <p className="text-slate-200 text-sm font-medium px-3 truncate">{name}</p>}
       <p className="text-slate-400 text-xs px-3 mb-2 truncate">{email}</p>
       <Link
         href="/profil"
@@ -134,8 +137,29 @@ export default function Sidebar() {
   const [open, setOpen] = useState(false);
   const [submittedCount, setSubmittedCount] = useState(0);
   const [confirmLogout, setConfirmLogout] = useState(false);
+  const drawerRef = useRef<HTMLElement>(null);
 
   useEffect(() => { setOpen(false); }, [pathname]);
+
+  // Mobil-drawer: Esc stänger, Tab hålls kvar i menyn (fokus-trap)
+  useEffect(() => {
+    if (!open) return;
+    const focusables = () =>
+      Array.from(drawerRef.current?.querySelectorAll<HTMLElement>("a[href], button:not([disabled])") ?? []);
+    focusables()[0]?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") { setOpen(false); return; }
+      if (e.key !== "Tab") return;
+      const els = focusables();
+      if (els.length === 0) return;
+      const first = els[0];
+      const last = els[els.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open]);
 
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";
@@ -174,6 +198,7 @@ export default function Sidebar() {
         <div className="md:hidden fixed inset-0 z-50 flex print:hidden" onClick={() => setOpen(false)}>
           <div className="absolute inset-0 bg-black/50" />
           <aside
+            ref={drawerRef}
             className="relative w-64 max-w-[80vw] bg-slate-900 flex flex-col h-full shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
@@ -196,6 +221,7 @@ export default function Sidebar() {
             </nav>
             <SidebarFooter
               pathname={pathname}
+              name={session?.user.name}
               email={session?.user.email}
               confirmLogout={confirmLogout}
               setConfirmLogout={setConfirmLogout}
@@ -219,6 +245,7 @@ export default function Sidebar() {
         </nav>
         <SidebarFooter
           pathname={pathname}
+          name={session?.user.name}
           email={session?.user.email}
           confirmLogout={confirmLogout}
           setConfirmLogout={setConfirmLogout}
