@@ -24,7 +24,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
-        const email = credentials.email as string;
+        // Normalisera — så "Anna@X.se " loggar in som "anna@x.se" (DB lagrar gemener)
+        const email = (credentials.email as string).trim().toLowerCase();
 
         // Spärr: för många misslyckade försök senaste 15 min
         const since = new Date(Date.now() - LOGIN_WINDOW_MS);

@@ -10,7 +10,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const { name, email, password, role, districtId } = await req.json();
+  const { name, email: rawEmail, password, role, districtId } = await req.json();
+  const email = typeof rawEmail === "string" ? rawEmail.trim().toLowerCase() : rawEmail;
   if (!email || !password || !role) {
     return NextResponse.json({ error: "Saknade fält" }, { status: 400 });
   }

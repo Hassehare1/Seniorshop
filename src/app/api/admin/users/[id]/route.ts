@@ -12,7 +12,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const { id } = await params;
   const body = await req.json();
-  const { name, email, password, role, districtId, active } = body;
+  const { name, email: rawEmail, password, role, districtId, active } = body;
+  const email = typeof rawEmail === "string" ? rawEmail.trim().toLowerCase() : rawEmail;
 
   // Hämta nuvarande tillstånd för att kunna logga vad som ändrades
   const before = await prisma.user.findUnique({
