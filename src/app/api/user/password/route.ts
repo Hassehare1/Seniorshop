@@ -20,5 +20,15 @@ export async function PATCH(req: NextRequest) {
   const passwordHash = await bcrypt.hash(newPassword, 12);
   await prisma.user.update({ where: { id: user.id }, data: { passwordHash } });
 
+  await prisma.auditLog.create({
+    data: {
+      action: "LÖSENORD_BYTT",
+      entity: "User",
+      entityId: user.id,
+      userId: user.id,
+      userEmail: user.email,
+    },
+  });
+
   return NextResponse.json({ ok: true });
 }
