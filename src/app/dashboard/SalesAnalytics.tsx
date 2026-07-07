@@ -34,7 +34,31 @@ interface Props {
 }
 
 const BLUE = "#1d4ed8";
-const formatK = (v: number) => (v >= 1000 ? `${Math.round(v / 1000)}k` : `${v}`);
+
+// Axelformat på svenska: 1 500 000 → "1,5 mkr", 150 000 → "150 tkr"
+const formatAxis = (v: number) => {
+  if (v >= 1_000_000) return `${(v / 1_000_000).toLocaleString("sv-SE", { maximumFractionDigits: 1 })} mkr`;
+  if (v >= 1000) return `${(v / 1000).toLocaleString("sv-SE", { maximumFractionDigits: 1 })} tkr`;
+  return String(Math.round(v));
+};
+
+// Snyggt axelmax (1/2/2,5/5 × 10^n) med jämna ticks — annars ger recharts
+// udda steg som "0 / 85k / 170k" direkt ur datamaxet
+function niceScale(dataMax: number): { max: number; ticks: number[] } {
+  if (dataMax <= 0) return { max: 4, ticks: [0, 1, 2, 3, 4] };
+  const raw = dataMax / 4;
+  const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const norm = raw / mag;
+  const step = (norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 2.5 ? 2.5 : norm <= 5 ? 5 : 10) * mag;
+  const max = Math.ceil(dataMax / step) * step;
+  const ticks: number[] = [];
+  for (let t = 0; t <= max + step / 2; t += step) ticks.push(t);
+  return { max, ticks };
+}
+
+// Y-axelbredd anpassad till bredaste tick-etiketten (annars klipps "1,5 mkr")
+const axisWidth = (ticks: number[]) =>
+  Math.ceil(Math.max(...ticks.map(t => formatAxis(t).length)) * 6.5) + 10;
 
 export default function SalesAnalytics({ weeks, breakdown, breakdownTitle, filterNoun, colorMode = "category", showMf = false }: Props) {
   const [selected, setSelected] = useState<string | null>(null);
@@ -74,6 +98,11 @@ export default function SalesAnalytics({ weeks, breakdown, breakdownTitle, filte
       .sort((a, b) => b.sales - a.sales),
     [breakdown]
   );
+
+  // Snygga, jämna axelskalor per diagram
+  const trendScale = useMemo(() => niceScale(Math.max(0, ...weeklyData.map(d => d.accumulated))), [weeklyData]);
+  const weeklyScale = useMemo(() => niceScale(Math.max(0, ...weeklyData.map(d => d.sales))), [weeklyData]);
+  const breakdownScale = useMemo(() => niceScale(Math.max(0, ...chartData.map(d => d.sales))), [chartData]);
 
   // Färgsättning: "category" = fasta typfärger, "scale" = blå gradient efter rang
   const scaleBlue = ["#1e3a8a", "#1d4ed8", "#2563eb", "#3b82f6", "#60a5fa", "#93c5fd"];
@@ -160,10 +189,10 @@ export default function SalesAnalytics({ weeks, breakdown, breakdownTitle, filte
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-            <XAxis dataKey="week" tickFormatter={(v) => `v${v}`} tick={{ fontSize: 11, fill: "#94a3b8" }} />
-            <YAxis tickFormatter={formatK} tick={{ fontSize: 11, fill: "#94a3b8" }} width={40} />
+            <XAxis dataKey="week" tickFormatter={(v) => `v${v}`} tick={{ fontSize: 11, fill: "#94a3b8" }} tickLine={false} axisLine={false} tickMargin={6} />
+            <YAxis tickFormatter={formatAxis} tick={{ fontSize: 11, fill: "#94a3b8" }} tickLine={false} axisLine={false} domain={[0, trendScale.max]} ticks={trendScale.ticks} width={axisWidth(trendScale.ticks)} />
             <Tooltip contentStyle={tipStyle} labelFormatter={weekLabel} formatter={(value) => [formatSEK(Number(value)), "Ackumulerat"]} />
-            <Area type="monotone" dataKey="accumulated" stroke={color} strokeWidth={2.5} fill="url(#gradAcc)" dot={false} activeDot={{ r: 4, fill: color }} />
+            <Area type="monotone" dataKey="accumulated" stroke={color} strokeWidth={2} fill="url(#gradAcc)" dot={false} activeDot={{ r: 4, fill: color }} />
           </AreaChart>
         </ResponsiveContainer>
       </div>
@@ -175,10 +204,10 @@ export default function SalesAnalytics({ weeks, breakdown, breakdownTitle, filte
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={weeklyData} margin={{ top: 4, right: 8, left: 8, bottom: 4 }} barCategoryGap="25%">
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-              <XAxis dataKey="week" tickFormatter={(v) => `v${v}`} tick={{ fontSize: 10, fill: "#94a3b8" }} />
-              <YAxis tickFormatter={formatK} tick={{ fontSize: 10, fill: "#94a3b8" }} width={36} />
+              <XAxis dataKey="week" tickFormatter={(v) => `v${v}`} tick={{ fontSize: 10, fill: "#94a3b8" }} tickLine={false} axisLine={false} tickMargin={6} />
+              <YAxis tickFormatter={formatAxis} tick={{ fontSize: 10, fill: "#94a3b8" }} tickLine={false} axisLine={false} domain={[0, weeklyScale.max]} ticks={weeklyScale.ticks} width={axisWidth(weeklyScale.ticks)} />
               <Tooltip contentStyle={tipStyle} labelFormatter={weekLabel} cursor={{ fill: "#f8fafc" }} formatter={(value) => [formatSEK(Number(value)), "Försäljning"]} />
-              <Bar dataKey="sales" fill={color} radius={[3, 3, 0, 0]} maxBarSize={28} />
+              <Bar dataKey="sales" fill={color} radius={[4, 4, 0, 0]} maxBarSize={28} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -199,10 +228,10 @@ export default function SalesAnalytics({ weeks, breakdown, breakdownTitle, filte
               style={{ cursor: "pointer" }}
             >
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
-              <XAxis type="number" tickFormatter={formatK} tick={{ fontSize: 10, fill: "#94a3b8" }} />
-              <YAxis type="category" dataKey="label" width={labelWidth} tick={{ fontSize: 11, fill: "#64748b" }} />
+              <XAxis type="number" tickFormatter={formatAxis} tick={{ fontSize: 10, fill: "#94a3b8" }} tickLine={false} axisLine={false} domain={[0, breakdownScale.max]} ticks={breakdownScale.ticks} />
+              <YAxis type="category" dataKey="label" width={labelWidth} tick={{ fontSize: 11, fill: "#64748b" }} tickLine={false} axisLine={false} />
               <Tooltip cursor={{ fill: "#f8fafc" }} contentStyle={tipStyle} formatter={(value) => [formatSEK(Number(value)), "Försäljning"]} />
-              <Bar dataKey="sales" radius={[0, 3, 3, 0]} maxBarSize={36}>
+              <Bar dataKey="sales" radius={[0, 4, 4, 0]} maxBarSize={36}>
                 {chartData.map((d, i) => (
                   <Cell
                     key={d.key}

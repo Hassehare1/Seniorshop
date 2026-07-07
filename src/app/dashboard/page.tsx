@@ -82,7 +82,9 @@ export default async function DashboardPage({
       orderBy: { week: "asc" },
     });
 
-    stats.weeks = reports.map(r => r.week);
+    // Unika veckor — flera distrikt kan rapportera samma vecka (en rapport per
+    // distrikt × vecka); utan dedup dubbleras x-axeln och staplarna splittras
+    stats.weeks = [...new Set(reports.map(r => r.week))].sort((a, b) => a - b);
     stats.reports = reports.map(r => ({
       id: r.id,
       week: r.week,
