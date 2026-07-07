@@ -249,6 +249,7 @@ export default async function DashboardPage({
             breakdownTitle={breakdownTitle}
             filterNoun={filterNoun}
             colorMode={colorMode}
+            showMf={isAdmin}
           />
           {stats.reports.length > 0 && (
             <div className="mt-6">
@@ -257,6 +258,7 @@ export default async function DashboardPage({
                 seasonId={currentSeason?.id ?? ""}
                 showEditLink={!isAdmin}
                 showDistrict={showDistrictBreakdown}
+                showMf={isAdmin}
               />
             </div>
           )}

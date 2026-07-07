@@ -30,12 +30,13 @@ interface Props {
   breakdownTitle: string; // t.ex. "Försäljning per kundtyp"
   filterNoun: string;     // t.ex. "kundtyp" eller "distrikt"
   colorMode?: "category" | "scale"; // fasta kategorifärger eller blå gradient efter rang
+  showMf?: boolean;       // MF-avgiften visas bara för admin
 }
 
 const BLUE = "#1d4ed8";
 const formatK = (v: number) => (v >= 1000 ? `${Math.round(v / 1000)}k` : `${v}`);
 
-export default function SalesAnalytics({ weeks, breakdown, breakdownTitle, filterNoun, colorMode = "category" }: Props) {
+export default function SalesAnalytics({ weeks, breakdown, breakdownTitle, filterNoun, colorMode = "category", showMf = false }: Props) {
   const [selected, setSelected] = useState<string | null>(null);
 
   const selectedItem = selected ? breakdown.find(b => b.key === selected) ?? null : null;
@@ -122,10 +123,10 @@ export default function SalesAnalytics({ weeks, breakdown, breakdownTitle, filte
       {/* Ekonomi */}
       <div>
         <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-2">Ekonomi{tag}</p>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+        <div className={`grid grid-cols-2 ${showMf ? "md:grid-cols-4" : "md:grid-cols-3"} gap-3 md:gap-4`}>
           <StatCard label="Total försäljning" value={formatSEK(agg.sales)} sub="ink. moms" />
           <StatCard label="FT-avgift" value={formatSEK(agg.ftFee)} sub="ex. moms" />
-          <StatCard label="MF-avgift" value={formatSEK(agg.mfFee)} sub="ex. moms" />
+          {showMf && <StatCard label="MF-avgift" value={formatSEK(agg.mfFee)} sub="ex. moms" />}
           <StatCard
             label={selected ? "Veckor med försäljning" : "Rapporterade veckor"}
             value={String(agg.reportedWeeks)}

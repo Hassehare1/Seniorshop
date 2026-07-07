@@ -23,9 +23,10 @@ interface Props {
   seasonId: string;
   showEditLink?: boolean;
   showDistrict?: boolean;
+  showMf?: boolean; // MF-avgiften visas bara för admin
 }
 
-export default function WeeklyReportList({ reports, seasonId, showEditLink, showDistrict }: Props) {
+export default function WeeklyReportList({ reports, seasonId, showEditLink, showDistrict, showMf = false }: Props) {
   const [open, setOpen] = useState<Set<string>>(new Set());
 
   function toggle(id: string) {
@@ -152,7 +153,7 @@ export default function WeeklyReportList({ reports, seasonId, showEditLink, show
                           <th className="text-right pb-2 font-semibold">Kunder</th>
                           <th className="text-right pb-2 font-semibold">Försäljning</th>
                           <th className="text-right pb-2 font-semibold">FT-avg</th>
-                          <th className="text-right pb-2 font-semibold">MF-avg</th>
+                          {showMf && <th className="text-right pb-2 font-semibold">MF-avg</th>}
                           <th className="text-right pb-2 font-semibold">Att betala</th>
                           <th className="text-left pb-2 font-semibold pl-4">Kommentar</th>
                         </tr>
@@ -169,7 +170,7 @@ export default function WeeklyReportList({ reports, seasonId, showEditLink, show
                             <td className="py-2 text-right">{v.numberOfCustomers}</td>
                             <td className="py-2 text-right">{fmt(v.sales)}</td>
                             <td className="py-2 text-right text-slate-500">{fmt(v.ftFee)}</td>
-                            <td className="py-2 text-right text-slate-500">{fmt(v.mfFee)}</td>
+                            {showMf && <td className="py-2 text-right text-slate-500">{fmt(v.mfFee)}</td>}
                             <td className="py-2 text-right font-medium">{fmt(v.totalToPay)}</td>
                             <td className="py-2 pl-4 text-slate-400 text-xs">{v.comment ?? "–"}</td>
                           </tr>
@@ -179,7 +180,7 @@ export default function WeeklyReportList({ reports, seasonId, showEditLink, show
                         <tr className="border-t border-slate-300 font-semibold text-slate-800">
                           <td colSpan={3} className="pt-2">Summa vecka {r.week}</td>
                           <td className="pt-2 text-right">{fmt(r.totalSales)}</td>
-                          <td colSpan={2} className="pt-2"></td>
+                          <td colSpan={showMf ? 2 : 1} className="pt-2"></td>
                           <td className="pt-2 text-right text-blue-700">{fmt(r.totalToPay)}</td>
                           <td></td>
                         </tr>

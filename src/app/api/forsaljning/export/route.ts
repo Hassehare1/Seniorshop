@@ -106,7 +106,7 @@ export async function GET(req: NextRequest) {
     ...(isAdmin ? ["Distrikt"] : []),
     "Kund", "Typ", "Antal kunder", "Försäljning ink. moms",
     "Modevisning", "Visning på galge",
-    "FT-avgift ex moms", "MF-avgift ex moms", "Att betala", "Status", "Kommentar",
+    "FT-avgift ex moms", ...(isAdmin ? ["MF-avgift ex moms"] : []), "Att betala", "Status", "Kommentar",
   ];
 
   const dataRows = rows.map(r => [
@@ -119,7 +119,7 @@ export async function GET(req: NextRequest) {
     r.isFashionShow ? "Ja" : "Nej",
     r.isHangerShow ? "Ja" : "Nej",
     fmt(r.ftFee),
-    fmt(r.mfFee),
+    ...(isAdmin ? [fmt(r.mfFee)] : []),
     fmt(r.totalToPay),
     statusLabels[r.status] ?? r.status,
     r.comment ?? "",
@@ -134,7 +134,7 @@ export async function GET(req: NextRequest) {
     fmt(rows.reduce((s, r) => s + r.sales, 0)),
     "", "",
     fmt(rows.reduce((s, r) => s + r.ftFee, 0)),
-    fmt(rows.reduce((s, r) => s + r.mfFee, 0)),
+    ...(isAdmin ? [fmt(rows.reduce((s, r) => s + r.mfFee, 0))] : []),
     fmt(rows.reduce((s, r) => s + r.totalToPay, 0)),
     "", "",
   ];

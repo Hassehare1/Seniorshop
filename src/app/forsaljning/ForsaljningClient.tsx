@@ -226,7 +226,7 @@ export default function ForsaljningClient({ rows, isAdmin, defaultYear, defaultS
         <span className="text-sm text-blue-800">Försäljning <strong>{formatSEK(sums.sales)}</strong></span>
         <span className="text-sm text-blue-800">Antal <strong>{sums.numberOfCustomers}</strong></span>
         <span className="text-sm text-blue-800">FT-avgift <strong>{formatSEK(sums.ftFee)}</strong></span>
-        <span className="text-sm text-blue-800">MF-avgift <strong>{formatSEK(sums.mfFee)}</strong></span>
+        {isAdmin && <span className="text-sm text-blue-800">MF-avgift <strong>{formatSEK(sums.mfFee)}</strong></span>}
         <span className="text-sm text-blue-800">Att betala <strong>{formatSEK(sums.totalToPay)}</strong></span>
       </div>
 
@@ -244,7 +244,7 @@ export default function ForsaljningClient({ rows, isAdmin, defaultYear, defaultS
                 <th className={`${th} text-right`} onClick={() => toggleSort("sales")}>Försäljning{arrow("sales")}</th>
                 <th className="text-left px-3 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap">Visning</th>
                 <th className="text-right px-3 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap">FT-avgift</th>
-                <th className="text-right px-3 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap">MF-avgift</th>
+                {isAdmin && <th className="text-right px-3 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap">MF-avgift</th>}
                 <th className={`${th} text-right`} onClick={() => toggleSort("totalToPay")}>Att betala{arrow("totalToPay")}</th>
                 <th className={th} onClick={() => toggleSort("status")}>Status{arrow("status")}</th>
               </tr>
@@ -265,14 +265,14 @@ export default function ForsaljningClient({ rows, isAdmin, defaultYear, defaultS
                     {!r.isFashionShow && !r.isHangerShow && "–"}
                   </td>
                   <td className="px-3 py-2.5 text-right text-slate-500">{formatSEK(r.ftFee)}</td>
-                  <td className="px-3 py-2.5 text-right text-slate-500">{formatSEK(r.mfFee)}</td>
+                  {isAdmin && <td className="px-3 py-2.5 text-right text-slate-500">{formatSEK(r.mfFee)}</td>}
                   <td className="px-3 py-2.5 text-right font-medium">{formatSEK(r.totalToPay)}</td>
                   <td className="px-3 py-2.5"><span className={`text-xs font-medium ${statusClasses[r.status] ?? "text-slate-500"}`}>{statusLabels[r.status] ?? r.status}</span></td>
                 </tr>
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={isAdmin ? 11 : 10} className="px-4 py-10 text-center text-slate-400">
+                  <td colSpan={isAdmin ? 11 : 9} className="px-4 py-10 text-center text-slate-400">
                     {rows.length === 0 ? "Inga försäljningar rapporterade än." : "Inga rader matchar filtret."}
                   </td>
                 </tr>

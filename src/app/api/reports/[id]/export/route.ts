@@ -30,6 +30,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const fmt = (n: number) =>
     new Intl.NumberFormat("sv-SE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
 
+  // MF-avgiften visas bara för admin — FT:s export får inte kolumnen
+  const showMf = session.user.role === "ADMIN";
+
   const rows = report.visits.map((v) => ({
     Kund: v.customer.name,
     Typ: v.customer.type,
@@ -39,7 +42,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     "Modevisning försäljning": v.isFashionShow ? fmt(v.fashionShowSales) : "",
     "Visning på galge": v.isHangerShow ? "Ja" : "Nej",
     "FT-avgift ex moms": fmt(v.ftFee),
-    "MF-avgift ex moms": fmt(v.mfFee),
+    ...(showMf && { "MF-avgift ex moms": fmt(v.mfFee) }),
     "Totalt att betala": fmt(v.totalToPay),
     Kommentar: v.comment ?? "",
   }));
@@ -53,7 +56,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     "Modevisning försäljning": "",
     "Visning på galge": "",
     "FT-avgift ex moms": fmt(report.visits.reduce((s, v) => s + v.ftFee, 0)),
-    "MF-avgift ex moms": fmt(report.visits.reduce((s, v) => s + v.mfFee, 0)),
+    ...(showMf && { "MF-avgift ex moms": fmt(report.visits.reduce((s, v) => s + v.mfFee, 0)) }),
     "Totalt att betala": fmt(report.visits.reduce((s, v) => s + v.totalToPay, 0)),
     Kommentar: "",
   };
@@ -63,7 +66,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   ws["!cols"] = [
     { wch: 30 }, { wch: 14 }, { wch: 14 }, { wch: 24 },
-    { wch: 12 }, { wch: 24 }, { wch: 16 }, { wch: 20 }, { wch: 20 }, { wch: 20 }, { wch: 30 },
+    { wch: 12 }, { wch: 24 }, { wch: 16 }, { wch: 20 },
+    ...(showMf ? [{ wch: 20 }] : []), { wch: 20 }, { wch: 30 },
   ];
 
   XLSX.utils.book_append_sheet(wb, ws, `Vecka ${report.week}`);
