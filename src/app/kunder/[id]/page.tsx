@@ -5,6 +5,7 @@ import Link from "next/link";
 import { formatSEK } from "@/lib/fees";
 import { customerTypeLabels, customerTypeColors } from "@/lib/customerTypes";
 import PrintButton from "./PrintButton";
+import ContactCard from "./ContactCard";
 
 export default async function CustomerCardPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -48,9 +49,6 @@ export default async function CustomerCardPage({ params }: { params: Promise<{ i
     ? new Intl.DateTimeFormat("sv-SE", { year: "numeric", month: "short", day: "numeric" }).format(latest.createdAt)
     : null;
 
-  // Klickbara kontaktlänkar — rensa telefonnumret men visa originalformatet
-  const telHref = customer.phone ? `tel:${customer.phone.replace(/[^\d+]/g, "")}` : null;
-  const mailHref = customer.email ? `mailto:${customer.email}` : null;
   const backHref = isAdmin ? "/admin/kunder" : "/kunder";
 
   return (
@@ -85,37 +83,19 @@ export default async function CustomerCardPage({ params }: { params: Promise<{ i
         </div>
       </div>
 
-      {/* Kontaktuppgifter */}
-      <div className="bg-white rounded-xl border border-slate-200 p-5 md:p-6">
-        <h2 className="text-sm font-semibold text-slate-700 mb-4">Kontaktuppgifter</h2>
-        <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
-          <Field label="Kontaktperson">
-            {customer.contactPerson ?? "–"}
-            {customer.contactRole && <span className="text-slate-400"> · {customer.contactRole}</span>}
-          </Field>
-          <Field label="Telefon">
-            {telHref
-              ? <a href={telHref} className="text-blue-600 hover:text-blue-800 font-medium">{customer.phone}</a>
-              : "–"}
-          </Field>
-          <Field label="E-post">
-            {mailHref
-              ? <a href={mailHref} className="text-blue-600 hover:text-blue-800 font-medium break-all">{customer.email}</a>
-              : "–"}
-          </Field>
-          <Field label="Storlek">
-            {customer.size != null ? `${customer.size} boende/medlemmar` : "–"}
-          </Field>
-          <div className="sm:col-span-2">
-            <Field label="Adress">{customer.address ?? "–"}</Field>
-          </div>
-          {customer.notes && (
-            <div className="sm:col-span-2">
-              <Field label="Kommentar">{customer.notes}</Field>
-            </div>
-          )}
-        </dl>
-      </div>
+      {/* Kontaktuppgifter — redigerbara inline (FT + admin på egna kunder) */}
+      <ContactCard
+        customerId={customer.id}
+        initial={{
+          contactPerson: customer.contactPerson ?? "",
+          contactRole: customer.contactRole ?? "",
+          phone: customer.phone ?? "",
+          email: customer.email ?? "",
+          size: customer.size != null ? String(customer.size) : "",
+          address: customer.address ?? "",
+          notes: customer.notes ?? "",
+        }}
+      />
 
       {/* Försäljning & nyckeltal */}
       <div className="bg-white rounded-xl border border-slate-200 p-5 md:p-6">
@@ -149,15 +129,6 @@ export default async function CustomerCardPage({ params }: { params: Promise<{ i
           <Stat label="Kvar att sälja" value="– kr" sub="till mål" />
         </div>
       </div>
-    </div>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <dt className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-0.5">{label}</dt>
-      <dd className="text-sm text-slate-700">{children}</dd>
     </div>
   );
 }
