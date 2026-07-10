@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { customerTypeLabels, customerTypeChartColors } from "@/lib/customerTypes";
 import WeeklyReportList from "./WeeklyReportList";
 import ReportNudge from "./ReportNudge";
+import GoalTracker from "./GoalTracker";
 import SalesAnalytics, { type BreakdownItem } from "./SalesAnalytics";
 import SeasonSwitcher from "./SeasonSwitcher";
 import DistrictSwitcher from "./DistrictSwitcher";
@@ -168,6 +169,23 @@ export default async function DashboardPage({
     ? `${currentSeason.type === "VAR" ? "Vår" : "Höst"} ${currentSeason.year}`
     : "–";
 
+  // Mål och uppföljning per FT (valt distrikt × säsong). Visas för FT alltid,
+  // för admin bara när ett specifikt distrikt är valt (mål sätts per FT).
+  const showGoals = !!(selectedDistrictId && currentSeason);
+  const seasonGoal = showGoals
+    ? await prisma.seasonGoal.findUnique({
+        where: { districtId_seasonId: { districtId: selectedDistrictId!, seasonId: currentSeason!.id } },
+      })
+    : null;
+  const actualSales = stats.byType.reduce((s, t) => s + t.sales, 0);
+  const actualVisits = stats.byType.reduce((s, t) => s + t.besok, 0);
+  const goalActuals = {
+    sales: actualSales,
+    visits: actualVisits,
+    avgPerVisit: actualVisits > 0 ? actualSales / actualVisits : 0,
+    fashionShows: stats.byType.reduce((s, t) => s + t.fashionShows, 0),
+  };
+
   // Bryt ned analysen per kundtyp …
   const typeBreakdown: BreakdownItem[] = stats.byType.map(t => ({
     key: t.type,
@@ -240,6 +258,22 @@ export default async function DashboardPage({
           )}
         </div>
       </div>
+
+      {showGoals && selectedDistrictId && currentSeason && (
+        <GoalTracker
+          districtId={selectedDistrictId}
+          seasonId={currentSeason.id}
+          seasonLabel={seasonLabel}
+          initialGoal={seasonGoal ? {
+            salesTarget: seasonGoal.salesTarget,
+            visitsTarget: seasonGoal.visitsTarget,
+            avgPerVisitTarget: seasonGoal.avgPerVisitTarget,
+            fashionShowsTarget: seasonGoal.fashionShowsTarget,
+          } : null}
+          actuals={goalActuals}
+          canEdit
+        />
+      )}
 
       {!isAdmin && selectedDistrictId && <ReportNudge districtId={selectedDistrictId} />}
 

@@ -63,6 +63,7 @@ model District {
   customers Customer[]
   reports   WeeklyReport[]
   feeConfig FeeConfig?
+  goals     SeasonGoal[]
   createdAt DateTime       @default(now())
   updatedAt DateTime       @updatedAt
 }
@@ -109,8 +110,28 @@ model Season {
   weekStart Int
   weekEnd   Int
   reports   WeeklyReport[]
+  goals     SeasonGoal[]
 
   @@unique([type, year])
+}
+
+// FT:s egna mål per säsong (manuell input), avräknas mot utfallet på Översikt.
+// Ett mål per distrikt × säsong. Snitt/besök är ett eget kvalitetsmål, ej uträknat.
+model SeasonGoal {
+  id                 String   @id @default(cuid())
+  districtId         String
+  district           District @relation(fields: [districtId], references: [id])
+  seasonId           String
+  season             Season   @relation(fields: [seasonId], references: [id])
+  salesTarget        Float    @default(0)
+  visitsTarget       Int      @default(0)
+  avgPerVisitTarget  Float    @default(0)
+  fashionShowsTarget Int      @default(0)
+  updatedBy          String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@unique([districtId, seasonId])
 }
 
 model WeeklyReport {
