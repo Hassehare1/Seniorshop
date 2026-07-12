@@ -113,6 +113,9 @@ export default function ForsaljningClient({ rows, isAdmin, defaultYear, defaultS
     { numberOfCustomers: 0, sales: 0, ftFee: 0, mfFee: 0, totalToPay: 0 }
   ), [filtered]);
 
+  // Rubrik för summabanden + kopiera-texten: aktiva filter + antal rader
+  const summaryCaption = `${filterText()} · ${filtered.length} ${filtered.length === 1 ? "rad" : "rader"}`;
+
   function toggleSort(key: SortKey) {
     if (sortKey === key) setSortDir(d => (d === "asc" ? "desc" : "asc"));
     else { setSortKey(key); setSortDir(key === "sales" || key === "totalToPay" || key === "numberOfCustomers" ? "desc" : "asc"); }
@@ -144,9 +147,10 @@ export default function ForsaljningClient({ rows, isAdmin, defaultYear, defaultS
 
   async function copySummary() {
     const text =
-      `Försäljning · ${filterText()} — ` +
-      `${filtered.length} besök, ${sums.numberOfCustomers} seniorer, ` +
-      `${formatSEK(sums.sales)} försäljning, att betala ${formatSEK(sums.totalToPay)}`;
+      `${summaryCaption}\n` +
+      `Försäljning ${formatSEK(sums.sales)} · Antal ${sums.numberOfCustomers} · ` +
+      `FT-avgift ${formatSEK(sums.ftFee)}${isAdmin ? ` · MF-avgift ${formatSEK(sums.mfFee)}` : ""} · ` +
+      `Att betala ${formatSEK(sums.totalToPay)}`;
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
@@ -218,17 +222,8 @@ export default function ForsaljningClient({ rows, isAdmin, defaultYear, defaultS
         </button>
       </div>
 
-      {/* Topp-summa — eget band, tydligt skilt från tabellen */}
-      <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 flex flex-wrap items-center gap-x-6 gap-y-1">
-        <span className="text-xs font-semibold text-blue-700 uppercase tracking-wide">
-          Summa{isAdmin && district === "all" ? " · alla distrikt" : ""} · {filtered.length} rader
-        </span>
-        <span className="text-sm text-blue-800">Försäljning <strong>{formatSEK(sums.sales)}</strong></span>
-        <span className="text-sm text-blue-800">Antal <strong>{sums.numberOfCustomers}</strong></span>
-        <span className="text-sm text-blue-800">FT-avgift <strong>{formatSEK(sums.ftFee)}</strong></span>
-        {isAdmin && <span className="text-sm text-blue-800">MF-avgift <strong>{formatSEK(sums.mfFee)}</strong></span>}
-        <span className="text-sm text-blue-800">Att betala <strong>{formatSEK(sums.totalToPay)}</strong></span>
-      </div>
+      {/* Topp-summa — filterrubrik + siffror, tydligt skilt från tabellen */}
+      <SummaryBand caption={summaryCaption} sums={sums} isAdmin={isAdmin} />
 
       {/* Tabell */}
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
@@ -280,6 +275,26 @@ export default function ForsaljningClient({ rows, isAdmin, defaultYear, defaultS
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* Botten-summa — samma band igen, så totalen syns efter scroll i långa listor */}
+      {filtered.length > 0 && <SummaryBand caption={summaryCaption} sums={sums} isAdmin={isAdmin} />}
+    </div>
+  );
+}
+
+type Sums = { numberOfCustomers: number; sales: number; ftFee: number; mfFee: number; totalToPay: number };
+
+function SummaryBand({ caption, sums, isAdmin }: { caption: string; sums: Sums; isAdmin: boolean }) {
+  return (
+    <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
+      <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-1.5">{caption}</p>
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-1">
+        <span className="text-sm text-blue-800">Försäljning <strong>{formatSEK(sums.sales)}</strong></span>
+        <span className="text-sm text-blue-800">Antal <strong>{sums.numberOfCustomers}</strong></span>
+        <span className="text-sm text-blue-800">FT-avgift <strong>{formatSEK(sums.ftFee)}</strong></span>
+        {isAdmin && <span className="text-sm text-blue-800">MF-avgift <strong>{formatSEK(sums.mfFee)}</strong></span>}
+        <span className="text-sm text-blue-800">Att betala <strong>{formatSEK(sums.totalToPay)}</strong></span>
       </div>
     </div>
   );
