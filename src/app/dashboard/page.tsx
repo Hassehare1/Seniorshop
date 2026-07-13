@@ -4,6 +4,7 @@ import { customerTypeLabels, customerTypeChartColors } from "@/lib/customerTypes
 import WeeklyReportList from "./WeeklyReportList";
 import ReportNudge from "./ReportNudge";
 import GoalTracker from "./GoalTracker";
+import GoalOverview from "./GoalOverview";
 import SalesAnalytics, { type BreakdownItem } from "./SalesAnalytics";
 import SeasonSwitcher from "./SeasonSwitcher";
 import DistrictSwitcher from "./DistrictSwitcher";
@@ -186,6 +187,37 @@ export default async function DashboardPage({
     fashionShows: stats.byType.reduce((s, t) => s + t.fashionShows, 0),
   };
 
+  // Samlad mål-översikt för admin i alla-distrikt-vyn: alla FT:ers mål vs utfall.
+  const showGoalOverview = isAdmin && !selectedDistrictId && !!currentSeason;
+  let goalOverview: {
+    districtId: string;
+    label: string;
+    number: number;
+    goal: { salesTarget: number; visitsTarget: number; avgPerVisitTarget: number; fashionShowsTarget: number };
+    actual: { sales: number; visits: number; avgPerVisit: number; fashionShows: number };
+  }[] = [];
+  if (showGoalOverview) {
+    const goals = await prisma.seasonGoal.findMany({
+      where: { seasonId: currentSeason!.id },
+      include: { district: { select: { number: true, name: true } } },
+    });
+    const actualByDistrict = new Map(stats.byDistrict.map(d => [d.id, d]));
+    goalOverview = goals
+      .map(g => {
+        const a = actualByDistrict.get(g.districtId);
+        const sales = a?.sales ?? 0;
+        const visits = a?.besok ?? 0;
+        return {
+          districtId: g.districtId,
+          label: `D${g.district.number} – ${g.district.name}`,
+          number: g.district.number,
+          goal: { salesTarget: g.salesTarget, visitsTarget: g.visitsTarget, avgPerVisitTarget: g.avgPerVisitTarget, fashionShowsTarget: g.fashionShowsTarget },
+          actual: { sales, visits, avgPerVisit: visits > 0 ? sales / visits : 0, fashionShows: a?.fashionShows ?? 0 },
+        };
+      })
+      .sort((x, y) => x.number - y.number);
+  }
+
   // År-mot-år: motsvarande fjolårssäsong (samma typ, året innan) för samma urval.
   const prevSeasonRec = currentSeason
     ? allSeasons.find(s => s.type === currentSeason.type && s.year === currentSeason.year - 1)
@@ -296,6 +328,10 @@ export default async function DashboardPage({
           actuals={goalActuals}
           canEdit
         />
+      )}
+
+      {showGoalOverview && goalOverview.length > 0 && (
+        <GoalOverview rows={goalOverview} seasonLabel={seasonLabel} />
       )}
 
       {!isAdmin && selectedDistrictId && <ReportNudge districtId={selectedDistrictId} />}
