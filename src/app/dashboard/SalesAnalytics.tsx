@@ -30,7 +30,8 @@ interface Props {
   breakdownTitle: string; // t.ex. "Försäljning per kundtyp"
   filterNoun: string;     // t.ex. "kundtyp" eller "distrikt"
   colorMode?: "category" | "scale"; // fasta kategorifärger eller blå gradient efter rang
-  showMf?: boolean;       // MF-avgiften visas bara för admin
+  showMf?: boolean;       // admin: visa avgifter (FT + MF). FT ser bara "Att betala".
+  hideGoalMetrics?: boolean; // dölj nyckeltal som målkorten redan visar (försäljning, besök, snitt/besök, modevisningar)
 }
 
 const BLUE = "#1d4ed8";
@@ -60,7 +61,7 @@ function niceScale(dataMax: number): { max: number; ticks: number[] } {
 const axisWidth = (ticks: number[]) =>
   Math.ceil(Math.max(...ticks.map(t => formatAxis(t).length)) * 6.5) + 10;
 
-export default function SalesAnalytics({ weeks, breakdown, breakdownTitle, filterNoun, colorMode = "category", showMf = false }: Props) {
+export default function SalesAnalytics({ weeks, breakdown, breakdownTitle, filterNoun, colorMode = "category", showMf = false, hideGoalMetrics = false }: Props) {
   const [selected, setSelected] = useState<string | null>(null);
 
   const selectedItem = selected ? breakdown.find(b => b.key === selected) ?? null : null;
@@ -149,32 +150,52 @@ export default function SalesAnalytics({ weeks, breakdown, breakdownTitle, filte
         </div>
       )}
 
-      {/* Ekonomi */}
-      <div>
-        <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-2">Ekonomi{tag}</p>
-        <div className={`grid grid-cols-2 ${showMf ? "md:grid-cols-4" : "md:grid-cols-3"} gap-3 md:gap-4`}>
-          <StatCard label="Total försäljning" value={formatSEK(agg.sales)} sub="ink. moms" />
-          <StatCard label="FT-avgift" value={formatSEK(agg.ftFee)} sub="ex. moms" />
-          {showMf && <StatCard label="MF-avgift" value={formatSEK(agg.mfFee)} sub="ex. moms" />}
-          <StatCard
-            label={selected ? "Veckor med försäljning" : "Rapporterade veckor"}
-            value={String(agg.reportedWeeks)}
-            sub={`${agg.customers} seniorer besökta`}
-          />
+      {hideGoalMetrics ? (
+        /* Kompletterande nyckeltal — det målkorten INTE redan visar (utan dubletter) */
+        <div>
+          <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-2">Ekonomi &amp; aktivitet{tag}</p>
+          <div className={`grid grid-cols-2 ${showMf ? "md:grid-cols-4 lg:grid-cols-5" : "md:grid-cols-3"} gap-3 md:gap-4`}>
+            {showMf && <StatCard label="FT-avgift" value={formatSEK(agg.ftFee)} sub="ex. moms" />}
+            {showMf && <StatCard label="MF-avgift" value={formatSEK(agg.mfFee)} sub="ex. moms" />}
+            <StatCard label="Snittkvitto" value={fmtAvg(agg.sales, agg.customers)} sub="per kund" />
+            <StatCard
+              label={selected ? "Veckor med försäljning" : "Rapporterade veckor"}
+              value={String(agg.reportedWeeks)}
+              sub={`${agg.customers} seniorer besökta`}
+            />
+            <StatCard label="Galgvisningar" value={String(agg.hangerShows)} sub="av besöken" />
+          </div>
         </div>
-      </div>
+      ) : (
+        <>
+          {/* Ekonomi */}
+          <div>
+            <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-2">Ekonomi{tag}</p>
+            <div className={`grid grid-cols-2 ${showMf ? "md:grid-cols-4" : "md:grid-cols-2"} gap-3 md:gap-4`}>
+              <StatCard label="Total försäljning" value={formatSEK(agg.sales)} sub="ink. moms" />
+              {showMf && <StatCard label="FT-avgift" value={formatSEK(agg.ftFee)} sub="ex. moms" />}
+              {showMf && <StatCard label="MF-avgift" value={formatSEK(agg.mfFee)} sub="ex. moms" />}
+              <StatCard
+                label={selected ? "Veckor med försäljning" : "Rapporterade veckor"}
+                value={String(agg.reportedWeeks)}
+                sub={`${agg.customers} seniorer besökta`}
+              />
+            </div>
+          </div>
 
-      {/* Snitt & aktivitet */}
-      <div>
-        <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-2">Snitt &amp; aktivitet{tag}</p>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-2 md:gap-3">
-          <StatCard compact label="Snittkvitto" value={fmtAvg(agg.sales, agg.customers)} sub="per kund" />
-          <StatCard compact label="Snitt / besök" value={fmtAvg(agg.sales, agg.besok)} sub="per besök" />
-          <StatCard compact label="Antal besök" value={String(agg.besok)} sub="registrerade besök" />
-          <StatCard compact label="Modevisningar" value={String(agg.fashionShows)} sub="av besöken" />
-          <StatCard compact label="Galgvisningar" value={String(agg.hangerShows)} sub="av besöken" />
-        </div>
-      </div>
+          {/* Snitt & aktivitet */}
+          <div>
+            <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-2">Snitt &amp; aktivitet{tag}</p>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-2 md:gap-3">
+              <StatCard compact label="Snittkvitto" value={fmtAvg(agg.sales, agg.customers)} sub="per kund" />
+              <StatCard compact label="Snitt / besök" value={fmtAvg(agg.sales, agg.besok)} sub="per besök" />
+              <StatCard compact label="Antal besök" value={String(agg.besok)} sub="registrerade besök" />
+              <StatCard compact label="Modevisningar" value={String(agg.fashionShows)} sub="av besöken" />
+              <StatCard compact label="Galgvisningar" value={String(agg.hangerShows)} sub="av besöken" />
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Hjälte: ackumulerad försäljning (full bredd) */}
       <div className="bg-white rounded-xl border border-slate-200 p-4 md:p-6">

@@ -286,6 +286,7 @@ export default async function DashboardPage({
             filterNoun={filterNoun}
             colorMode={colorMode}
             showMf={isAdmin}
+            hideGoalMetrics={showGoals && !!seasonGoal}
           />
           {stats.reports.length > 0 && (
             <div className="mt-6">

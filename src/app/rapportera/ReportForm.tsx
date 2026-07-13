@@ -183,7 +183,6 @@ function VisitRow({ index, visit, customers, feeRow, onUpdate, onRemove }: Visit
 
       {feeRow && (
         <div className="bg-slate-50 rounded-lg px-4 py-2 text-xs text-slate-500 flex gap-6">
-          <span>FT-avgift: {formatSEK(feeRow.ftFee)}</span>
           <span className="font-medium text-slate-700">Att betala: {formatSEK(feeRow.totalToPay)}</span>
         </div>
       )}
@@ -563,14 +562,10 @@ export default function ReportForm({
           <h3 className="text-sm font-semibold text-slate-700 mb-3">
             Summering vecka {selectedWeek}
           </h3>
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+          <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <p className="text-slate-500">Total försäljning</p>
               <p className="font-bold text-slate-800">{formatSEK(totals.sales)}</p>
-            </div>
-            <div>
-              <p className="text-slate-500">FT-avgift ex moms</p>
-              <p className="font-bold text-slate-800">{formatSEK(totals.ftFee)}</p>
             </div>
             <div>
               <p className="text-slate-500">Totalt att betala</p>
