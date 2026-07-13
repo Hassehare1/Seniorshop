@@ -186,6 +186,29 @@ export default async function DashboardPage({
     fashionShows: stats.byType.reduce((s, t) => s + t.fashionShows, 0),
   };
 
+  // År-mot-år: motsvarande fjolårssäsong (samma typ, året innan) för samma urval.
+  const prevSeasonRec = currentSeason
+    ? allSeasons.find(s => s.type === currentSeason.type && s.year === currentSeason.year - 1)
+    : undefined;
+  let prevSeason: { label: string; weekly: { week: number; sales: number }[] } | null = null;
+  if (prevSeasonRec) {
+    const prevReports = await prisma.weeklyReport.findMany({
+      where: { seasonId: prevSeasonRec.id, ...(selectedDistrictId ? { districtId: selectedDistrictId } : {}) },
+      include: { visits: { select: { sales: true, fashionShowSales: true } } },
+    });
+    if (prevReports.length > 0) {
+      const byWeek = new Map<number, number>();
+      for (const r of prevReports) {
+        const s = r.visits.reduce((acc, v) => acc + v.sales + v.fashionShowSales, 0);
+        byWeek.set(r.week, (byWeek.get(r.week) ?? 0) + s);
+      }
+      prevSeason = {
+        label: `${prevSeasonRec.type === "VAR" ? "Vår" : "Höst"} ${prevSeasonRec.year}`,
+        weekly: [...byWeek.entries()].map(([week, sales]) => ({ week, sales })).sort((a, b) => a.week - b.week),
+      };
+    }
+  }
+
   // Bryt ned analysen per kundtyp …
   const typeBreakdown: BreakdownItem[] = stats.byType.map(t => ({
     key: t.type,
@@ -287,6 +310,8 @@ export default async function DashboardPage({
             colorMode={colorMode}
             showMf={isAdmin}
             hideGoalMetrics={showGoals && !!seasonGoal}
+            currentLabel={seasonLabel}
+            prevSeason={prevSeason}
           />
           {stats.reports.length > 0 && (
             <div className="mt-6">

@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import {
   ResponsiveContainer,
-  AreaChart, Area,
+  AreaChart, Area, Line,
   BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, Cell,
 } from "recharts";
@@ -32,6 +32,8 @@ interface Props {
   colorMode?: "category" | "scale"; // fasta kategorifärger eller blå gradient efter rang
   showMf?: boolean;       // admin: visa avgifter (FT + MF). FT ser bara "Att betala".
   hideGoalMetrics?: boolean; // dölj nyckeltal som målkorten redan visar (försäljning, besök, snitt/besök, modevisningar)
+  currentLabel?: string;  // t.ex. "Vår 2026" — för legenden i säsongstrenden
+  prevSeason?: { label: string; weekly: { week: number; sales: number }[] } | null; // motsvarande fjolårssäsong
 }
 
 const BLUE = "#1d4ed8";
@@ -61,7 +63,7 @@ function niceScale(dataMax: number): { max: number; ticks: number[] } {
 const axisWidth = (ticks: number[]) =>
   Math.ceil(Math.max(...ticks.map(t => formatAxis(t).length)) * 6.5) + 10;
 
-export default function SalesAnalytics({ weeks, breakdown, breakdownTitle, filterNoun, colorMode = "category", showMf = false, hideGoalMetrics = false }: Props) {
+export default function SalesAnalytics({ weeks, breakdown, breakdownTitle, filterNoun, colorMode = "category", showMf = false, hideGoalMetrics = false, currentLabel, prevSeason }: Props) {
   const [selected, setSelected] = useState<string | null>(null);
 
   const selectedItem = selected ? breakdown.find(b => b.key === selected) ?? null : null;
@@ -100,8 +102,35 @@ export default function SalesAnalytics({ weeks, breakdown, breakdownTitle, filte
     [breakdown]
   );
 
+  // År-mot-år: fjolårets hela ackumulerade kurva som referens. Visas bara i
+  // totalvyn (inget nedbrytnings-filter) — jämförelsen är på hela säsongen.
+  const showPrev = !!prevSeason && prevSeason.weekly.length > 0 && selected === null;
+  const trendData = useMemo(() => {
+    const curByWeek = new Map<number, number>();
+    weeks.forEach((w, i) => curByWeek.set(w, agg.weekly[i]));
+    const prevByWeek = new Map<number, number>();
+    (prevSeason?.weekly ?? []).forEach(p => prevByWeek.set(p.week, p.sales));
+    const allWeeks = [...new Set([...weeks, ...(showPrev ? [...prevByWeek.keys()] : [])])].sort((a, b) => a - b);
+    const curMax = weeks.length ? Math.max(...weeks) : 0;
+    const prevMax = prevByWeek.size ? Math.max(...prevByWeek.keys()) : 0;
+    // Prefix-summa utan muterbar ackumulator (få veckor → ofarligt O(n²))
+    return allWeeks.map((w, i) => {
+      const upto = allWeeks.slice(0, i + 1);
+      const curAcc = upto.reduce((s, ww) => s + (curByWeek.get(ww) ?? 0), 0);
+      const prevAcc = upto.reduce((s, ww) => s + (prevByWeek.get(ww) ?? 0), 0);
+      return {
+        week: w,
+        accumulated: w <= curMax ? curAcc : null,
+        prevAccumulated: showPrev && w <= prevMax ? prevAcc : null,
+      };
+    });
+  }, [weeks, agg, prevSeason, showPrev]);
+
   // Snygga, jämna axelskalor per diagram
-  const trendScale = useMemo(() => niceScale(Math.max(0, ...weeklyData.map(d => d.accumulated))), [weeklyData]);
+  const trendScale = useMemo(
+    () => niceScale(Math.max(0, ...trendData.map(d => Math.max(d.accumulated ?? 0, d.prevAccumulated ?? 0)))),
+    [trendData]
+  );
   const weeklyScale = useMemo(() => niceScale(Math.max(0, ...weeklyData.map(d => d.sales))), [weeklyData]);
   const breakdownScale = useMemo(() => niceScale(Math.max(0, ...chartData.map(d => d.sales))), [chartData]);
 
@@ -199,10 +228,26 @@ export default function SalesAnalytics({ weeks, breakdown, breakdownTitle, filte
 
       {/* Hjälte: ackumulerad försäljning (full bredd) */}
       <div className="bg-white rounded-xl border border-slate-200 p-4 md:p-6">
-        <h2 className="text-sm font-semibold text-slate-700 mb-1">Säsongstrend{tag}</h2>
-        <p className="text-xs text-slate-400 mb-4">Ackumulerad försäljning</p>
+        <div className="flex items-start justify-between gap-3 mb-4">
+          <div>
+            <h2 className="text-sm font-semibold text-slate-700 mb-1">Säsongstrend{tag}</h2>
+            <p className="text-xs text-slate-400">Ackumulerad försäljning</p>
+          </div>
+          {showPrev && (
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+              <span className="flex items-center gap-1.5 text-slate-600">
+                <span className="inline-block w-4 h-0.5 rounded" style={{ backgroundColor: color }} />
+                {currentLabel ?? "I år"}
+              </span>
+              <span className="flex items-center gap-1.5 text-slate-500">
+                <span className="inline-block w-4 border-t-2 border-dashed border-slate-400" />
+                {prevSeason!.label} (i fjol)
+              </span>
+            </div>
+          )}
+        </div>
         <ResponsiveContainer width="100%" height={240}>
-          <AreaChart data={weeklyData} margin={{ top: 4, right: 16, left: 8, bottom: 4 }}>
+          <AreaChart data={trendData} margin={{ top: 4, right: 16, left: 8, bottom: 4 }}>
             <defs>
               <linearGradient id="gradAcc" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor={color} stopOpacity={0.15} />
@@ -212,8 +257,11 @@ export default function SalesAnalytics({ weeks, breakdown, breakdownTitle, filte
             <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
             <XAxis dataKey="week" tickFormatter={(v) => `v${v}`} tick={{ fontSize: 11, fill: "#94a3b8" }} tickLine={false} axisLine={false} tickMargin={6} />
             <YAxis tickFormatter={formatAxis} tick={{ fontSize: 11, fill: "#94a3b8" }} tickLine={false} axisLine={false} domain={[0, trendScale.max]} ticks={trendScale.ticks} width={axisWidth(trendScale.ticks)} />
-            <Tooltip contentStyle={tipStyle} labelFormatter={weekLabel} formatter={(value) => [formatSEK(Number(value)), "Ackumulerat"]} />
-            <Area type="monotone" dataKey="accumulated" stroke={color} strokeWidth={2} fill="url(#gradAcc)" dot={false} activeDot={{ r: 4, fill: color }} />
+            <Tooltip contentStyle={tipStyle} labelFormatter={weekLabel} formatter={(value, name) => [value == null ? "–" : formatSEK(Number(value)), name]} />
+            {showPrev && (
+              <Line type="monotone" dataKey="prevAccumulated" name={`${prevSeason!.label} (i fjol)`} stroke="#94a3b8" strokeWidth={2} strokeDasharray="5 4" dot={false} connectNulls activeDot={{ r: 3, fill: "#94a3b8" }} />
+            )}
+            <Area type="monotone" dataKey="accumulated" name={currentLabel ?? "I år"} stroke={color} strokeWidth={2} fill="url(#gradAcc)" dot={false} activeDot={{ r: 4, fill: color }} connectNulls={false} />
           </AreaChart>
         </ResponsiveContainer>
       </div>
