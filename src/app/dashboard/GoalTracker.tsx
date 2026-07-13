@@ -74,7 +74,8 @@ export default function GoalTracker({
   const metrics: Metric[] = [
     { label: "Försäljning", target: goal?.salesTarget ?? 0, actual: actuals.sales, money: true, remainLabel: "kvar att sälja för", variance: false },
     { label: "Antal besök", target: goal?.visitsTarget ?? 0, actual: actuals.visits, money: false, remainLabel: "besök kvar", variance: false },
-    { label: "Snitt / besök", target: goal?.avgPerVisitTarget ?? 0, actual: actuals.avgPerVisit, money: true, remainLabel: "", variance: true },
+    { label: "Snitt / besök", target: goal?.avgPerVisitTarget ?? 0, actual: actuals.avgPerVisit, money: true, remainLabel: "", variance: true,
+      required: goal && goal.salesTarget > 0 && goal.visitsTarget > 0 ? goal.salesTarget / goal.visitsTarget : undefined },
     { label: "Modevisningar", target: goal?.fashionShowsTarget ?? 0, actual: actuals.fashionShows, money: false, remainLabel: "kvar", variance: false },
   ];
 
@@ -127,9 +128,9 @@ export default function GoalTracker({
   );
 }
 
-type Metric = { label: string; target: number; actual: number; money: boolean; remainLabel: string; variance: boolean };
+type Metric = { label: string; target: number; actual: number; money: boolean; remainLabel: string; variance: boolean; required?: number };
 
-function MetricCard({ label, target, actual, money, remainLabel, variance }: Metric) {
+function MetricCard({ label, target, actual, money, remainLabel, variance, required }: Metric) {
   const fmt = (n: number) => (money ? formatSEK(Math.round(n)) : String(Math.round(n)));
   const hasTarget = target > 0;
   const pct = hasTarget ? Math.round((actual / target) * 100) : 0;
@@ -156,6 +157,11 @@ function MetricCard({ label, target, actual, money, remainLabel, variance }: Met
         <span className="text-slate-400">{hasTarget ? `${pct}% av mål` : "–"}</span>
         <span className={reached ? "text-green-600 font-medium" : variance ? "text-amber-600" : "text-slate-500"}>{footer}</span>
       </div>
+      {required != null && (
+        <p className="mt-1.5 pt-1.5 border-t border-slate-100 text-[11px] text-slate-400">
+          Krävs {fmt(required)}/besök för säljmålet
+        </p>
+      )}
     </div>
   );
 }
