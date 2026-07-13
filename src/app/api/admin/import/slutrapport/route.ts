@@ -63,8 +63,9 @@ export async function POST(req: NextRequest) {
   }
   if (!ws) return err("Fliken \"Rapport\" saknas i filen.");
 
+  // E3 kan innehålla distriktsNUMMER eller FT:ns FÖRETAGSNAMN — filformatet varierar
+  // mellan franchisetagare. Används bara till en mjuk varning, aldrig till radmatchning.
   const fileDistrict = ws["E3"] != null ? Number(ws["E3"].v) : null;
-  const dcheck = fileDistrict ?? districtNumber;
 
   const rows = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, blankrows: false });
 
@@ -72,11 +73,12 @@ export async function POST(req: NextRequest) {
   const parsed: ParsedVisit[] = [];
 
   for (const r of rows) {
-    // Datarad = distriktsnummer i A, numerisk vecka i B, kundnamn (text) i D
-    if (Number(r[0]) !== dcheck) continue;
+    // Datarad känns igen på STRUKTUR: giltig vecka (1–53) i B + kundnamn i D.
+    // Kolumn A (distrikt/FT-etikett) matchas INTE — en fil = ett distrikt (admin väljer det),
+    // och etiketten kan vara nummer eller namn. Rubrik-/summarader saknar namn i D → filtreras.
     const week = Number(r[1]);
     const name = typeof r[3] === "string" ? r[3].trim() : "";
-    if (!Number.isFinite(week) || !name) continue;
+    if (!Number.isFinite(week) || week < 1 || week > 53 || !name) continue;
 
     const typeCols = [4, 5, 6, 7, 8].filter((c) => typeof r[c] === "number" && !Number.isNaN(r[c] as number));
     if (typeCols.length === 0) {
@@ -96,8 +98,8 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  if (parsed.length === 0) return err("Hittade ingen data (rad 18 och neråt) för det distriktet i filen.");
-  if (fileDistrict != null && fileDistrict !== districtNumber) {
+  if (parsed.length === 0) return err("Hittade ingen data (rad 18 och neråt) i filen.");
+  if (Number.isFinite(fileDistrict) && fileDistrict !== districtNumber) {
     warnings.push(`Filen anger distrikt ${fileDistrict} men du valde ${districtNumber} — kontrollera att rätt fil är vald.`);
   }
   if (!districtName) {
