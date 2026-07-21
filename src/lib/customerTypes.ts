@@ -6,6 +6,7 @@ export const customerTypeLabels: Record<string, string> = {
   FORENING: "Förening",
   TRAFFPUNKT: "Träffpunkt",
   BOENDE_55: "Boende +55",
+  STOD_HALSOSAMVERKAN: "Stöd- och Hälsosamverkan",
   OVRIGT: "Övrigt",
 };
 
@@ -14,6 +15,7 @@ export const customerTypeColors: Record<string, string> = {
   FORENING: "bg-green-100 text-green-700",
   VARDHEM: "bg-purple-100 text-purple-700",
   BOENDE_55: "bg-orange-100 text-orange-700",
+  STOD_HALSOSAMVERKAN: "bg-teal-100 text-teal-700",
   OVRIGT: "bg-slate-100 text-slate-600",
 };
 
@@ -23,6 +25,7 @@ export const customerTypeChartColors: Record<string, string> = {
   FORENING: "#16a34a",
   VARDHEM: "#7c3aed",
   BOENDE_55: "#ea580c",
+  STOD_HALSOSAMVERKAN: "#0d9488",
   OVRIGT: "#64748b",
 };
 
@@ -32,5 +35,6 @@ export const customerTypeOptions = [
   { value: "FORENING", label: "Förening" },
   { value: "VARDHEM", label: "Vårdhem" },
   { value: "BOENDE_55", label: "Boende +55" },
+  { value: "STOD_HALSOSAMVERKAN", label: "Stöd- och Hälsosamverkan" },
   { value: "OVRIGT", label: "Övrigt" },
 ];

@@ -21,6 +21,7 @@ enum CustomerType {
   TRAFFPUNKT
   BOENDE_55
   OVRIGT
+  STOD_HALSOSAMVERKAN
 }
 
 enum SeasonType {

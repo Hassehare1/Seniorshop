@@ -114,7 +114,7 @@ export default async function DashboardPage({
     // Per kundtyp: aggregat + försäljning per vecka (för korsfiltrering)
     const weeksOrder = stats.weeks;
     const weekIdx = new Map(weeksOrder.map((w, i) => [w, i]));
-    const typeKeys = ["TRAFFPUNKT", "FORENING", "VARDHEM", "BOENDE_55", "OVRIGT"];
+    const typeKeys = ["TRAFFPUNKT", "FORENING", "VARDHEM", "BOENDE_55", "STOD_HALSOSAMVERKAN", "OVRIGT"];
     const aggMap: Record<string, TypeAgg> = {};
     for (const k of typeKeys) {
       aggMap[k] = { type: k, sales: 0, ftFee: 0, mfFee: 0, customers: 0, besok: 0, fashionShows: 0, hangerShows: 0, weekly: new Array(weeksOrder.length).fill(0) };
