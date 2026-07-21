@@ -111,13 +111,18 @@ export async function POST(req: NextRequest) {
       const fashionShowSales = Number(v.fashionShowSales ?? 0);
       const fees = calculateFees(sales + fashionShowSales, runningMf, config);
       runningMf = fees.mfFeeAccumulated;
+      // Antingen-eller: ett besök kan inte vara både modevisning och galge.
+      // UI:t spärrar det, men vi håller invarianten även här (modevisning vinner)
+      // så att Modevisning + Galge + Övriga alltid summerar till totalen.
+      const isFashionShow = !!v.isFashionShow;
+      const isHangerShow = !isFashionShow && !!v.isHangerShow;
       return {
         customerId: v.customerId as string,
         numberOfCustomers: Number(v.numberOfCustomers),
         sales,
-        isFashionShow: !!v.isFashionShow,
+        isFashionShow,
         fashionShowSales,
-        isHangerShow: !!v.isHangerShow,
+        isHangerShow,
         ftFee: fees.ftFee,
         mfFee: fees.mfFee,
         mfFeeAccumulated: fees.mfFeeAccumulated,

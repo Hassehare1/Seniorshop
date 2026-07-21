@@ -147,26 +147,37 @@ function VisitRow({ index, visit, customers, feeRow, onUpdate, onRemove }: Visit
       </div>
 
       <div className="flex flex-col gap-3">
-        <div className="flex flex-wrap gap-x-6 gap-y-2">
-          <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer w-fit">
-            <input
-              type="checkbox"
-              checked={visit.isFashionShow}
-              onChange={e => onUpdate("isFashionShow", e.target.checked)}
-              className="rounded"
-            />
-            Modevisning
-          </label>
+        {/* Antingen-eller: ett besök kan inte vara både modevisning och galge.
+            Kryssar man i det ena bockas det andra ur automatiskt. */}
+        <div>
+          <div className="flex flex-wrap gap-x-6 gap-y-2">
+            <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer w-fit">
+              <input
+                type="checkbox"
+                checked={visit.isFashionShow}
+                onChange={e => {
+                  onUpdate("isFashionShow", e.target.checked);
+                  if (e.target.checked) onUpdate("isHangerShow", false);
+                }}
+                className="rounded"
+              />
+              Modevisning
+            </label>
 
-          <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer w-fit">
-            <input
-              type="checkbox"
-              checked={visit.isHangerShow}
-              onChange={e => onUpdate("isHangerShow", e.target.checked)}
-              className="rounded"
-            />
-            Visning på galge
-          </label>
+            <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer w-fit">
+              <input
+                type="checkbox"
+                checked={visit.isHangerShow}
+                onChange={e => {
+                  onUpdate("isHangerShow", e.target.checked);
+                  if (e.target.checked) onUpdate("isFashionShow", false);
+                }}
+                className="rounded"
+              />
+              Visning på galge
+            </label>
+          </div>
+          <p className="text-xs text-slate-400 mt-1">Ett besök räknas antingen som modevisning eller galge — inte båda.</p>
         </div>
 
         <div>
