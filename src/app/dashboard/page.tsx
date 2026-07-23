@@ -6,6 +6,7 @@ import ReportNudge from "./ReportNudge";
 import GoalTracker from "./GoalTracker";
 import GoalOverview from "./GoalOverview";
 import SalesAnalytics, { type BreakdownItem } from "./SalesAnalytics";
+import ShowTypeAnalytics, { type ShowTypeItem } from "./ShowTypeAnalytics";
 import SeasonSwitcher from "./SeasonSwitcher";
 import DistrictSwitcher from "./DistrictSwitcher";
 
@@ -64,6 +65,7 @@ export default async function DashboardPage({
     byType: [] as TypeAgg[],
     byDistrict: [] as DistAgg[],
     reports: [] as ReportRow[],
+    showType: [] as ShowTypeItem[],
   };
 
   // Admin utan valt distrikt → bryt ned per distrikt i stället för kundtyp
@@ -116,8 +118,14 @@ export default async function DashboardPage({
     const weekIdx = new Map(weeksOrder.map((w, i) => [w, i]));
     const typeKeys = ["TRAFFPUNKT", "FORENING", "VARDHEM", "BOENDE_55", "STOD_HALSOSAMVERKAN", "OVRIGT"];
     const aggMap: Record<string, TypeAgg> = {};
+    // Visningstyp-nedbrytning per kundtyp (Modevisning/Galge/Övriga). Modevisning
+    // och Galge är ömsesidigt uteslutande (spärr i formulär + server), så
+    // kategorierna summerar exakt till totalen utan dubbelräkning.
+    type ShowSplit = { modevisning: { sales: number; besok: number }; galge: { sales: number; besok: number }; ovriga: { sales: number; besok: number } };
+    const showMap: Record<string, ShowSplit> = {};
     for (const k of typeKeys) {
       aggMap[k] = { type: k, sales: 0, ftFee: 0, mfFee: 0, customers: 0, besok: 0, fashionShows: 0, hangerShows: 0, weekly: new Array(weeksOrder.length).fill(0) };
+      showMap[k] = { modevisning: { sales: 0, besok: 0 }, galge: { sales: 0, besok: 0 }, ovriga: { sales: 0, besok: 0 } };
     }
     for (const r of reports) {
       const wi = weekIdx.get(r.week);
@@ -132,9 +140,23 @@ export default async function DashboardPage({
         if (v.isFashionShow) a.fashionShows += 1;
         if (v.isHangerShow) a.hangerShows += 1;
         if (wi !== undefined) a.weekly[wi] += sale;
+
+        // Modevisning = hela besöket; annars galge; annars övriga.
+        const cat = v.isFashionShow ? "modevisning" : v.isHangerShow ? "galge" : "ovriga";
+        const s = (showMap[v.customer.type] ?? showMap.OVRIGT)[cat];
+        s.sales += sale;
+        s.besok += 1;
       }
     }
     stats.byType = typeKeys.map(k => aggMap[k]).filter(a => a.besok > 0);
+    stats.showType = typeKeys
+      .map(k => ({
+        key: k,
+        label: customerTypeLabels[k] ?? k,
+        color: customerTypeChartColors[k] ?? "#64748b",
+        categories: showMap[k],
+      }))
+      .filter(i => i.categories.modevisning.besok + i.categories.galge.besok + i.categories.ovriga.besok > 0);
 
     // Per distrikt (endast för admin-översikt över alla distrikt)
     if (showDistrictBreakdown) {
@@ -349,6 +371,11 @@ export default async function DashboardPage({
             currentLabel={seasonLabel}
             prevSeason={prevSeason}
           />
+          {stats.showType.length > 0 && (
+            <div className="mt-6">
+              <ShowTypeAnalytics items={stats.showType} />
+            </div>
+          )}
           {stats.reports.length > 0 && (
             <div className="mt-6">
               <WeeklyReportList
