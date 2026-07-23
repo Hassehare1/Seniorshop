@@ -168,7 +168,6 @@ model Visit {
   mfFeeAccumulated  Float        @default(0)
   totalToPay        Float        @default(0)
   comment           String?
-  previousYearSales Float?
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
 }
