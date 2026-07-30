@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { calculateFees, type FeeConfig } from "@/lib/fees";
+import { calculateFees, money, sumMoney, type FeeConfig } from "@/lib/fees";
 
 const DEFAULT_FEE_CONFIG: FeeConfig = {
   ftFeePercent: 0.075,
@@ -100,16 +100,16 @@ export async function POST(req: NextRequest) {
       where: { districtId, seasonId, week: { lt: week } },
       include: { visits: { select: { mfFee: true } } },
     });
-    const priorMf = priorReports
-      .flatMap((r) => r.visits)
-      .reduce((s, v) => s + v.mfFee, 0);
+    const priorMf = sumMoney(priorReports.flatMap((r) => r.visits).map((v) => v.mfFee));
 
     // Räkna om avgifterna server-sidan — klientens värden ignoreras
     let runningMf = priorMf;
     const computedVisits = visits.map((v: Record<string, unknown>) => {
-      const sales = Number(v.sales);
-      const fashionShowSales = Number(v.fashionShowSales ?? 0);
-      const fees = calculateFees(sales + fashionShowSales, runningMf, config);
+      // Beloppen är redan validerade ovan; money() bevarar dem exakt hela vägen
+      // till lagringen (Decimal), utan flyttalssteg.
+      const sales = money(String(v.sales));
+      const fashionShowSales = money(String(v.fashionShowSales ?? 0));
+      const fees = calculateFees(sales.plus(fashionShowSales), runningMf, config);
       runningMf = fees.mfFeeAccumulated;
       // Antingen-eller: ett besök kan inte vara både modevisning och galge.
       // UI:t spärrar det, men vi håller invarianten även här (modevisning vinner)
@@ -157,16 +157,18 @@ export async function POST(req: NextRequest) {
     });
     if (laterReports.length > 0) {
       // MF ackumulerat t.o.m. denna vecka = tidigare veckor + denna veckas omräknade
-      let mf = priorMf + computedVisits.reduce((s, v) => s + v.mfFee, 0);
+      let mf = priorMf.plus(sumMoney(computedVisits.map((v) => v.mfFee)));
 
       for (const r of laterReports) {
         for (const v of r.visits) {
-          const fees = calculateFees(v.sales + v.fashionShowSales, mf, config);
+          const fees = calculateFees(money(v.sales).plus(v.fashionShowSales), mf, config);
           mf = fees.mfFeeAccumulated;
+          // Exakt jämförelse på Decimal — med flyttal gav minsta öresdrift
+          // falska missmatchningar och en onödig skrivning per besök.
           if (
-            v.mfFee !== fees.mfFee ||
-            v.mfFeeAccumulated !== fees.mfFeeAccumulated ||
-            v.totalToPay !== fees.totalToPay
+            !money(v.mfFee).equals(fees.mfFee) ||
+            !money(v.mfFeeAccumulated).equals(fees.mfFeeAccumulated) ||
+            !money(v.totalToPay).equals(fees.totalToPay)
           ) {
             await tx.visit.update({
               where: { id: v.id },

@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { customerTypeLabels, customerTypeChartColors } from "@/lib/customerTypes";
+import { money, sumMoney, toNumber } from "@/lib/fees";
 import WeeklyReportList from "./WeeklyReportList";
 import ReportNudge from "./ReportNudge";
 import GoalTracker from "./GoalTracker";
@@ -107,20 +108,20 @@ export default async function DashboardPage({
       status: r.status,
       districtNumber: r.district.number,
       districtName: r.district.name,
-      totalSales: r.visits.reduce((s, v) => s + v.sales + v.fashionShowSales, 0),
-      totalToPay: r.visits.reduce((s, v) => s + v.totalToPay, 0),
+      totalSales: toNumber(sumMoney(r.visits.flatMap(v => [v.sales, v.fashionShowSales]))),
+      totalToPay: toNumber(sumMoney(r.visits.map(v => v.totalToPay))),
       totalCustomers: r.visits.reduce((s, v) => s + v.numberOfCustomers, 0),
       visits: r.visits.map(v => ({
         id: v.id,
         customerName: v.customer.name,
         customerType: v.customer.type,
         numberOfCustomers: v.numberOfCustomers,
-        sales: v.sales + v.fashionShowSales,
+        sales: toNumber(money(v.sales).plus(v.fashionShowSales)),
         isFashionShow: v.isFashionShow,
         isHangerShow: v.isHangerShow,
-        ftFee: v.ftFee,
-        mfFee: v.mfFee,
-        totalToPay: v.totalToPay,
+        ftFee: toNumber(v.ftFee),
+        mfFee: toNumber(v.mfFee),
+        totalToPay: toNumber(v.totalToPay),
         comment: v.comment,
       })),
     }));
@@ -143,10 +144,12 @@ export default async function DashboardPage({
       const wi = weekIdx.get(r.week);
       for (const v of r.visits) {
         const a = aggMap[v.customer.type] ?? aggMap.OVRIGT;
-        const sale = v.sales + v.fashionShowSales;
+        // Presentationsaggregat: varje term är ett exakt öresbelopp, summan
+        // visas i hela kronor. Det bindande beloppet är redan lagrat exakt.
+        const sale = toNumber(money(v.sales).plus(v.fashionShowSales));
         a.sales += sale;
-        a.ftFee += v.ftFee;
-        a.mfFee += v.mfFee;
+        a.ftFee += toNumber(v.ftFee);
+        a.mfFee += toNumber(v.mfFee);
         a.customers += v.numberOfCustomers;
         a.besok += 1;
         if (v.isFashionShow) a.fashionShows += 1;
@@ -185,10 +188,10 @@ export default async function DashboardPage({
         }
         const wi = weekIdx.get(r.week);
         for (const v of r.visits) {
-          const sale = v.sales + v.fashionShowSales;
+          const sale = toNumber(money(v.sales).plus(v.fashionShowSales));
           a.sales += sale;
-          a.ftFee += v.ftFee;
-          a.mfFee += v.mfFee;
+          a.ftFee += toNumber(v.ftFee);
+          a.mfFee += toNumber(v.mfFee);
           a.customers += v.numberOfCustomers;
           a.besok += 1;
           if (v.isFashionShow) a.fashionShows += 1;
@@ -265,7 +268,7 @@ export default async function DashboardPage({
     if (prevReports.length > 0) {
       const byWeek = new Map<number, number>();
       for (const r of prevReports) {
-        const s = r.visits.reduce((acc, v) => acc + v.sales + v.fashionShowSales, 0);
+        const s = toNumber(sumMoney(r.visits.flatMap(v => [v.sales, v.fashionShowSales])));
         byWeek.set(r.week, (byWeek.get(r.week) ?? 0) + s);
       }
       prevSeason = {
@@ -312,7 +315,7 @@ export default async function DashboardPage({
         if (!meta) continue;
         const slot = meta.type === "VAR" ? 0 : 1;
         for (const v of r.visits) {
-          const sale = v.sales + v.fashionShowSales;
+          const sale = toNumber(money(v.sales).plus(v.fashionShowSales));
           if (meta.year === fyYear) {
             thisYear[slot].set(v.customerId, (thisYear[slot].get(v.customerId) ?? 0) + sale);
           } else {

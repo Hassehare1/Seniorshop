@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { sumMoney } from "@/lib/fees";
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -17,7 +18,7 @@ export async function GET(req: NextRequest) {
       : session.user.districtId ?? null;
 
   if (!districtId || !seasonId) {
-    return NextResponse.json({ accumulated: 0 });
+    return NextResponse.json({ accumulated: "0.00" });
   }
 
   const reports = await prisma.weeklyReport.findMany({
@@ -25,9 +26,9 @@ export async function GET(req: NextRequest) {
     include: { visits: { select: { mfFee: true } } },
   });
 
-  const accumulated = reports
-    .flatMap((r) => r.visits)
-    .reduce((s, v) => s + v.mfFee, 0);
+  // Skickas som sträng — JSON har ingen exakt decimaltyp och klienten läser in
+  // den i Decimal igen (ReportForm räknar avgifter live).
+  const accumulated = sumMoney(reports.flatMap((r) => r.visits).map((v) => v.mfFee));
 
-  return NextResponse.json({ accumulated });
+  return NextResponse.json({ accumulated: accumulated.toFixed(2) });
 }

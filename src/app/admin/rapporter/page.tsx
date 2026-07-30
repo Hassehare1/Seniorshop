@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { getISOWeek } from "@/lib/week";
 import AdminRapporterClient from "./AdminRapporterClient";
+import { toNumber } from "@/lib/fees";
 
 export default async function AdminRapporterPage({
   searchParams,
@@ -43,6 +44,15 @@ export default async function AdminRapporterPage({
     orderBy: { number: "asc" },
   });
 
+  // totalToPay är Decimal i databasen — konvertera vid klientgränsen.
+  const districtsForClient = districts.map(d => ({
+    ...d,
+    reports: d.reports.map(r => ({
+      ...r,
+      visits: r.visits.map(v => ({ totalToPay: toNumber(v.totalToPay) })),
+    })),
+  }));
+
   // Visa bara veckor inom säsongens intervall
   const weeks = Array.from(
     { length: currentSeason.weekEnd - currentSeason.weekStart + 1 },
@@ -53,7 +63,7 @@ export default async function AdminRapporterPage({
 
   return (
     <AdminRapporterClient
-      districts={districts}
+      districts={districtsForClient}
       weeks={weeks}
       currentWeek={currentWeek}
       seasonId={currentSeason.id}

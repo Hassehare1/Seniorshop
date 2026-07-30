@@ -2,7 +2,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
-import { formatSEK } from "@/lib/fees";
+import { formatSEK, money, sumMoney, toNumber } from "@/lib/fees";
 import { customerTypeLabels, customerTypeColors } from "@/lib/customerTypes";
 import PrintButton from "./PrintButton";
 import ContactCard from "./ContactCard";
@@ -35,13 +35,13 @@ export default async function CustomerCardPage({ params }: { params: Promise<{ i
   if (!isAdmin && session.user.districtId !== customer.districtId) redirect("/kunder");
 
   const visits = customer.visits;
-  const totalSales = visits.reduce((s, v) => s + v.sales + v.fashionShowSales, 0);
+  const totalSales = toNumber(sumMoney(visits.flatMap(v => [v.sales, v.fashionShowSales])));
   const totalCustomers = visits.reduce((s, v) => s + v.numberOfCustomers, 0);
   const besok = visits.length;
   const snittkvitto = totalCustomers > 0 ? totalSales / totalCustomers : null;
 
   const latest = visits[0] ?? null;
-  const latestSale = latest ? latest.sales + latest.fashionShowSales : null;
+  const latestSale = latest ? toNumber(money(latest.sales).plus(latest.fashionShowSales)) : null;
   const latestLabel = latest
     ? `${latest.report.season.type === "VAR" ? "Vår" : "Höst"} ${latest.report.season.year} · v${latest.report.week}`
     : null;

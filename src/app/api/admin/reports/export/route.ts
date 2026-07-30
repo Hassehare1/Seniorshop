@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { customerTypeLabels as typeLabels } from "@/lib/customerTypes";
 import * as XLSX from "xlsx";
+import { money, type MoneyInput } from "@/lib/fees";
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -24,8 +25,11 @@ export async function GET(req: NextRequest) {
     orderBy: [{ district: { number: "asc" } }, { week: "asc" }],
   });
 
-  const fmtSEK = (n: number) =>
-    new Intl.NumberFormat("sv-SE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
+  // Exporten visar öre — beloppen kommer som Decimal och formateras exakt.
+  const fmtSEK = (n: MoneyInput) =>
+    new Intl.NumberFormat("sv-SE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(
+      money(n).toNumber()
+    );
 
   const rows: unknown[][] = [[
     "Distrikt", "Vecka", "Status", "Kund", "Kundtyp",
@@ -41,7 +45,7 @@ export async function GET(req: NextRequest) {
         visit.customer.name,
         typeLabels[visit.customer.type] ?? visit.customer.type,
         visit.numberOfCustomers,
-        fmtSEK(visit.sales + visit.fashionShowSales),
+        fmtSEK(money(visit.sales).plus(visit.fashionShowSales)),
         fmtSEK(visit.ftFee),
         fmtSEK(visit.mfFee),
         fmtSEK(visit.totalToPay),
