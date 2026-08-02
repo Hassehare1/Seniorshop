@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { calculateFees, type FeeConfig } from "@/lib/fees";
+import { calculateFees, money, type FeeConfig } from "@/lib/fees";
 import { CustomerType } from "@prisma/client";
 import * as XLSX from "xlsx";
 
@@ -210,7 +210,7 @@ export async function POST(req: NextRequest) {
         else byWeek.set(p.week, [p]);
       }
 
-      let runningMf = 0;
+      let runningMf = money(0);
       let visitCount = 0;
       for (const w of [...byWeek.keys()].sort((a, b) => a - b)) {
         const report = await tx.weeklyReport.create({

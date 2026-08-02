@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import * as XLSX from "xlsx";
+import { money, sumMoney, type MoneyInput } from "@/lib/fees";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -27,8 +28,11 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const fmt = (n: number) =>
-    new Intl.NumberFormat("sv-SE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
+  // Exporten visar öre — beloppen kommer som Decimal och formateras exakt.
+  const fmt = (n: MoneyInput) =>
+    new Intl.NumberFormat("sv-SE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(
+      money(n).toNumber()
+    );
 
   // MF-avgiften visas bara för admin — FT:s export får inte kolumnen
   const showMf = session.user.role === "ADMIN";
@@ -37,7 +41,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     Kund: v.customer.name,
     Typ: v.customer.type,
     "Antal kunder": v.numberOfCustomers,
-    "Försäljning ink. moms": fmt(v.sales + v.fashionShowSales),
+    "Försäljning ink. moms": fmt(money(v.sales).plus(v.fashionShowSales)),
     Modevisning: v.isFashionShow ? "Ja" : "Nej",
     "Modevisning försäljning": v.isFashionShow ? fmt(v.fashionShowSales) : "",
     "Visning på galge": v.isHangerShow ? "Ja" : "Nej",
@@ -51,13 +55,13 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     Kund: "SUMMA",
     Typ: "",
     "Antal kunder": report.visits.reduce((s, v) => s + v.numberOfCustomers, 0),
-    "Försäljning ink. moms": fmt(report.visits.reduce((s, v) => s + v.sales + v.fashionShowSales, 0)),
+    "Försäljning ink. moms": fmt(sumMoney(report.visits.flatMap((v) => [v.sales, v.fashionShowSales]))),
     Modevisning: "",
     "Modevisning försäljning": "",
     "Visning på galge": "",
-    ...(showMf && { "FT-avgift ex moms": fmt(report.visits.reduce((s, v) => s + v.ftFee, 0)) }),
-    ...(showMf && { "MF-avgift ex moms": fmt(report.visits.reduce((s, v) => s + v.mfFee, 0)) }),
-    "Totalt att betala": fmt(report.visits.reduce((s, v) => s + v.totalToPay, 0)),
+    ...(showMf && { "FT-avgift ex moms": fmt(sumMoney(report.visits.map((v) => v.ftFee))) }),
+    ...(showMf && { "MF-avgift ex moms": fmt(sumMoney(report.visits.map((v) => v.mfFee))) }),
+    "Totalt att betala": fmt(sumMoney(report.visits.map((v) => v.totalToPay))),
     Kommentar: "",
   };
 

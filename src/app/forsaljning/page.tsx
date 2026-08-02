@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { getCurrentWeekAndYear } from "@/lib/week";
 import ForsaljningClient, { type SalesRow } from "./ForsaljningClient";
+import { money, toNumber } from "@/lib/fees";
 
 export default async function ForsaljningPage() {
   const session = await auth();
@@ -39,12 +40,12 @@ export default async function ForsaljningPage() {
       customerName: v.customer.name,
       customerType: v.customer.type,
       numberOfCustomers: v.numberOfCustomers,
-      sales: v.sales + v.fashionShowSales,
+      sales: toNumber(money(v.sales).plus(v.fashionShowSales)),
       isFashionShow: v.isFashionShow,
       isHangerShow: v.isHangerShow,
-      ftFee: v.ftFee,
-      mfFee: v.mfFee,
-      totalToPay: v.totalToPay,
+      ftFee: toNumber(v.ftFee),
+      mfFee: toNumber(v.mfFee),
+      totalToPay: toNumber(v.totalToPay),
       status: r.status,
       comment: v.comment,
     }))

@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { customerTypeLabels as typeLabels } from "@/lib/customerTypes";
 import * as XLSX from "xlsx";
+import { money, sumMoney, type MoneyInput } from "@/lib/fees";
 
 const statusLabels: Record<string, string> = {
   DRAFT: "Utkast",
@@ -46,9 +47,9 @@ export async function GET(req: NextRequest) {
     week: number; year: number; seasonType: string;
     districtLabel: string; districtNumber: number;
     customerName: string; customerType: string;
-    numberOfCustomers: number; sales: number;
+    numberOfCustomers: number; sales: MoneyInput;
     isFashionShow: boolean; isHangerShow: boolean;
-    ftFee: number; mfFee: number; totalToPay: number;
+    ftFee: MoneyInput; mfFee: MoneyInput; totalToPay: MoneyInput;
     status: string; comment: string | null;
   };
 
@@ -62,7 +63,7 @@ export async function GET(req: NextRequest) {
       customerName: v.customer.name,
       customerType: v.customer.type,
       numberOfCustomers: v.numberOfCustomers,
-      sales: v.sales + v.fashionShowSales,
+      sales: money(v.sales).plus(v.fashionShowSales),
       isFashionShow: v.isFashionShow,
       isHangerShow: v.isHangerShow,
       ftFee: v.ftFee,
@@ -86,8 +87,11 @@ export async function GET(req: NextRequest) {
   );
   rows.sort((a, b) => a.week - b.week || a.customerName.localeCompare(b.customerName, "sv"));
 
-  const fmt = (n: number) =>
-    new Intl.NumberFormat("sv-SE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
+  // Exporten visar öre — beloppen kommer som Decimal och formateras exakt.
+  const fmt = (n: MoneyInput) =>
+    new Intl.NumberFormat("sv-SE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(
+      money(n).toNumber()
+    );
 
   // Beskriv aktiva filter (så det framgår vad som exporterats)
   const districtLabel = fDistrict ? (rows[0]?.districtLabel ?? `Distrikt-id ${fDistrict}`) : "Alla";
@@ -130,10 +134,10 @@ export async function GET(req: NextRequest) {
     `${rows.length} besök`,
     "",
     rows.reduce((s, r) => s + r.numberOfCustomers, 0),
-    fmt(rows.reduce((s, r) => s + r.sales, 0)),
+    fmt(sumMoney(rows.map((r) => r.sales))),
     "", "",
-    ...(isAdmin ? [fmt(rows.reduce((s, r) => s + r.ftFee, 0)), fmt(rows.reduce((s, r) => s + r.mfFee, 0))] : []),
-    fmt(rows.reduce((s, r) => s + r.totalToPay, 0)),
+    ...(isAdmin ? [fmt(sumMoney(rows.map((r) => r.ftFee))), fmt(sumMoney(rows.map((r) => r.mfFee)))] : []),
+    fmt(sumMoney(rows.map((r) => r.totalToPay))),
     "", "",
   ];
 

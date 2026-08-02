@@ -90,12 +90,21 @@ export default async function RapporteraPage({
         initialWeek={initialWeek}
         initialSeasonId={initialSeason.id}
         feeConfig={
-          feeConfig ?? {
-            ftFeePercent: 0.075,
-            mfFeePercent: 0.01,
-            mfFeeCap: 6000,
-            vatMultiplier: 1.25,
-          }
+          feeConfig
+            ? {
+                ftFeePercent: feeConfig.ftFeePercent,
+                mfFeePercent: feeConfig.mfFeePercent,
+                // Decimal kan inte serialiseras till en klientkomponent —
+                // skickas som exakt sträng och läses in i Decimal igen.
+                mfFeeCap: feeConfig.mfFeeCap.toFixed(2),
+                vatMultiplier: feeConfig.vatMultiplier,
+              }
+            : {
+                ftFeePercent: 0.075,
+                mfFeePercent: 0.01,
+                mfFeeCap: "6000.00",
+                vatMultiplier: 1.25,
+              }
         }
       />
     </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { calculateFees, formatSEK, type FeeConfig } from "@/lib/fees";
+import { calculateFees, formatSEK, money, sumMoney, type FeeConfig, type MoneyInput } from "@/lib/fees";
 import { customerTypeLabels } from "@/lib/customerTypes";
 import { getISOWeek } from "@/lib/week";
 import type { Customer, Season } from "@prisma/client";
@@ -20,7 +20,7 @@ interface VisitRowProps {
   index: number;
   visit: VisitRow;
   customers: Customer[];
-  feeRow: { ftFee: number; mfFee: number; totalToPay: number } | null;
+  feeRow: { ftFee: MoneyInput; mfFee: MoneyInput; totalToPay: MoneyInput } | null;
   onUpdate: (field: keyof VisitRow, value: unknown) => void;
   onRemove: () => void;
 }
@@ -239,7 +239,8 @@ export default function ReportForm({
   const [locking, setLocking] = useState(false);
   const [savedReportId, setSavedReportId] = useState<string | null>(null);
   const [error, setError] = useState("");
-  const [mfAccumulated, setMfAccumulated] = useState(0);
+  // Hålls som sträng — JSON saknar exakt decimaltyp; läses in i Decimal vid bruk.
+  const [mfAccumulated, setMfAccumulated] = useState("0.00");
   const [isDirty, setIsDirty] = useState(false);
   const [pendingWeek, setPendingWeek] = useState<number | null>(null);
 
@@ -258,7 +259,7 @@ export default function ReportForm({
       `/api/reports/mf-accumulated?districtId=${districtId}&seasonId=${selectedSeasonId}&week=${selectedWeek}`
     )
       .then((r) => r.json())
-      .then((d) => setMfAccumulated(d.accumulated ?? 0))
+      .then((d) => setMfAccumulated(String(d.accumulated ?? "0.00")))
       .catch(() => {});
   }, [selectedSeasonId, selectedWeek, districtId]);
 
@@ -346,18 +347,20 @@ export default function ReportForm({
     setIsDirty(true);
   }
 
-  let runningMf = mfAccumulated;
+  // Avgifterna räknas i Decimal även här — samma funktion som servern använder,
+  // så förhandsvisningen visar exakt det som sedan lagras.
+  let runningMf = money(mfAccumulated);
   const feeRows = visits.map((v) => {
-    const fees = calculateFees(v.sales + v.fashionShowSales, runningMf, feeConfig as FeeConfig);
+    const fees = calculateFees(money(v.sales).plus(v.fashionShowSales), runningMf, feeConfig as FeeConfig);
     runningMf = fees.mfFeeAccumulated;
     return fees;
   });
 
   const totals = {
-    sales: visits.reduce((s, v) => s + v.sales + v.fashionShowSales, 0),
-    ftFee: feeRows.reduce((s, f) => s + f.ftFee, 0),
-    mfFee: feeRows.reduce((s, f) => s + f.mfFee, 0),
-    totalToPay: feeRows.reduce((s, f) => s + f.totalToPay, 0),
+    sales: sumMoney(visits.flatMap((v) => [v.sales, v.fashionShowSales])),
+    ftFee: sumMoney(feeRows.map((f) => f.ftFee)),
+    mfFee: sumMoney(feeRows.map((f) => f.mfFee)),
+    totalToPay: sumMoney(feeRows.map((f) => f.totalToPay)),
   };
 
   async function handleSubmit() {

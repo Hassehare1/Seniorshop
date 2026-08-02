@@ -75,7 +75,8 @@ model FeeConfig {
   district      District @relation(fields: [districtId], references: [id])
   ftFeePercent  Float    @default(0.075)
   mfFeePercent  Float    @default(0.01)
-  mfFeeCap      Float    @default(6000)
+  // Pengar lagras exakt (öre), satserna ovan är kvoter och förblir Float.
+  mfFeeCap      Decimal  @default(6000) @db.Decimal(12, 2)
   vatMultiplier Float    @default(1.25)
   updatedBy     String?
   updatedAt     DateTime @updatedAt
@@ -158,14 +159,15 @@ model Visit {
   customerId        String
   customer          Customer     @relation(fields: [customerId], references: [id])
   numberOfCustomers Int          @default(0)
-  sales             Float        @default(0)
+  // Belopp i kronor med öresprecision — aldrig Float (se src/lib/fees.ts).
+  sales             Decimal      @default(0) @db.Decimal(12, 2)
   isFashionShow     Boolean      @default(false)
-  fashionShowSales  Float        @default(0)
+  fashionShowSales  Decimal      @default(0) @db.Decimal(12, 2)
   isHangerShow      Boolean      @default(false)
-  ftFee             Float        @default(0)
-  mfFee             Float        @default(0)
-  mfFeeAccumulated  Float        @default(0)
-  totalToPay        Float        @default(0)
+  ftFee             Decimal      @default(0) @db.Decimal(12, 2)
+  mfFee             Decimal      @default(0) @db.Decimal(12, 2)
+  mfFeeAccumulated  Decimal      @default(0) @db.Decimal(12, 2)
+  totalToPay        Decimal      @default(0) @db.Decimal(12, 2)
   comment           String?
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
