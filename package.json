@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "postinstall": "prisma generate",
-    "build": "prisma generate && prisma migrate deploy && next build",
+    "build": "prisma generate && node scripts/migrate-prod-only.mjs && next build",
     "start": "next start",
     "lint": "eslint",
     "test": "node --test src/lib/fees.test.ts",
