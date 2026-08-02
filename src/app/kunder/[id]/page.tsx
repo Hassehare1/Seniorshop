@@ -91,7 +91,6 @@ export default async function CustomerCardPage({ params }: { params: Promise<{ i
           contactRole: customer.contactRole ?? "",
           phone: customer.phone ?? "",
           email: customer.email ?? "",
-          size: customer.size != null ? String(customer.size) : "",
           address: customer.address ?? "",
           notes: customer.notes ?? "",
         }}

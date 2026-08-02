@@ -91,7 +91,6 @@ model Customer {
   email         String?
   phone         String?
   address       String?
-  size          Int?
   notes         String?
   active        Boolean      @default(true)
   approved      Boolean      @default(false)

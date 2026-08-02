@@ -16,7 +16,6 @@ interface Customer {
   contactRole: string | null;
   email: string | null;
   phone: string | null;
-  size: number | null;
   active: boolean;
   approved: boolean;
   district: { number: number; name: string };
@@ -223,7 +222,6 @@ export default function AdminKunderClient({ customers: initial, seasons, visitMa
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Namn</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Typ</th>
                 {seasons.length > 0 && <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Besök</th>}
-                <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Storlek</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Kontakt</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Telefon</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Status</th>
@@ -248,7 +246,6 @@ export default function AdminKunderClient({ customers: initial, seasons, visitMa
                     </span>
                   </td>
                   {seasons.length > 0 && <td className="px-4 py-3">{besokBadge(visitCount(c.id))}</td>}
-                  <td className="px-4 py-3 text-right text-slate-600 tabular-nums">{c.size ?? "–"}</td>
                   <td className="px-4 py-3 text-slate-600">
                     {c.contactPerson ?? "–"}
                     {c.contactRole && <span className="text-slate-400"> · {c.contactRole}</span>}

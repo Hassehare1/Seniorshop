@@ -9,7 +9,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const { id: rawId } = await params;
   const body = await req.json();
-  const { name, type, contactPerson, contactRole, email, phone, address, size, notes, active } = body;
+  const { name, type, contactPerson, contactRole, email, phone, address, notes, active } = body;
 
   // Tål id med svenska tecken (URL-kodning + NFC/NFD)
   let decoded = rawId;
@@ -27,14 +27,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: "Ogiltig kundtyp." }, { status: 400 });
   }
 
-  let parsedSize: number | null | undefined = undefined;
-  if (size !== undefined) {
-    parsedSize = size === "" || size === null ? null : Number(size);
-    if (parsedSize !== null && (!Number.isFinite(parsedSize) || parsedSize < 0)) {
-      return NextResponse.json({ error: "Storlek måste vara ett positivt tal" }, { status: 400 });
-    }
-  }
-
   const updated = await prisma.customer.update({
     where: { id: customer.id },
     data: {
@@ -45,7 +37,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       ...(email !== undefined && { email }),
       ...(phone !== undefined && { phone }),
       ...(address !== undefined && { address }),
-      ...(parsedSize !== undefined && { size: parsedSize }),
       ...(notes !== undefined && { notes }),
       ...(active !== undefined && { active }),
     },

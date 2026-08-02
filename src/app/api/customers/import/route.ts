@@ -69,14 +69,6 @@ export async function POST(req: NextRequest) {
     const type = parseType(typeRaw);
     if (!type) { errors.push({ row: rowNum, message: `Ogiltig typ "${typeRaw}"` }); return; }
 
-    let size: number | null = null;
-    const sizeRaw = cell(row, "Storlek");
-    if (sizeRaw) {
-      const n = Number(sizeRaw);
-      if (!Number.isFinite(n) || n < 0) { errors.push({ row: rowNum, message: "Storlek måste vara ett positivt tal" }); return; }
-      size = Math.round(n);
-    }
-
     toCreate.push({
       name,
       type,
@@ -87,7 +79,6 @@ export async function POST(req: NextRequest) {
       email: cell(row, "E-post") || null,
       address: cell(row, "Adress") || null,
       notes: cell(row, "Kommentar") || null,
-      size,
     });
   });
 

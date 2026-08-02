@@ -7,7 +7,6 @@ type Values = {
   contactRole: string;
   phone: string;
   email: string;
-  size: string; // som sträng i formuläret; tomt = ej angivet
   address: string;
   notes: string;
 };
@@ -100,9 +99,6 @@ export default function ContactCard({ customerId, initial }: { customerId: strin
           <EditField label="E-post">
             <input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} className={input} placeholder="namn@exempel.se" />
           </EditField>
-          <EditField label="Storlek (antal boende/medlemmar)">
-            <input type="number" min={0} value={form.size} onChange={e => setForm(f => ({ ...f, size: e.target.value }))} className={input} placeholder="t.ex. 40" />
-          </EditField>
           <EditField label="Adress">
             <input type="text" value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} className={input} placeholder="Gatuadress, Ort" />
           </EditField>
@@ -123,9 +119,6 @@ export default function ContactCard({ customerId, initial }: { customerId: strin
           </Field>
           <Field label="E-post">
             {mailHref ? <a href={mailHref} className="text-blue-600 hover:text-blue-800 font-medium break-all">{values.email}</a> : "–"}
-          </Field>
-          <Field label="Storlek">
-            {values.size ? `${values.size} boende/medlemmar` : "–"}
           </Field>
           <div className="sm:col-span-2">
             <Field label="Adress">{values.address || "–"}</Field>

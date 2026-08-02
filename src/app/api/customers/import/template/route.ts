@@ -9,11 +9,11 @@ export async function GET() {
 
   const headers = [
     "Namn", "Typ", "Kontaktperson", "Kontaktroll",
-    "Telefon", "E-post", "Storlek", "Adress", "Kommentar",
+    "Telefon", "E-post", "Adress", "Kommentar",
   ];
   const example = [
     "Träffpunkt Centrum", "Träffpunkt", "Anna Andersson", "Aktivitetsansvarig",
-    "070-123 45 67", "anna@exempel.se", 40, "Storgatan 1, Ort", "Ersätt denna exempelrad",
+    "070-123 45 67", "anna@exempel.se", "Storgatan 1, Ort", "Ersätt denna exempelrad",
   ];
 
   const ws = XLSX.utils.aoa_to_sheet([headers, example]);

@@ -8,7 +8,7 @@ import ImportKunder from "./ImportKunder";
 
 const emptyForm = {
   name: "", type: "TRAFFPUNKT", contactPerson: "", contactRole: "", email: "",
-  phone: "", address: "", size: "", notes: "", active: true,
+  phone: "", address: "", notes: "", active: true,
 };
 
 export type VisitMap = Record<string, Record<string, { count: number; lastWeek: number }>>;
@@ -100,7 +100,6 @@ export default function KunderClient({ customers: initial, districtId, districtN
       email: c.email ?? "",
       phone: c.phone ?? "",
       address: c.address ?? "",
-      size: c.size != null ? String(c.size) : "",
       notes: c.notes ?? "",
       active: c.active,
     });
@@ -234,17 +233,6 @@ export default function KunderClient({ customers: initial, districtId, districtN
                   <option key={t.value} value={t.value}>{t.label}</option>
                 ))}
               </select>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Storlek (antal boende/medlemmar)</label>
-              <input
-                type="number"
-                min={0}
-                value={form.size}
-                onChange={e => setForm(f => ({ ...f, size: e.target.value }))}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="t.ex. 40"
-              />
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-600 mb-1">Kontaktperson</label>
