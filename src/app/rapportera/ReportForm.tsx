@@ -6,7 +6,15 @@ import { customerTypeLabels } from "@/lib/customerTypes";
 import { getISOWeek } from "@/lib/week";
 import type { Customer, Season } from "@prisma/client";
 
+// Stabil nyckel per rad. Med listindex som React-nyckel återanvänds
+// komponenten på positionen när en rad tas bort, och behåller sitt interna
+// tillstånd (kundnamnet i sökfältet) — det såg ut som att det borttagna
+// besöket kom tillbaka.
+let rowKeySeq = 0;
+const nextRowKey = () => `rad-${++rowKeySeq}`;
+
 interface VisitRow {
+  _key: string;
   customerId: string;
   numberOfCustomers: number;
   sales: number;
@@ -321,6 +329,7 @@ export default function ReportForm({
         const report = fetched.find(r => r.week === selectedWeek);
         if (report) {
           const loaded = report.visits.map(v => ({
+            _key: nextRowKey(),
             customerId: v.customerId,
             numberOfCustomers: v.numberOfCustomers,
             sales: v.sales,
@@ -366,18 +375,25 @@ export default function ReportForm({
   }
 
   function addVisit() {
-    setVisits((v) => [
-      ...v,
-      {
-        customerId: customers[0]?.id ?? "",
-        numberOfCustomers: 0,
-        sales: 0,
-        isFashionShow: false,
-        fashionShowSales: 0,
-        isHangerShow: false,
-        comment: "",
-      },
-    ]);
+    setVisits((v) => {
+      // Förvälj första kunden som INTE redan ligger på veckan — annars skapar
+      // ett tillagt besök en dubblett direkt, utan att man gjort något fel.
+      const taken = new Set(v.map(x => x.customerId).filter(Boolean));
+      const firstFree = customers.find(c => !taken.has(c.id));
+      return [
+        ...v,
+        {
+          _key: nextRowKey(),
+          customerId: firstFree?.id ?? "",
+          numberOfCustomers: 0,
+          sales: 0,
+          isFashionShow: false,
+          fashionShowSales: 0,
+          isHangerShow: false,
+          comment: "",
+        },
+      ];
+    });
     setIsDirty(true);
   }
 
@@ -441,7 +457,8 @@ export default function ReportForm({
           districtId,
           seasonId: selectedSeasonId,
           week: selectedWeek,
-          visits: visits.map((v, i) => ({ ...v, ...feeRows[i] })),
+          // _key är bara React-nyckel på klienten och ska inte skickas med
+          visits: visits.map(({ _key, ...v }, i) => ({ ...v, ...feeRows[i] })),
         }),
       });
       if (!res.ok) throw new Error(await res.text());
@@ -600,7 +617,9 @@ export default function ReportForm({
           <div className="mx-4 md:mx-6 mt-4 px-4 py-3 bg-blue-50 border border-blue-200 rounded-lg">
             <p className="text-sm text-blue-900">
               <span className="font-semibold">
-                {savedVisits.length} {savedVisits.length === 1 ? "besök" : "besök"} redan sparade denna vecka
+                {savedVisits.length === 1
+                  ? "1 besök redan sparat denna vecka"
+                  : `${savedVisits.length} besök redan sparade denna vecka`}
               </span>
               <span className="text-blue-700"> · {formatSEK(savedTotal)}</span>
             </p>
@@ -631,7 +650,7 @@ export default function ReportForm({
         <div className={`divide-y divide-slate-100 ${isLocked ? "opacity-60 pointer-events-none select-none" : ""}`}>
           {visits.map((visit, i) => (
             <VisitRow
-              key={i}
+              key={visit._key}
               index={i}
               visit={visit}
               customers={customers}
