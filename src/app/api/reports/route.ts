@@ -44,7 +44,8 @@ export async function POST(req: NextRequest) {
   const [season, feeConfig, districtCustomers, existing] = await Promise.all([
     prisma.season.findUnique({ where: { id: seasonId } }),
     prisma.feeConfig.findUnique({ where: { districtId } }),
-    prisma.customer.findMany({ where: { districtId }, select: { id: true } }),
+    // name behövs för att kunna namnge kunden i dubblettfelet
+    prisma.customer.findMany({ where: { districtId }, select: { id: true, name: true } }),
     prisma.weeklyReport.findUnique({
       where: { districtId_seasonId_week: { districtId, seasonId, week } },
       select: { status: true },
@@ -86,6 +87,23 @@ export async function POST(req: NextRequest) {
     if (!Number.isFinite(num) || num < 0 || !Number.isFinite(sales) || sales < 0 || !Number.isFinite(fashion) || fashion < 0) {
       return NextResponse.json({ error: "Ogiltiga värden i ett besök." }, { status: 400 });
     }
+  }
+
+  // En kund får bara rapporteras EN gång per vecka — ett andra besök samma vecka
+  // hanteras genom att redigera den befintliga raden. Payloaden innehåller hela
+  // veckan (besöken ersätts nedan), så det räcker att kolla den mot sig själv.
+  // UI:t spärrar redan valet, men det här är spärren som inte kan kringgås.
+  const seen = new Set<string>();
+  for (const v of visits) {
+    const id = v.customerId as string;
+    if (seen.has(id)) {
+      const name = districtCustomers.find((c) => c.id === id)?.name ?? "Kunden";
+      return NextResponse.json(
+        { error: `${name} är rapporterad två gånger samma vecka. Redigera det befintliga besöket i stället för att lägga till ett nytt.` },
+        { status: 400 }
+      );
+    }
+    seen.add(id);
   }
 
   const config = feeConfig ?? DEFAULT_FEE_CONFIG;

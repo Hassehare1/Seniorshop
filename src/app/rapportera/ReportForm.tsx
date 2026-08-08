@@ -40,11 +40,13 @@ interface VisitRowProps {
   customers: Customer[];
   feeRow: { ftFee: MoneyInput; mfFee: MoneyInput; totalToPay: MoneyInput } | null;
   status: VisitStatus;
+  // Kunder som redan ligger på veckan (i andra rader) — går inte att välja igen.
+  takenCustomerIds: Set<string>;
   onUpdate: (field: keyof VisitRow, value: unknown) => void;
   onRemove: () => void;
 }
 
-function VisitRow({ index, visit, customers, feeRow, status, onUpdate, onRemove }: VisitRowProps) {
+function VisitRow({ index, visit, customers, feeRow, status, takenCustomerIds, onUpdate, onRemove }: VisitRowProps) {
   const [inputValue, setInputValue] = useState(() => customers.find(c => c.id === visit.customerId)?.name ?? "");
   const [open, setOpen] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState(false);
@@ -127,17 +129,36 @@ function VisitRow({ index, visit, customers, feeRow, status, onUpdate, onRemove 
               {filtered.length === 0 && (
                 <p className="px-3 py-2 text-sm text-slate-400">Inga kunder hittades</p>
               )}
-              {filtered.map(c => (
-                <button
-                  key={c.id}
-                  type="button"
-                  onMouseDown={() => selectCustomer(c.id, c.name)}
-                  className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 flex justify-between items-center ${c.id === visit.customerId ? "bg-blue-50 text-blue-700 font-medium" : "text-slate-700"}`}
-                >
-                  <span>{c.name}</span>
-                  <span className="text-xs text-slate-400 ml-2">{customerTypeLabels[c.type]}</span>
-                </button>
-              ))}
+              {filtered.map(c => {
+                // En kund rapporteras en gång per vecka — ligger den redan på en
+                // annan rad går den inte att välja, då redigerar man den raden.
+                const taken = takenCustomerIds.has(c.id);
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    disabled={taken}
+                    title={taken ? "Redan rapporterad denna vecka — redigera den befintliga raden" : undefined}
+                    onMouseDown={() => { if (!taken) selectCustomer(c.id, c.name); }}
+                    className={`w-full text-left px-3 py-2 text-sm flex justify-between items-center ${
+                      taken
+                        ? "bg-amber-50 text-slate-400 cursor-not-allowed"
+                        : c.id === visit.customerId
+                          ? "bg-blue-50 text-blue-700 font-medium hover:bg-blue-50"
+                          : "text-slate-700 hover:bg-blue-50"
+                    }`}
+                  >
+                    <span>{c.name}</span>
+                    {taken ? (
+                      <span className="text-xs text-amber-700 bg-amber-100 rounded-full px-2 py-0.5 ml-2 whitespace-nowrap">
+                        Redan rapporterad
+                      </span>
+                    ) : (
+                      <span className="text-xs text-slate-400 ml-2">{customerTypeLabels[c.type]}</span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>
@@ -616,6 +637,7 @@ export default function ReportForm({
               customers={customers}
               feeRow={feeRows[i] ?? null}
               status={visitStatus(visit)}
+              takenCustomerIds={new Set(visits.filter((_, idx) => idx !== i).map(v => v.customerId).filter(Boolean))}
               onUpdate={(field, value) => updateVisit(i, field, value)}
               onRemove={() => removeVisit(i)}
             />
