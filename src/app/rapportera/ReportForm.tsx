@@ -446,7 +446,9 @@ export default function ReportForm({
   };
 
   async function handleSubmit() {
-    if (!visits.length) return;
+    // Tom vecka får sparas när något ligger sparat — det är så man tar bort
+    // veckans sista besök. Servern raderar då hela veckorapporten.
+    if (!visits.length && savedVisits.length === 0) return;
     setSaving(true);
     setError("");
     try {
@@ -462,11 +464,20 @@ export default function ReportForm({
         }),
       });
       if (!res.ok) throw new Error(await res.text());
-      const { id } = await res.json();
+      const { id, deleted } = await res.json();
+      setIsDirty(false);
+
+      if (deleted) {
+        // Sista besöket togs bort → veckan är inte längre rapporterad.
+        setSavedVisits([]);
+        setSavedReportId(null);
+        setReports(prev => prev.filter(r => r.week !== selectedWeek));
+        return;
+      }
+
       setSavedReportId(id);
       // Det som just skickades in är nu det sparade läget — raderna blir "Sparad".
       setSavedVisits(visits.map(v => ({ ...v })));
-      setIsDirty(false);
       // Besöken lämnas KVAR på skärmen. Tidigare tömdes formuläret här, vilket
       // gjorde att man inte såg vad man just sparat — och därmed lätt kunde
       // rapportera samma kund en gång till.
@@ -716,7 +727,7 @@ export default function ReportForm({
           {!isLocked && (
             <button
               onClick={handleSubmit}
-              disabled={saving || visits.length === 0}
+              disabled={saving || (visits.length === 0 && savedVisits.length === 0)}
               className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium px-6 py-2.5 rounded-lg transition-colors"
             >
               {saving ? "Sparar..." : "Spara utkast"}

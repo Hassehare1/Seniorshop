@@ -1,7 +1,48 @@
 import { NextRequest, NextResponse } from "next/server";
+import type { Prisma } from "@prisma/client";
+import type Decimal from "decimal.js";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { calculateFees, money, sumMoney, type FeeConfig } from "@/lib/fees";
+
+// MF-taket ackumuleras över säsongens veckor, så veckor EFTER den ändrade
+// måste räknas om — både när en vecka sparas och när den tas bort.
+// startingMf = ackumulerat t.o.m. och med den ändrade veckan.
+async function recomputeLaterWeeks(
+  tx: Prisma.TransactionClient,
+  args: { districtId: string; seasonId: string; week: number; startingMf: Decimal; config: FeeConfig }
+) {
+  const { districtId, seasonId, week, config } = args;
+  const laterReports = await tx.weeklyReport.findMany({
+    where: { districtId, seasonId, week: { gt: week } },
+    include: { visits: { orderBy: { createdAt: "asc" } } },
+    orderBy: { week: "asc" },
+  });
+  let mf = args.startingMf;
+  for (const r of laterReports) {
+    for (const v of r.visits) {
+      const fees = calculateFees(money(v.sales).plus(v.fashionShowSales), mf, config);
+      mf = fees.mfFeeAccumulated;
+      // Exakt jämförelse på Decimal — med flyttal gav minsta öresdrift
+      // falska missmatchningar och en onödig skrivning per besök.
+      if (
+        !money(v.mfFee).equals(fees.mfFee) ||
+        !money(v.mfFeeAccumulated).equals(fees.mfFeeAccumulated) ||
+        !money(v.totalToPay).equals(fees.totalToPay)
+      ) {
+        await tx.visit.update({
+          where: { id: v.id },
+          data: {
+            ftFee: fees.ftFee,
+            mfFee: fees.mfFee,
+            mfFeeAccumulated: fees.mfFeeAccumulated,
+            totalToPay: fees.totalToPay,
+          },
+        });
+      }
+    }
+  }
+}
 
 const DEFAULT_FEE_CONFIG: FeeConfig = {
   ftFeePercent: 0.075,
@@ -27,9 +68,6 @@ export async function POST(req: NextRequest) {
   // Grundläggande struktur-validering
   if (!districtId || !seasonId || !Number.isInteger(week) || !Array.isArray(visits)) {
     return NextResponse.json({ error: "Ogiltig förfrågan" }, { status: 400 });
-  }
-  if (visits.length === 0) {
-    return NextResponse.json({ error: "Minst ett besök krävs" }, { status: 400 });
   }
   if (visits.length > MAX_VISITS) {
     return NextResponse.json({ error: "För många besök i en rapport" }, { status: 400 });
@@ -72,6 +110,34 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  const config = feeConfig ?? DEFAULT_FEE_CONFIG;
+
+  // Tom vecka = veckan är inte längre rapporterad: hela rapporten tas bort, så
+  // veckan går tillbaka till "ej rapporterad" (markören försvinner och puffen
+  // återkommer). Det är så man ångrar ett besök som råkat bli det enda på veckan.
+  if (visits.length === 0) {
+    await prisma.$transaction(async (tx) => {
+      const report = await tx.weeklyReport.findUnique({
+        where: { districtId_seasonId_week: { districtId, seasonId, week } },
+        select: { id: true },
+      });
+      if (!report) return; // fanns ingen rapport — inget att ta bort
+
+      await tx.visit.deleteMany({ where: { reportId: report.id } });
+      await tx.weeklyReport.delete({ where: { id: report.id } });
+
+      // Veckan bidrar nu med 0 till MF-taket — senare veckor måste räknas om.
+      const priorReports = await tx.weeklyReport.findMany({
+        where: { districtId, seasonId, week: { lt: week } },
+        include: { visits: { select: { mfFee: true } } },
+      });
+      const priorMf = sumMoney(priorReports.flatMap((r) => r.visits).map((v) => v.mfFee));
+      await recomputeLaterWeeks(tx, { districtId, seasonId, week, startingMf: priorMf, config });
+    }, { timeout: 15000 });
+
+    return NextResponse.json({ deleted: true });
+  }
+
   // Validera varje besök: kund måste tillhöra distriktet + numeriska fält rimliga
   const validCustomerIds = new Set(districtCustomers.map((c) => c.id));
   for (const v of visits) {
@@ -105,8 +171,6 @@ export async function POST(req: NextRequest) {
     }
     seen.add(id);
   }
-
-  const config = feeConfig ?? DEFAULT_FEE_CONFIG;
 
   // Allt skrivande sker i EN transaktion. Annars är "ta bort + återskapa besök
   // + räkna om MF-taket för senare veckor" icke-atomärt: ett avbrott mitt i
@@ -168,39 +232,11 @@ export async function POST(req: NextRequest) {
 
     // Pkt 7: räkna om MF-taket för efterföljande veckor — de kan ha
     // påverkats om denna vecka matades in i efterhand (i oordning).
-    const laterReports = await tx.weeklyReport.findMany({
-      where: { districtId, seasonId, week: { gt: week } },
-      include: { visits: { orderBy: { createdAt: "asc" } } },
-      orderBy: { week: "asc" },
+    // MF ackumulerat t.o.m. denna vecka = tidigare veckor + denna veckas omräknade.
+    await recomputeLaterWeeks(tx, {
+      districtId, seasonId, week, config,
+      startingMf: priorMf.plus(sumMoney(computedVisits.map((v) => v.mfFee))),
     });
-    if (laterReports.length > 0) {
-      // MF ackumulerat t.o.m. denna vecka = tidigare veckor + denna veckas omräknade
-      let mf = priorMf.plus(sumMoney(computedVisits.map((v) => v.mfFee)));
-
-      for (const r of laterReports) {
-        for (const v of r.visits) {
-          const fees = calculateFees(money(v.sales).plus(v.fashionShowSales), mf, config);
-          mf = fees.mfFeeAccumulated;
-          // Exakt jämförelse på Decimal — med flyttal gav minsta öresdrift
-          // falska missmatchningar och en onödig skrivning per besök.
-          if (
-            !money(v.mfFee).equals(fees.mfFee) ||
-            !money(v.mfFeeAccumulated).equals(fees.mfFeeAccumulated) ||
-            !money(v.totalToPay).equals(fees.totalToPay)
-          ) {
-            await tx.visit.update({
-              where: { id: v.id },
-              data: {
-                ftFee: fees.ftFee,
-                mfFee: fees.mfFee,
-                mfFeeAccumulated: fees.mfFeeAccumulated,
-                totalToPay: fees.totalToPay,
-              },
-            });
-          }
-        }
-      }
-    }
 
     return report.id;
   }, { timeout: 15000 });
