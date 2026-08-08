@@ -406,9 +406,18 @@ export default function ReportForm({
     setIsDirty(true);
   }
 
-  function removeVisit(i: number) {
-    setVisits((v) => v.filter((_, idx) => idx !== i));
-    setIsDirty(true);
+  // "Ta bort" sparar direkt. Tidigare togs raden bara bort ur formuläret och
+  // krävde ett extra "Spara utkast" — glömde man det låg besöket kvar och kom
+  // tillbaka vid omladdning, vilket såg ut som att borttagningen inte fungerade.
+  // Rör bara veckor som redan är sparade; är inget sparat finns inget att skriva.
+  async function removeVisit(i: number) {
+    const next = visits.filter((_, idx) => idx !== i);
+    setVisits(next);
+    if (savedVisits.length === 0) {
+      setIsDirty(true);
+      return;
+    }
+    await persistVisits(next);
   }
 
   // Avgifterna räknas i Decimal även här — samma funktion som servern använder,
@@ -445,10 +454,9 @@ export default function ReportForm({
     totalToPay: sumMoney(feeRows.map((f) => f.totalToPay)),
   };
 
-  async function handleSubmit() {
-    // Tom vecka får sparas när något ligger sparat — det är så man tar bort
-    // veckans sista besök. Servern raderar då hela veckorapporten.
-    if (!visits.length && savedVisits.length === 0) return;
+  // Skickar en lista besök till servern och speglar svaret i sparat läge.
+  // Avgifterna räknas om server-sidan, så klientens värden behöver inte med.
+  async function persistVisits(list: VisitRow[]) {
     setSaving(true);
     setError("");
     try {
@@ -460,7 +468,7 @@ export default function ReportForm({
           seasonId: selectedSeasonId,
           week: selectedWeek,
           // _key är bara React-nyckel på klienten och ska inte skickas med
-          visits: visits.map(({ _key, ...v }, i) => ({ ...v, ...feeRows[i] })),
+          visits: list.map(({ _key, ...v }) => v),
         }),
       });
       if (!res.ok) throw new Error(await res.text());
@@ -477,7 +485,7 @@ export default function ReportForm({
 
       setSavedReportId(id);
       // Det som just skickades in är nu det sparade läget — raderna blir "Sparad".
-      setSavedVisits(visits.map(v => ({ ...v })));
+      setSavedVisits(list.map(v => ({ ...v })));
       // Besöken lämnas KVAR på skärmen. Tidigare tömdes formuläret här, vilket
       // gjorde att man inte såg vad man just sparat — och därmed lätt kunde
       // rapportera samma kund en gång till.
@@ -491,6 +499,13 @@ export default function ReportForm({
     } finally {
       setSaving(false);
     }
+  }
+
+  async function handleSubmit() {
+    // Tom vecka får sparas när något ligger sparat — det är så man tar bort
+    // veckans sista besök. Servern raderar då hela veckorapporten.
+    if (!visits.length && savedVisits.length === 0) return;
+    await persistVisits(visits);
   }
 
   async function handleLockToggle() {
