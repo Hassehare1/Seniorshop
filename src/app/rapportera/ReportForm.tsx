@@ -16,16 +16,35 @@ interface VisitRow {
   comment: string;
 }
 
+// Visar om raden redan ligger sparad i databasen, är ändrad sedan sparningen,
+// eller är ny och osparad. Utan detta ser sparade och osparade besök likadana
+// ut, vilket gör det lätt att rapportera samma kund två gånger.
+type VisitStatus = "saved" | "changed" | "new";
+
+function StatusChip({ status }: { status: VisitStatus }) {
+  const style =
+    status === "saved" ? "bg-green-100 text-green-700"
+      : status === "changed" ? "bg-amber-100 text-amber-700"
+        : "bg-slate-100 text-slate-500";
+  const label = status === "saved" ? "Sparad" : status === "changed" ? "Ändrad" : "Ny";
+  return (
+    <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${style}`}>
+      {label}
+    </span>
+  );
+}
+
 interface VisitRowProps {
   index: number;
   visit: VisitRow;
   customers: Customer[];
   feeRow: { ftFee: MoneyInput; mfFee: MoneyInput; totalToPay: MoneyInput } | null;
+  status: VisitStatus;
   onUpdate: (field: keyof VisitRow, value: unknown) => void;
   onRemove: () => void;
 }
 
-function VisitRow({ index, visit, customers, feeRow, onUpdate, onRemove }: VisitRowProps) {
+function VisitRow({ index, visit, customers, feeRow, status, onUpdate, onRemove }: VisitRowProps) {
   const [inputValue, setInputValue] = useState(() => customers.find(c => c.id === visit.customerId)?.name ?? "");
   const [open, setOpen] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState(false);
@@ -59,7 +78,10 @@ function VisitRow({ index, visit, customers, feeRow, onUpdate, onRemove }: Visit
   return (
     <div className="p-4 md:p-6 space-y-4">
       <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-slate-600">Besök {index + 1}</span>
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-slate-600">Besök {index + 1}</span>
+          <StatusChip status={status} />
+        </div>
         {confirmRemove ? (
           <div className="flex items-center gap-2">
             <span className="text-xs text-slate-500">Ta bort besöket?</span>
@@ -233,6 +255,9 @@ export default function ReportForm({
   });
   const [reports, setReports] = useState(existingReports);
   const [visits, setVisits] = useState<VisitRow[]>([]);
+  // Ögonblicksbild av vad som ligger sparat i databasen för den valda veckan.
+  // Jämförs mot formulärets rader för att visa Sparad/Ändrad/Ny.
+  const [savedVisits, setSavedVisits] = useState<VisitRow[]>([]);
   const [loadingVisits, setLoadingVisits] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -266,7 +291,7 @@ export default function ReportForm({
   // Ladda befintliga besök när man byter till en redan rapporterad vecka
   useEffect(() => {
     const isReported = weekStatusMap.has(selectedWeek);
-    if (!isReported) { setVisits([]); setLoadError(""); setIsDirty(false); return; }
+    if (!isReported) { setVisits([]); setSavedVisits([]); setLoadError(""); setIsDirty(false); return; }
     setLoadingVisits(true);
     setLoadError("");
     fetch(`/api/reports?districtId=${districtId}&seasonId=${selectedSeasonId}`)
@@ -274,7 +299,7 @@ export default function ReportForm({
       .then((fetched: { week: number; visits: (VisitRow & { id: string })[] }[]) => {
         const report = fetched.find(r => r.week === selectedWeek);
         if (report) {
-          setVisits(report.visits.map(v => ({
+          const loaded = report.visits.map(v => ({
             customerId: v.customerId,
             numberOfCustomers: v.numberOfCustomers,
             sales: v.sales,
@@ -282,7 +307,9 @@ export default function ReportForm({
             fashionShowSales: v.fashionShowSales,
             isHangerShow: v.isHangerShow,
             comment: v.comment ?? "",
-          })));
+          }));
+          setVisits(loaded);
+          setSavedVisits(loaded);
           setIsDirty(false);
         }
       })
@@ -356,6 +383,24 @@ export default function ReportForm({
     return fees;
   });
 
+  // En rad matchas mot ögonblicksbilden på kund — en kund rapporteras en gång
+  // per vecka, så kund-id räcker som nyckel.
+  function visitStatus(v: VisitRow): VisitStatus {
+    if (!v.customerId) return "new";
+    const saved = savedVisits.find(s => s.customerId === v.customerId);
+    if (!saved) return "new";
+    const same =
+      saved.numberOfCustomers === v.numberOfCustomers &&
+      Number(saved.sales) === Number(v.sales) &&
+      Number(saved.fashionShowSales) === Number(v.fashionShowSales) &&
+      saved.isFashionShow === v.isFashionShow &&
+      saved.isHangerShow === v.isHangerShow &&
+      (saved.comment ?? "") === (v.comment ?? "");
+    return same ? "saved" : "changed";
+  }
+
+  const savedTotal = sumMoney(savedVisits.flatMap(v => [v.sales, v.fashionShowSales]));
+
   const totals = {
     sales: sumMoney(visits.flatMap((v) => [v.sales, v.fashionShowSales])),
     ftFee: sumMoney(feeRows.map((f) => f.ftFee)),
@@ -381,8 +426,12 @@ export default function ReportForm({
       if (!res.ok) throw new Error(await res.text());
       const { id } = await res.json();
       setSavedReportId(id);
+      // Det som just skickades in är nu det sparade läget — raderna blir "Sparad".
+      setSavedVisits(visits.map(v => ({ ...v })));
       setIsDirty(false);
-      setVisits([]);
+      // Besöken lämnas KVAR på skärmen. Tidigare tömdes formuläret här, vilket
+      // gjorde att man inte såg vad man just sparat — och därmed lätt kunde
+      // rapportera samma kund en gång till.
       setReports(prev => {
         const exists = prev.some(r => r.week === selectedWeek);
         if (exists) return prev.map(r => r.week === selectedWeek ? { ...r, id, status: "DRAFT" } : r);
@@ -456,6 +505,7 @@ export default function ReportForm({
                   setSelectedSeasonId(e.target.value);
                   setSavedReportId(null);
                   setVisits([]);
+                  setSavedVisits([]);
                   setIsDirty(false);
                 }}
                 className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -521,12 +571,25 @@ export default function ReportForm({
               🔒 Låst — lås upp för att redigera
             </span>
           )}
-          {currentStatus === "DRAFT" && weekStatusMap.has(selectedWeek) && (
-            <span className="text-xs bg-blue-50 text-blue-700 border border-blue-200 px-3 py-1.5 rounded-lg">
-              Tidigare rapport laddad — lägg till eller redigera besök och spara igen
-            </span>
-          )}
         </div>
+
+        {/* Vad som redan ligger sparat på veckan — syns innan man börjar fylla i,
+            så man inte råkar rapportera samma kund en gång till. */}
+        {!loadingVisits && savedVisits.length > 0 && (
+          <div className="mx-4 md:mx-6 mt-4 px-4 py-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-sm text-blue-900">
+              <span className="font-semibold">
+                {savedVisits.length} {savedVisits.length === 1 ? "besök" : "besök"} redan sparade denna vecka
+              </span>
+              <span className="text-blue-700"> · {formatSEK(savedTotal)}</span>
+            </p>
+            <p className="text-xs text-blue-700 mt-0.5">
+              {isDirty
+                ? "Du har ändringar som inte är sparade än."
+                : "Redigera en befintlig rad i stället för att lägga till samma kund igen."}
+            </p>
+          </div>
+        )}
 
         {loadingVisits && (
           <div className="p-12 text-center text-slate-400 text-sm">Laddar tidigare rapport...</div>
@@ -552,6 +615,7 @@ export default function ReportForm({
               visit={visit}
               customers={customers}
               feeRow={feeRows[i] ?? null}
+              status={visitStatus(visit)}
               onUpdate={(field, value) => updateVisit(i, field, value)}
               onRemove={() => removeVisit(i)}
             />
