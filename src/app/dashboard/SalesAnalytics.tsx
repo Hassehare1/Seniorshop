@@ -95,10 +95,21 @@ export default function SalesAnalytics({ weeks, breakdown, breakdownTitle, filte
     }));
   }, [weeks, agg]);
 
+  // Andel av total försäljning per rad. Räknas alltid mot HELA urvalets total,
+  // inte mot ett aktivt filter — annars skulle den filtrerade raden visa 100 %.
   const chartData = useMemo(
-    () => breakdown
-      .map(b => ({ key: b.key, label: b.label, color: b.color, sales: b.sales }))
-      .sort((a, b) => b.sales - a.sales),
+    () => {
+      const total = breakdown.reduce((s, b) => s + b.sales, 0);
+      return breakdown
+        .map(b => ({
+          key: b.key,
+          label: b.label,
+          color: b.color,
+          sales: b.sales,
+          share: total > 0 ? Math.round((b.sales / total) * 100) : 0,
+        }))
+        .sort((a, b) => b.sales - a.sales);
+    },
     [breakdown]
   );
 
@@ -147,7 +158,8 @@ export default function SalesAnalytics({ weeks, breakdown, breakdownTitle, filte
 
   // Anpassad höjd + etikettbredd för nedbrytningspanelen (fler poster → mer plats)
   const breakdownHeight = Math.max(200, chartData.length * 34 + 48);
-  const labelWidth = Math.min(150, Math.max(80, Math.max(0, ...chartData.map(d => d.label.length)) * 7));
+  // +50 px för andelen som hängs på etiketten ("Träffpunkt · 44 %")
+  const labelWidth = Math.min(200, Math.max(80, Math.max(0, ...chartData.map(d => d.label.length)) * 7) + 50);
 
   const selectedLabel = selectedItem?.label ?? null;
   const tag = selectedLabel ? ` · ${selectedLabel}` : "";
@@ -288,7 +300,8 @@ export default function SalesAnalytics({ weeks, breakdown, breakdownTitle, filte
             <BarChart
               layout="vertical"
               data={chartData}
-              margin={{ top: 4, right: 16, left: 8, bottom: 4 }}
+              // Plats till höger för procentetiketten efter längsta stapeln
+              margin={{ top: 4, right: 48, left: 8, bottom: 4 }}
               onClick={(state) => {
                 const label = state?.activeLabel;
                 const entry = chartData.find(d => d.label === label);
@@ -298,8 +311,40 @@ export default function SalesAnalytics({ weeks, breakdown, breakdownTitle, filte
             >
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
               <XAxis type="number" tickFormatter={formatAxis} tick={{ fontSize: 10, fill: "#94a3b8" }} tickLine={false} axisLine={false} domain={[0, breakdownScale.max]} ticks={breakdownScale.ticks} />
-              <YAxis type="category" dataKey="label" width={labelWidth} tick={{ fontSize: 11, fill: "#64748b" }} tickLine={false} axisLine={false} />
-              <Tooltip cursor={{ fill: "#f8fafc" }} contentStyle={tipStyle} formatter={(value) => [formatSEK(Number(value)), "Försäljning"]} />
+              {/* Andelen sitter i etiketten i stället för efter stapeln: recharts
+                  ritar inga LabelList/label när staplarna färgas med <Cell>. Här
+                  är den alltid synlig (även i mobilen, som saknar hover) och går
+                  att jämföra mellan raderna. */}
+              <YAxis
+                type="category"
+                dataKey="label"
+                width={labelWidth}
+                tick={{ fontSize: 11, fill: "#64748b" }}
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={(v: string) => {
+                  const d = chartData.find(x => x.label === v);
+                  return d ? `${v} · ${d.share} %` : v;
+                }}
+              />
+              <Tooltip
+                cursor={{ fill: "#f8fafc" }}
+                contentStyle={tipStyle}
+                formatter={(value, _name, item) => {
+                  const share = (item?.payload as { share?: number } | undefined)?.share;
+                  return [
+                    <span key="v">
+                      {formatSEK(Number(value))}
+                      {share != null && (
+                        <span style={{ display: "block", fontSize: 11, color: "#64748b" }}>
+                          {share} % av total
+                        </span>
+                      )}
+                    </span>,
+                    "Försäljning",
+                  ];
+                }}
+              />
               <Bar dataKey="sales" radius={[0, 4, 4, 0]} maxBarSize={36}>
                 {chartData.map((d, i) => (
                   <Cell
