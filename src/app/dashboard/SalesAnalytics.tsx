@@ -5,7 +5,7 @@ import {
   ResponsiveContainer,
   AreaChart, Area, Line,
   BarChart, Bar,
-  XAxis, YAxis, CartesianGrid, Tooltip, Cell,
+  XAxis, YAxis, CartesianGrid, Tooltip, LabelList,
 } from "recharts";
 import { formatSEK } from "@/lib/fees";
 
@@ -156,10 +156,26 @@ export default function SalesAnalytics({ weeks, breakdown, breakdownTitle, filte
   const selectedIdx = selected ? chartData.findIndex(d => d.key === selected) : -1;
   const color = selectedIdx >= 0 ? colorAt(selectedIdx) : BLUE;
 
+  // Stapel med rundad högerkant, färgad per rad och dämpad när en annan rad
+  // är vald som filter. Ersätter <Cell> — se kommentaren vid <Bar> nedan.
+  const breakdownBarShape = (props: { x?: number; y?: number; width?: number; height?: number; index?: number }) => {
+    const { x = 0, y = 0, width = 0, height = 0, index = 0 } = props;
+    if (width <= 0 || height <= 0) return <g />;
+    const r = Math.min(4, height / 2, width);
+    const row = chartData[index];
+    return (
+      <path
+        d={`M${x},${y} H${x + width - r} A${r},${r} 0 0 1 ${x + width},${y + r} V${y + height - r} A${r},${r} 0 0 1 ${x + width - r},${y + height} H${x} Z`}
+        fill={colorAt(index)}
+        fillOpacity={!selected || selected === row?.key ? 1 : 0.3}
+      />
+    );
+  };
+
   // Anpassad höjd + etikettbredd för nedbrytningspanelen (fler poster → mer plats)
   const breakdownHeight = Math.max(200, chartData.length * 34 + 48);
-  // +50 px för andelen som hängs på etiketten ("Träffpunkt · 44 %")
-  const labelWidth = Math.min(200, Math.max(80, Math.max(0, ...chartData.map(d => d.label.length)) * 7) + 50);
+
+  const labelWidth = Math.min(150, Math.max(80, Math.max(0, ...chartData.map(d => d.label.length)) * 7));
 
   const selectedLabel = selectedItem?.label ?? null;
   const tag = selectedLabel ? ` · ${selectedLabel}` : "";
@@ -322,10 +338,6 @@ export default function SalesAnalytics({ weeks, breakdown, breakdownTitle, filte
                 tick={{ fontSize: 11, fill: "#64748b" }}
                 tickLine={false}
                 axisLine={false}
-                tickFormatter={(v: string) => {
-                  const d = chartData.find(x => x.label === v);
-                  return d ? `${v} · ${d.share} %` : v;
-                }}
               />
               <Tooltip
                 cursor={{ fill: "#f8fafc" }}
@@ -345,14 +357,18 @@ export default function SalesAnalytics({ weeks, breakdown, breakdownTitle, filte
                   ];
                 }}
               />
-              <Bar dataKey="sales" radius={[0, 4, 4, 0]} maxBarSize={36}>
-                {chartData.map((d, i) => (
-                  <Cell
-                    key={d.key}
-                    fill={colorAt(i)}
-                    fillOpacity={!selected || selected === d.key ? 1 : 0.3}
-                  />
-                ))}
+              {/* Egen stapelform i stället för <Cell>: recharts ritar varken
+                  LabelList eller Bar-propen `label` när staplarna färgas med
+                  Cell-barn, och andelen ska stå efter stapeln. */}
+              <Bar dataKey="sales" maxBarSize={36} isAnimationActive={false} shape={breakdownBarShape}>
+                <LabelList
+                  dataKey="share"
+                  position="right"
+                  offset={8}
+                  fill="#475569"
+                  fontSize={11}
+                  formatter={(v) => (v == null ? "" : `${v} %`)}
+                />
               </Bar>
             </BarChart>
           </ResponsiveContainer>
