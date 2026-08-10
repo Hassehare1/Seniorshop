@@ -32,3 +32,25 @@ body {
 .recharts-surface:focus-visible {
   outline: none;
 }
+
+/* Modevisningsbingo (src/app/spel) — nästa replik glider in underifrån */
+@keyframes bingo-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.975);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.bingo-card-in {
+  animation: bingo-card-in 0.3s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bingo-card-in {
+    animation: none;
+  }
+}
