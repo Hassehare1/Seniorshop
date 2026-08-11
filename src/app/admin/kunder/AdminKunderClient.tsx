@@ -6,6 +6,7 @@ import {
   customerTypeLabels as typeLabels,
   customerTypeColors as typeColors,
 } from "@/lib/customerTypes";
+import { formatPostalCode } from "@/lib/postalCode";
 
 interface Customer {
   id: string;
@@ -16,9 +17,10 @@ interface Customer {
   contactRole: string | null;
   email: string | null;
   phone: string | null;
+  postalCode: string | null;
   active: boolean;
   approved: boolean;
-  district: { number: number; name: string };
+  district: { number: number; name: string; region: string };
 }
 
 export type VisitMap = Record<string, Record<string, { count: number; lastWeek: number }>>;
@@ -40,6 +42,7 @@ export default function AdminKunderClient({ customers: initial, seasons, visitMa
   const [message, setMessage] = useState("");
   const [season, setSeason] = useState(defaultSeasonId);
   const [visitFilter, setVisitFilter] = useState("all");
+  const [postalFilter, setPostalFilter] = useState("ALL");
   const [exporting, setExporting] = useState(false);
 
   const visitCount = (id: string) => visitMap[id]?.[season]?.count ?? 0;
@@ -73,8 +76,16 @@ export default function AdminKunderClient({ customers: initial, seasons, visitMa
       (visitFilter === "none" && n === 0) ||
       (visitFilter === "one" && n === 1) ||
       (visitFilter === "multi" && n >= 2);
-    return matchSearch && matchType && matchStatus && matchReview && matchVisit;
+    const matchPostal =
+      postalFilter === "ALL" ||
+      (postalFilter === "missing" && !c.postalCode) ||
+      (postalFilter === "has" && !!c.postalCode);
+    return matchSearch && matchType && matchStatus && matchReview && matchVisit && matchPostal;
   });
+
+  // Räknas på det filtrerade urvalet, så att en sökning på t.ex. "D6" ger
+  // täckningen för just det distriktet.
+  const missingPostal = filtered.filter(c => !c.postalCode).length;
 
   const seasonStats = season
     ? customers.reduce(
@@ -99,6 +110,7 @@ export default function AdminKunderClient({ customers: initial, seasons, visitMa
         Typ: typeLabels[c.type] ?? c.type,
         [`Besök ${label}`]: visitCount(c.id),
         "Senaste vecka": lastWeek(c.id) || "",
+        Postnummer: formatPostalCode(c.postalCode, c.district.region) || "SAKNAS",
         Status: c.active ? "Aktiv" : "Inaktiv",
       }));
       const ws = XLSX.utils.json_to_sheet(rows);
@@ -187,6 +199,16 @@ export default function AdminKunderClient({ customers: initial, seasons, visitMa
           <option value="inactive">Inaktiva</option>
           <option value="ALL">Alla</option>
         </select>
+        <select
+          value={postalFilter}
+          onChange={e => setPostalFilter(e.target.value)}
+          aria-label="Filtrera på postnummer"
+          className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+        >
+          <option value="ALL">Alla postnummer</option>
+          <option value="missing">Saknar postnummer</option>
+          <option value="has">Har postnummer</option>
+        </select>
         {seasons.length > 0 && (
           <>
             <select value={season} onChange={e => setSeason(e.target.value)} aria-label="Säsong" className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
@@ -213,6 +235,26 @@ export default function AdminKunderClient({ customers: initial, seasons, visitMa
         </p>
       )}
 
+      {/* Täckning för postnummer i det urval som visas */}
+      <p className="mb-4 -mt-2 text-xs text-slate-500">
+        Postnummer:{" "}
+        {missingPostal === 0 ? (
+          <span className="text-green-700 font-medium">alla {filtered.length} har postnummer</span>
+        ) : (
+          <>
+            <span className="text-amber-700 font-medium">{missingPostal} av {filtered.length} saknar</span>
+            {postalFilter !== "missing" && (
+              <>
+                {" · "}
+                <button onClick={() => setPostalFilter("missing")} className="text-blue-600 hover:underline">
+                  visa dem
+                </button>
+              </>
+            )}
+          </>
+        )}
+      </p>
+
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm min-w-[820px]">
@@ -224,6 +266,7 @@ export default function AdminKunderClient({ customers: initial, seasons, visitMa
                 {seasons.length > 0 && <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Besök</th>}
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Kontakt</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Telefon</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Postnr</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Status</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Granskning</th>
               </tr>
@@ -251,6 +294,17 @@ export default function AdminKunderClient({ customers: initial, seasons, visitMa
                     {c.contactRole && <span className="text-slate-400"> · {c.contactRole}</span>}
                   </td>
                   <td className="px-4 py-3 text-slate-600">{c.phone ?? "–"}</td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    {c.postalCode ? (
+                      <span className="text-slate-600 tabular-nums">
+                        {formatPostalCode(c.postalCode, c.district.region)}
+                      </span>
+                    ) : (
+                      <span className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
+                        Saknas
+                      </span>
+                    )}
+                  </td>
                   <td className="px-4 py-3">
                     <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${c.active ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-500"}`}>
                       {c.active ? "Aktiv" : "Inaktiv"}

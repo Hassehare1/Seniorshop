@@ -9,7 +9,8 @@ export default async function AdminKunder() {
 
   const [customers, reports, seasons] = await Promise.all([
     prisma.customer.findMany({
-      include: { district: { select: { number: true, name: true } } },
+      // region behövs för att visa postnumret i rätt format per land
+      include: { district: { select: { number: true, name: true, region: true } } },
       orderBy: [{ district: { number: "asc" } }, { name: "asc" }],
     }),
     prisma.weeklyReport.findMany({
@@ -39,6 +40,17 @@ export default async function AdminKunder() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-slate-800">Alla kunder</h1>
         <p className="text-slate-500 text-sm mt-1">{customers.length} kunder totalt</p>
+      </div>
+
+      {/* Postnummer fylls i av varje FT på sina egna kunder. Uppföljningen
+          finns tills vidare bara här, så FT ser inte hur långt hon kommit. */}
+      <div className="mb-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+        <p className="text-sm font-medium text-amber-900">Postnummer följs bara upp här</p>
+        <p className="text-sm text-amber-800 mt-0.5">
+          FT ser ingen markering över vilka av sina kunder som saknar postnummer — hon måste
+          öppna kundkorten ett i taget för att veta. Vill du att hon ska kunna följa sitt eget
+          arbete behöver samma markering läggas till på “Mina kunder”.
+        </p>
       </div>
       <AdminKunderClient
         customers={customers}
