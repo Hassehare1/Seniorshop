@@ -8,15 +8,23 @@ import { customerTypeLabels as typeLabels } from "@/lib/customerTypes";
 type Visit = {
   id: string; customerName: string; customerType: string;
   numberOfCustomers: number; sales: number; isFashionShow: boolean; isHangerShow: boolean;
-  ftFee: number; mfFee: number; totalToPay: number; comment: string | null;
+  // Avgifterna följer bara med för admin — FT ser dem inte.
+  ftFee?: number; mfFee?: number; totalToPay: number; comment: string | null;
 };
 
 type ReportRow = {
   id: string; week: number; status: string;
   districtNumber: number; districtName: string;
   totalSales: number; totalToPay: number; totalCustomers: number;
-  visits: Visit[];
+  visitCount: number;
+  // Saknas i admins vy över alla distrikt — hämtas då per rad vid expand.
+  visits?: Visit[];
 };
+
+type Hamtning =
+  | { status: "laddar" }
+  | { status: "klar"; visits: Visit[] }
+  | { status: "fel" };
 
 interface Props {
   reports: ReportRow[];
@@ -28,21 +36,37 @@ interface Props {
 
 export default function WeeklyReportList({ reports, seasonId, showEditLink, showDistrict, showMf = false }: Props) {
   const [open, setOpen] = useState<Set<string>>(new Set());
+  const [hamtade, setHamtade] = useState<Record<string, Hamtning>>({});
 
-  function toggle(id: string) {
+  async function hamtaBesok(id: string) {
+    setHamtade(prev => ({ ...prev, [id]: { status: "laddar" } }));
+    try {
+      const res = await fetch(`/api/reports/${id}/visits`);
+      if (!res.ok) throw new Error(String(res.status));
+      const data = await res.json();
+      setHamtade(prev => ({ ...prev, [id]: { status: "klar", visits: data.visits } }));
+    } catch {
+      setHamtade(prev => ({ ...prev, [id]: { status: "fel" } }));
+    }
+  }
+
+  function toggle(r: ReportRow) {
+    const oppnas = !open.has(r.id);
     setOpen(prev => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(r.id)) next.delete(r.id);
+      else next.add(r.id);
       return next;
     });
+    // Hämta först vid expand, och bara en gång per rad.
+    if (oppnas && !r.visits && !hamtade[r.id]) void hamtaBesok(r.id);
   }
 
   const totals = reports.reduce(
     (acc, r) => {
       acc.sales += r.totalSales;
       acc.toPay += r.totalToPay;
-      acc.visits += r.visits.length;
+      acc.visits += r.visitCount;
       acc.customers += r.totalCustomers;
       return acc;
     },
@@ -68,12 +92,16 @@ export default function WeeklyReportList({ reports, seasonId, showEditLink, show
         {reports.map(r => {
           const isOpen = open.has(r.id);
           const editHref = `/rapportera?week=${r.week}&season=${seasonId}`;
+          // Besöken kommer antingen med sidan eller hämtas vid expand.
+          const hamtning: Hamtning | undefined = r.visits
+            ? { status: "klar", visits: r.visits }
+            : hamtade[r.id];
 
           return (
             <div key={r.id}>
               {/* Rad — klickbar yta för expand/collapse */}
               <div
-                onClick={() => toggle(r.id)}
+                onClick={() => toggle(r)}
                 className="w-full px-4 md:px-6 py-3 md:py-4 hover:bg-slate-50 transition-colors cursor-pointer"
               >
                 {/* Mobile layout */}
@@ -105,7 +133,7 @@ export default function WeeklyReportList({ reports, seasonId, showEditLink, show
                       </div>
                     </div>
                     <div className="flex items-center justify-between mt-1">
-                      <span className="text-xs text-slate-500">{r.visits.length} besök · {r.totalCustomers} kunder</span>
+                      <span className="text-xs text-slate-500">{r.visitCount} besök · {r.totalCustomers} kunder</span>
                       <span className="text-xs font-bold text-blue-700">{fmt(r.totalToPay)}</span>
                     </div>
                   </div>
@@ -118,7 +146,7 @@ export default function WeeklyReportList({ reports, seasonId, showEditLink, show
                     <span className="w-40 text-sm text-slate-500 truncate">D{r.districtNumber} – {r.districtName}</span>
                   )}
                   <span className="font-medium text-slate-800 w-20">Vecka {r.week}</span>
-                  <span className="flex-1 text-sm text-slate-500">{r.visits.length} besök · {r.totalCustomers} kunder</span>
+                  <span className="flex-1 text-sm text-slate-500">{r.visitCount} besök · {r.totalCustomers} kunder</span>
                   <span className="w-32 text-right text-sm font-medium text-slate-700">{fmt(r.totalSales)}</span>
                   <span className="w-32 text-right text-sm font-bold text-blue-700">{fmt(r.totalToPay)}</span>
                   <span className="w-24 flex justify-end">
@@ -142,7 +170,25 @@ export default function WeeklyReportList({ reports, seasonId, showEditLink, show
                 </div>
               </div>
 
-              {isOpen && (
+              {isOpen && hamtning?.status === "laddar" && (
+                <div className="bg-slate-50 border-t border-slate-100 px-4 md:px-6 py-4 text-sm text-slate-500">
+                  Hämtar besök…
+                </div>
+              )}
+
+              {isOpen && hamtning?.status === "fel" && (
+                <div className="bg-slate-50 border-t border-slate-100 px-4 md:px-6 py-4 flex items-center gap-3">
+                  <span className="text-sm text-slate-600">Besöken kunde inte hämtas.</span>
+                  <button
+                    onClick={e => { e.stopPropagation(); void hamtaBesok(r.id); }}
+                    className="text-sm font-medium text-blue-600 hover:text-blue-800"
+                  >
+                    Försök igen
+                  </button>
+                </div>
+              )}
+
+              {isOpen && hamtning?.status === "klar" && (
                 <div className="bg-slate-50 border-t border-slate-100 px-4 md:px-6 py-4">
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm min-w-[640px]">
@@ -159,7 +205,7 @@ export default function WeeklyReportList({ reports, seasonId, showEditLink, show
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-200">
-                        {r.visits.map(v => (
+                        {hamtning.visits.map(v => (
                           <tr key={v.id} className="text-slate-700">
                             <td className="py-2 font-medium">
                               {v.customerName}
@@ -169,8 +215,8 @@ export default function WeeklyReportList({ reports, seasonId, showEditLink, show
                             <td className="py-2 text-slate-500 text-xs">{typeLabels[v.customerType] ?? v.customerType}</td>
                             <td className="py-2 text-right">{v.numberOfCustomers}</td>
                             <td className="py-2 text-right">{fmt(v.sales)}</td>
-                            {showMf && <td className="py-2 text-right text-slate-500">{fmt(v.ftFee)}</td>}
-                            {showMf && <td className="py-2 text-right text-slate-500">{fmt(v.mfFee)}</td>}
+                            {showMf && <td className="py-2 text-right text-slate-500">{fmt(v.ftFee ?? 0)}</td>}
+                            {showMf && <td className="py-2 text-right text-slate-500">{fmt(v.mfFee ?? 0)}</td>}
                             <td className="py-2 text-right font-medium">{fmt(v.totalToPay)}</td>
                             <td className="py-2 pl-4 text-slate-400 text-xs">{v.comment ?? "–"}</td>
                           </tr>
