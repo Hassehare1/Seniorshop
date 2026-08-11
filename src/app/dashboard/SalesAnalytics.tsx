@@ -15,8 +15,9 @@ export interface BreakdownItem {
   label: string;     // visningsnamn
   color: string;     // hex för diagram
   sales: number;
-  ftFee: number;
-  mfFee: number;
+  // Avgifterna skickas bara till admin — saknas helt i FT:s data.
+  ftFee?: number;
+  mfFee?: number;
   customers: number;
   besok: number;
   fashionShows: number;
@@ -76,8 +77,8 @@ export default function SalesAnalytics({ weeks, breakdown, breakdownTitle, filte
     return {
       weekly,
       sales: sum(b => b.sales),
-      ftFee: sum(b => b.ftFee),
-      mfFee: sum(b => b.mfFee),
+      ftFee: sum(b => b.ftFee ?? 0),
+      mfFee: sum(b => b.mfFee ?? 0),
       customers: sum(b => b.customers),
       besok: sum(b => b.besok),
       fashionShows: sum(b => b.fashionShows),

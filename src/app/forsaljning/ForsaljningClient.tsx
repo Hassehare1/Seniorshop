@@ -20,8 +20,9 @@ export interface SalesRow {
   sales: number;            // ink. moms (sales + ev. fashionShowSales)
   isFashionShow: boolean;
   isHangerShow: boolean;
-  ftFee: number;
-  mfFee: number;
+  // Avgifterna skickas bara till admin — saknas helt i FT:s data.
+  ftFee?: number;
+  mfFee?: number;
   totalToPay: number;
   status: string;           // DRAFT | SUBMITTED | APPROVED
   comment: string | null;
@@ -105,8 +106,8 @@ export default function ForsaljningClient({ rows, isAdmin, defaultYear, defaultS
     (acc, r) => {
       acc.numberOfCustomers += r.numberOfCustomers;
       acc.sales += r.sales;
-      acc.ftFee += r.ftFee;
-      acc.mfFee += r.mfFee;
+      acc.ftFee += r.ftFee ?? 0;
+      acc.mfFee += r.mfFee ?? 0;
       acc.totalToPay += r.totalToPay;
       return acc;
     },
@@ -259,8 +260,8 @@ export default function ForsaljningClient({ rows, isAdmin, defaultYear, defaultS
                     {r.isHangerShow && <span className="text-teal-600">Galge</span>}
                     {!r.isFashionShow && !r.isHangerShow && "–"}
                   </td>
-                  {isAdmin && <td className="px-3 py-2.5 text-right text-slate-500">{formatSEK(r.ftFee)}</td>}
-                  {isAdmin && <td className="px-3 py-2.5 text-right text-slate-500">{formatSEK(r.mfFee)}</td>}
+                  {isAdmin && <td className="px-3 py-2.5 text-right text-slate-500">{formatSEK(r.ftFee ?? 0)}</td>}
+                  {isAdmin && <td className="px-3 py-2.5 text-right text-slate-500">{formatSEK(r.mfFee ?? 0)}</td>}
                   <td className="px-3 py-2.5 text-right font-medium">{formatSEK(r.totalToPay)}</td>
                   <td className="px-3 py-2.5"><span className={`text-xs font-medium ${statusClasses[r.status] ?? "text-slate-500"}`}>{statusLabels[r.status] ?? r.status}</span></td>
                 </tr>

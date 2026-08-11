@@ -73,7 +73,9 @@ export default async function DashboardPage({
     visitCount: number;
     // Utelämnas i admins vy över alla distrikt — där hämtar listan besöken
     // per rad först vid expand, annars växer payloaden med varje ny FT.
-    visits?: { id: string; customerName: string; customerType: string; numberOfCustomers: number; sales: number; isFashionShow: boolean; isHangerShow: boolean; ftFee: number; mfFee: number; totalToPay: number; comment: string | null }[];
+    // ftFee/mfFee följer bara med för admin — FT ska inte kunna läsa avgifterna
+    // ur sidans data, inte heller via utvecklarverktygen.
+    visits?: { id: string; customerName: string; customerType: string; numberOfCustomers: number; sales: number; isFashionShow: boolean; isHangerShow: boolean; ftFee?: number; mfFee?: number; totalToPay: number; comment: string | null }[];
   };
 
   const stats = {
@@ -126,8 +128,7 @@ export default async function DashboardPage({
           sales: toNumber(money(v.sales).plus(v.fashionShowSales)),
           isFashionShow: v.isFashionShow,
           isHangerShow: v.isHangerShow,
-          ftFee: toNumber(v.ftFee),
-          mfFee: toNumber(v.mfFee),
+          ...(isAdmin && { ftFee: toNumber(v.ftFee), mfFee: toNumber(v.mfFee) }),
           totalToPay: toNumber(v.totalToPay),
           comment: v.comment,
         })),
@@ -390,8 +391,8 @@ export default async function DashboardPage({
     label: customerTypeLabels[t.type] ?? t.type,
     color: customerTypeChartColors[t.type] ?? "#64748b",
     sales: t.sales,
-    ftFee: t.ftFee,
-    mfFee: t.mfFee,
+    // Avgiftssummorna stannar på servern för FT — se ReportRow ovan.
+    ...(isAdmin && { ftFee: t.ftFee, mfFee: t.mfFee }),
     customers: t.customers,
     besok: t.besok,
     fashionShows: t.fashionShows,
@@ -405,8 +406,8 @@ export default async function DashboardPage({
     label: d.label,
     color: "#1d4ed8",
     sales: d.sales,
-    ftFee: d.ftFee,
-    mfFee: d.mfFee,
+    // Byggs bara för admin, men samma villkor här så mönstret är enhetligt.
+    ...(isAdmin && { ftFee: d.ftFee, mfFee: d.mfFee }),
     customers: d.customers,
     besok: d.besok,
     fashionShows: d.fashionShows,

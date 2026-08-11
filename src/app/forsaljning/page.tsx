@@ -43,8 +43,9 @@ export default async function ForsaljningPage() {
       sales: toNumber(money(v.sales).plus(v.fashionShowSales)),
       isFashionShow: v.isFashionShow,
       isHangerShow: v.isHangerShow,
-      ftFee: toNumber(v.ftFee),
-      mfFee: toNumber(v.mfFee),
+      // Avgifterna följer bara med för admin — FT ska inte kunna läsa dem ur
+      // sidans data. Exportrouten gör redan samma sak.
+      ...(isAdmin && { ftFee: toNumber(v.ftFee), mfFee: toNumber(v.mfFee) }),
       totalToPay: toNumber(v.totalToPay),
       status: r.status,
       comment: v.comment,
