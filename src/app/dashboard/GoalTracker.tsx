@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { formatSEK } from "@/lib/fees";
-import { salesPace, type Actuals, type Goal } from "@/lib/goals";
+import { goalPercent, salesPace, type Actuals, type Goal } from "@/lib/goals";
 
 // Formuleringen av säljtakten. Logiken ligger i lib/goals.ts; här görs bara
 // siffrorna till text.
@@ -144,13 +144,14 @@ type Metric = { label: string; target: number; actual: number; money: boolean; r
 function MetricCard({ label, target, actual, money, remainLabel, variance, hint }: Metric) {
   const fmt = (n: number) => (money ? formatSEK(Math.round(n)) : String(Math.round(n)));
   const hasTarget = target > 0;
-  const pct = hasTarget ? Math.round((actual / target) * 100) : 0;
-  const barPct = Math.min(100, pct);
   const reached = hasTarget && actual >= target;
+  const pct = goalPercent(actual, target);
+  const barPct = Math.min(100, pct);
 
   let footer: string;
   if (!hasTarget) footer = "Inget mål satt";
-  else if (reached) footer = `+${fmt(actual - target)} över mål`;
+  // Öresrester ska inte ge "+0 kr över mål" — landar man på målet står det så.
+  else if (reached) footer = Math.round(actual - target) === 0 ? "Målet är nått" : `+${fmt(actual - target)} över mål`;
   else if (variance) footer = `−${fmt(target - actual)} mot mål`;
   else footer = `${fmt(target - actual)} ${remainLabel}`;
 

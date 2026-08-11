@@ -12,6 +12,21 @@ export type Actuals = {
   fashionShows: number;
 };
 
+/**
+ * Andel av målet i hela procent.
+ *
+ * Avrundningen får aldrig visa 100 % innan målet faktiskt är nått. Utan
+ * spärren stod "100 % av mål" bredvid "1 000 kr kvar att sälja för" på de
+ * sista halvprocenten — med full men blå stapel. Det gäller alla fyra
+ * målkorten, och är som mest nåbart för säljmålet där de sista 5 000
+ * kronorna av en miljon räcker.
+ */
+export function goalPercent(actual: number, target: number): number {
+  if (target <= 0) return 0;
+  const pct = Math.round((actual / target) * 100);
+  return actual >= target ? pct : Math.min(99, pct);
+}
+
 /** Läget för säljmålet, i förhållande till vad som återstår av säsongen. */
 export type SalesPace =
   /** Inga mål satta att räkna på */

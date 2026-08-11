@@ -1,6 +1,31 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { salesPace, type Actuals, type Goal } from "./goals.ts";
+import { goalPercent, salesPace, type Actuals, type Goal } from "./goals.ts";
+
+test("procenten når aldrig 100 innan målet är nått", () => {
+  // De sista 5 000 kronorna av en miljon avrundades tidigare upp till 100 %,
+  // så "100 % av mål" stod bredvid "1 000 kr kvar att sälja för".
+  assert.equal(goalPercent(999_000, 1_000_000), 99);
+  assert.equal(goalPercent(999_999, 1_000_000), 99);
+  assert.equal(goalPercent(199, 200), 99);
+});
+
+test("procenten visar 100 först när målet faktiskt är nått", () => {
+  assert.equal(goalPercent(1_000_000, 1_000_000), 100);
+  assert.equal(goalPercent(1_071_308, 1_000_000), 107);
+});
+
+test("procenten är oförändrad för lägen som inte gränsar till målet", () => {
+  assert.equal(goalPercent(71, 85), 84);
+  assert.equal(goalPercent(25, 30), 83);
+  assert.equal(goalPercent(15_089, 20_000), 75);
+  assert.equal(goalPercent(0, 1_000_000), 0);
+});
+
+test("utan mål blir procenten noll i stället för division med noll", () => {
+  assert.equal(goalPercent(500, 0), 0);
+  assert.equal(goalPercent(0, 0), 0);
+});
 
 const goal = (over: Partial<Goal> = {}): Goal => ({
   salesTarget: 1_000_000,
