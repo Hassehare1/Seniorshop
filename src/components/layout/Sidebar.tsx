@@ -26,6 +26,8 @@ const adminNav = [
   // System
   { href: "/admin/import", label: "Importera", divider: true },
   { href: "/admin/logg", label: "Händelselogg" },
+  // Försök som ännu inte nått FT
+  { href: "/spel", label: "Modevisningsbingo", section: "Labb" },
 ];
 
 function NavLinks({
