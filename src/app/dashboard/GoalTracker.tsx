@@ -2,14 +2,25 @@
 
 import { useState } from "react";
 import { formatSEK } from "@/lib/fees";
+import { salesPace, type Actuals, type Goal } from "@/lib/goals";
 
-type Goal = {
-  salesTarget: number;
-  visitsTarget: number;
-  avgPerVisitTarget: number;
-  fashionShowsTarget: number;
-};
-type Actuals = { sales: number; visits: number; avgPerVisit: number; fashionShows: number };
+// Formuleringen av säljtakten. Logiken ligger i lib/goals.ts; här görs bara
+// siffrorna till text.
+function paceText(goal: Goal | null, actuals: Actuals): string | undefined {
+  const p = salesPace(goal, actuals);
+  switch (p.kind) {
+    case "none":
+      return undefined;
+    case "reached":
+      return "Säljmålet är redan nått";
+    case "visitsExhausted":
+      return `Besöksmålet är nått — ${formatSEK(Math.round(p.salesLeft))} kvar till säljmålet`;
+    case "perVisit":
+      return p.visitsLeft === 1
+        ? `Krävs ${formatSEK(Math.round(p.perVisit))} på det sista besöket`
+        : `Krävs ${formatSEK(Math.round(p.perVisit))}/besök på de ${p.visitsLeft} som återstår`;
+  }
+}
 
 const emptyForm = { salesTarget: "", visitsTarget: "", avgPerVisitTarget: "", fashionShowsTarget: "" };
 
@@ -75,7 +86,7 @@ export default function GoalTracker({
     { label: "Försäljning", target: goal?.salesTarget ?? 0, actual: actuals.sales, money: true, remainLabel: "kvar att sälja för", variance: false },
     { label: "Antal besök", target: goal?.visitsTarget ?? 0, actual: actuals.visits, money: false, remainLabel: "besök kvar", variance: false },
     { label: "Snitt / besök", target: goal?.avgPerVisitTarget ?? 0, actual: actuals.avgPerVisit, money: true, remainLabel: "", variance: true,
-      required: goal && goal.salesTarget > 0 && goal.visitsTarget > 0 ? goal.salesTarget / goal.visitsTarget : undefined },
+      hint: paceText(goal, actuals) },
     { label: "Modevisningar", target: goal?.fashionShowsTarget ?? 0, actual: actuals.fashionShows, money: false, remainLabel: "kvar", variance: false },
   ];
 
@@ -128,9 +139,9 @@ export default function GoalTracker({
   );
 }
 
-type Metric = { label: string; target: number; actual: number; money: boolean; remainLabel: string; variance: boolean; required?: number };
+type Metric = { label: string; target: number; actual: number; money: boolean; remainLabel: string; variance: boolean; hint?: string };
 
-function MetricCard({ label, target, actual, money, remainLabel, variance, required }: Metric) {
+function MetricCard({ label, target, actual, money, remainLabel, variance, hint }: Metric) {
   const fmt = (n: number) => (money ? formatSEK(Math.round(n)) : String(Math.round(n)));
   const hasTarget = target > 0;
   const pct = hasTarget ? Math.round((actual / target) * 100) : 0;
@@ -157,9 +168,9 @@ function MetricCard({ label, target, actual, money, remainLabel, variance, requi
         <span className="text-slate-400">{hasTarget ? `${pct}% av mål` : "–"}</span>
         <span className={reached ? "text-green-600 font-medium" : variance ? "text-amber-600" : "text-slate-500"}>{footer}</span>
       </div>
-      {required != null && (
+      {hint && (
         <p className="mt-1.5 pt-1.5 border-t border-slate-100 text-[11px] text-slate-400">
-          Krävs {fmt(required)}/besök för säljmålet
+          {hint}
         </p>
       )}
     </div>
