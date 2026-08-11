@@ -3,12 +3,13 @@
 import { useState } from "react";
 import Link from "next/link";
 import { customerTypeLabels, customerTypeColors, customerTypeOptions } from "@/lib/customerTypes";
+import { postalCodeDigits, validatePostalCode } from "@/lib/postalCode";
 import type { Customer } from "@prisma/client";
 import ImportKunder from "./ImportKunder";
 
 const emptyForm = {
   name: "", type: "TRAFFPUNKT", contactPerson: "", contactRole: "", email: "",
-  phone: "", address: "", notes: "", active: true,
+  phone: "", address: "", postalCode: "", notes: "", active: true,
 };
 
 export type VisitMap = Record<string, Record<string, { count: number; lastWeek: number }>>;
@@ -20,9 +21,10 @@ interface Props {
   seasons: { id: string; label: string }[];
   visitMap: VisitMap;
   defaultSeasonId: string;
+  region: string; // distriktets region — styr postnumrets längd
 }
 
-export default function KunderClient({ customers: initial, districtId, districtNumber, seasons, visitMap, defaultSeasonId }: Props) {
+export default function KunderClient({ customers: initial, districtId, districtNumber, seasons, visitMap, defaultSeasonId, region }: Props) {
   const [customers, setCustomers] = useState(initial);
   const [showForm, setShowForm] = useState(false);
   const [showImport, setShowImport] = useState(false);
@@ -100,6 +102,7 @@ export default function KunderClient({ customers: initial, districtId, districtN
       email: c.email ?? "",
       phone: c.phone ?? "",
       address: c.address ?? "",
+      postalCode: c.postalCode ?? "",
       notes: c.notes ?? "",
       active: c.active,
     });
@@ -113,6 +116,14 @@ export default function KunderClient({ customers: initial, districtId, districtN
 
   async function handleSave() {
     if (!form.name || !form.type) return;
+
+    // Fånga fel format innan anropet — samma regel gäller på servern.
+    const postalCodeError = validatePostalCode(form.postalCode, region);
+    if (postalCodeError) {
+      setSaveError(postalCodeError);
+      return;
+    }
+
     setSaving(true);
     setSaveError("");
 
@@ -274,7 +285,7 @@ export default function KunderClient({ customers: initial, districtId, districtN
                 placeholder="namn@exempel.se"
               />
             </div>
-            <div className="col-span-2">
+            <div>
               <label className="block text-xs font-medium text-slate-600 mb-1">Adress</label>
               <input
                 type="text"
@@ -282,6 +293,17 @@ export default function KunderClient({ customers: initial, districtId, districtN
                 onChange={e => setForm(f => ({ ...f, address: e.target.value }))}
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Gatuadress, Ort"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">Postnummer</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={form.postalCode}
+                onChange={e => setForm(f => ({ ...f, postalCode: e.target.value }))}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder={postalCodeDigits(region) === 4 ? "1234" : "123 45"}
               />
             </div>
             <div className="col-span-2">

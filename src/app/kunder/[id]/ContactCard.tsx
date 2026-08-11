@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { formatPostalCode, postalCodeDigits, validatePostalCode } from "@/lib/postalCode";
 
 type Values = {
   contactPerson: string;
@@ -8,10 +9,19 @@ type Values = {
   phone: string;
   email: string;
   address: string;
+  postalCode: string;
   notes: string;
 };
 
-export default function ContactCard({ customerId, initial }: { customerId: string; initial: Values }) {
+export default function ContactCard({
+  customerId,
+  initial,
+  region,
+}: {
+  customerId: string;
+  initial: Values;
+  region: string;
+}) {
   const [values, setValues] = useState<Values>(initial); // sparat läge (visas)
   const [form, setForm] = useState<Values>(initial);      // redigeringsbuffert
   const [editing, setEditing] = useState(false);
@@ -30,6 +40,13 @@ export default function ContactCard({ customerId, initial }: { customerId: strin
   }
 
   async function save() {
+    // Fånga fel format innan anropet — samma regel gäller på servern.
+    const postalCodeError = validatePostalCode(form.postalCode, region);
+    if (postalCodeError) {
+      setError(postalCodeError);
+      return;
+    }
+
     setSaving(true);
     setError("");
     const res = await fetch(`/api/customers/${encodeURIComponent(customerId)}`, {
@@ -102,6 +119,16 @@ export default function ContactCard({ customerId, initial }: { customerId: strin
           <EditField label="Adress">
             <input type="text" value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} className={input} placeholder="Gatuadress, Ort" />
           </EditField>
+          <EditField label="Postnummer">
+            <input
+              type="text"
+              inputMode="numeric"
+              value={form.postalCode}
+              onChange={e => setForm(f => ({ ...f, postalCode: e.target.value }))}
+              className={input}
+              placeholder={postalCodeDigits(region) === 4 ? "1234" : "123 45"}
+            />
+          </EditField>
           <div className="sm:col-span-2">
             <EditField label="Kommentar">
               <textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={2} className={input} placeholder="Noteringar, öppettider, m.m." />
@@ -120,9 +147,8 @@ export default function ContactCard({ customerId, initial }: { customerId: strin
           <Field label="E-post">
             {mailHref ? <a href={mailHref} className="text-blue-600 hover:text-blue-800 font-medium break-all">{values.email}</a> : "–"}
           </Field>
-          <div className="sm:col-span-2">
-            <Field label="Adress">{values.address || "–"}</Field>
-          </div>
+          <Field label="Adress">{values.address || "–"}</Field>
+          <Field label="Postnummer">{formatPostalCode(values.postalCode, region) || "–"}</Field>
           <div className="sm:col-span-2">
             <Field label="Kommentar">{values.notes || "–"}</Field>
           </div>

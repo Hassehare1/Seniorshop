@@ -20,7 +20,7 @@ export default async function CustomerCardPage({ params }: { params: Promise<{ i
   const customer = await prisma.customer.findFirst({
     where: { id: { in: idCandidates } },
     include: {
-      district: { select: { number: true, name: true } },
+      district: { select: { number: true, name: true, region: true } },
       visits: {
         include: {
           report: { select: { week: true, season: { select: { type: true, year: true } } } },
@@ -92,8 +92,10 @@ export default async function CustomerCardPage({ params }: { params: Promise<{ i
           phone: customer.phone ?? "",
           email: customer.email ?? "",
           address: customer.address ?? "",
+          postalCode: customer.postalCode ?? "",
           notes: customer.notes ?? "",
         }}
+        region={customer.district.region}
       />
 
       {/* Försäljning & nyckeltal */}
