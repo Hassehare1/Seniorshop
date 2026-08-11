@@ -70,7 +70,10 @@ export default async function DashboardPage({
     id: string; week: number; status: string;
     districtNumber: number; districtName: string;
     totalSales: number; totalToPay: number; totalCustomers: number;
-    visits: { id: string; customerName: string; customerType: string; numberOfCustomers: number; sales: number; isFashionShow: boolean; isHangerShow: boolean; ftFee: number; mfFee: number; totalToPay: number; comment: string | null }[];
+    visitCount: number;
+    // Utelämnas i admins vy över alla distrikt — där hämtar listan besöken
+    // per rad först vid expand, annars växer payloaden med varje ny FT.
+    visits?: { id: string; customerName: string; customerType: string; numberOfCustomers: number; sales: number; isFashionShow: boolean; isHangerShow: boolean; ftFee: number; mfFee: number; totalToPay: number; comment: string | null }[];
   };
 
   const stats = {
@@ -111,19 +114,24 @@ export default async function DashboardPage({
       totalSales: toNumber(sumMoney(r.visits.flatMap(v => [v.sales, v.fashionShowSales]))),
       totalToPay: toNumber(sumMoney(r.visits.map(v => v.totalToPay))),
       totalCustomers: r.visits.reduce((s, v) => s + v.numberOfCustomers, 0),
-      visits: r.visits.map(v => ({
-        id: v.id,
-        customerName: v.customer.name,
-        customerType: v.customer.type,
-        numberOfCustomers: v.numberOfCustomers,
-        sales: toNumber(money(v.sales).plus(v.fashionShowSales)),
-        isFashionShow: v.isFashionShow,
-        isHangerShow: v.isHangerShow,
-        ftFee: toNumber(v.ftFee),
-        mfFee: toNumber(v.mfFee),
-        totalToPay: toNumber(v.totalToPay),
-        comment: v.comment,
-      })),
+      visitCount: r.visits.length,
+      // Ett distrikt i taget är en hanterbar mängd och går snabbast att skicka
+      // med direkt. Över alla distrikt hämtas de per rad i stället.
+      ...(showDistrictBreakdown ? {} : {
+        visits: r.visits.map(v => ({
+          id: v.id,
+          customerName: v.customer.name,
+          customerType: v.customer.type,
+          numberOfCustomers: v.numberOfCustomers,
+          sales: toNumber(money(v.sales).plus(v.fashionShowSales)),
+          isFashionShow: v.isFashionShow,
+          isHangerShow: v.isHangerShow,
+          ftFee: toNumber(v.ftFee),
+          mfFee: toNumber(v.mfFee),
+          totalToPay: toNumber(v.totalToPay),
+          comment: v.comment,
+        })),
+      }),
     }));
 
     // Per kundtyp: aggregat + försäljning per vecka (för korsfiltrering)
