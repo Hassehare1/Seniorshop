@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { CustomerType } from "@prisma/client";
+import { normalizePostalCode, validatePostalCode } from "@/lib/postalCode";
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -26,7 +27,7 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
-  const { name, type, contactPerson, contactRole, email, phone, address, notes, districtId } = body;
+  const { name, type, contactPerson, contactRole, email, phone, address, postalCode, notes, districtId } = body;
 
   const targetDistrictId =
     session.user.role === "ADMIN" ? districtId : session.user.districtId;
@@ -38,6 +39,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Ogiltig kundtyp." }, { status: 400 });
   }
 
+  // Distriktet hämtas före skapandet — regionen avgör hur många siffror
+  // postnumret ska ha, och samma uppslag återanvänds i audit-loggen.
+  const district = await prisma.district.findUnique({
+    where: { id: targetDistrictId },
+    select: { number: true, name: true, region: true },
+  });
+
+  const postalCodeError = validatePostalCode(String(postalCode ?? ""), district?.region);
+  if (postalCodeError) {
+    return NextResponse.json({ error: postalCodeError }, { status: 400 });
+  }
+
   const maxNr = await prisma.customer.aggregate({
     where: { districtId: targetDistrictId },
     _max: { customerNumber: true },
@@ -45,14 +58,10 @@ export async function POST(req: NextRequest) {
   const customer = await prisma.customer.create({
     data: {
       name, type, contactPerson, contactRole, email, phone, address, notes,
+      postalCode: normalizePostalCode(String(postalCode ?? "")) || null,
       districtId: targetDistrictId,
       customerNumber: (maxNr._max.customerNumber ?? 0) + 1,
     },
-  });
-
-  const district = await prisma.district.findUnique({
-    where: { id: targetDistrictId },
-    select: { number: true, name: true },
   });
   await prisma.auditLog.create({
     data: {

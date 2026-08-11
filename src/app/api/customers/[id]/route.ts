@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { CustomerType } from "@prisma/client";
+import { normalizePostalCode, validatePostalCode } from "@/lib/postalCode";
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -9,7 +10,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const { id: rawId } = await params;
   const body = await req.json();
-  const { name, type, contactPerson, contactRole, email, phone, address, notes, active } = body;
+  const { name, type, contactPerson, contactRole, email, phone, address, postalCode, notes, active } = body;
 
   // Tål id med svenska tecken (URL-kodning + NFC/NFD)
   let decoded = rawId;
@@ -27,6 +28,18 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: "Ogiltig kundtyp." }, { status: 400 });
   }
 
+  // Antal siffror i postnumret följer distriktets region
+  if (postalCode !== undefined) {
+    const district = await prisma.district.findUnique({
+      where: { id: customer.districtId },
+      select: { region: true },
+    });
+    const postalCodeError = validatePostalCode(String(postalCode ?? ""), district?.region);
+    if (postalCodeError) {
+      return NextResponse.json({ error: postalCodeError }, { status: 400 });
+    }
+  }
+
   const updated = await prisma.customer.update({
     where: { id: customer.id },
     data: {
@@ -37,6 +50,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       ...(email !== undefined && { email }),
       ...(phone !== undefined && { phone }),
       ...(address !== undefined && { address }),
+      ...(postalCode !== undefined && {
+        postalCode: normalizePostalCode(String(postalCode ?? "")) || null,
+      }),
       ...(notes !== undefined && { notes }),
       ...(active !== undefined && { active }),
     },

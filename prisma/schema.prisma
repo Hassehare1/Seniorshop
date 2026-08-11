@@ -92,6 +92,9 @@ model Customer {
   email         String?
   phone         String?
   address       String?
+  // Enbart siffror, utan mellanslag ("12345"). Längden följer distriktets
+  // region: 5 för SE/FI, 4 för DK. Se src/lib/postalCode.ts.
+  postalCode    String?
   notes         String?
   active        Boolean      @default(true)
   approved      Boolean      @default(false)

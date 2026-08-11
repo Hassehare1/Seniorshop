@@ -8,7 +8,7 @@ export default async function KunderPage() {
   if (!session?.user.districtId) redirect("/dashboard");
   const districtId = session.user.districtId;
 
-  const [customers, reports, seasons] = await Promise.all([
+  const [customers, reports, seasons, district] = await Promise.all([
     prisma.customer.findMany({
       where: { districtId },
       orderBy: [{ active: "desc" }, { name: "asc" }],
@@ -18,6 +18,8 @@ export default async function KunderPage() {
       select: { seasonId: true, week: true, visits: { select: { customerId: true } } },
     }),
     prisma.season.findMany({ orderBy: [{ year: "desc" }, { type: "desc" }] }),
+    // Regionen styr hur många siffror postnumret ska ha
+    prisma.district.findUnique({ where: { id: districtId }, select: { region: true } }),
   ]);
 
   // Antal besök + senaste vecka per kund och säsong
@@ -53,6 +55,7 @@ export default async function KunderPage() {
         seasons={seasonOptions}
         visitMap={visitMap}
         defaultSeasonId={seasonOptions[0]?.id ?? ""}
+        region={district?.region ?? "SE"}
       />
     </div>
   );
