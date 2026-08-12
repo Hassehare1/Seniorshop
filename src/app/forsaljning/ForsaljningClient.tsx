@@ -47,8 +47,15 @@ const statusClasses: Record<string, string> = {
 };
 
 type SortKey =
-  | "week" | "districtNumber" | "customerName" | "customerType"
+  | "week" | "season" | "districtNumber" | "customerName" | "customerType"
   | "numberOfCustomers" | "sales" | "totalToPay" | "status";
+
+// Vår ligger före Höst inom samma år (veckorna 5–26 respektive 27–48).
+const seasonRank = (t: string) => (t === "VAR" ? 0 : 1);
+
+/** Kronologisk ordning: år, sedan säsong, sedan vecka. */
+const byTime = (a: SalesRow, b: SalesRow) =>
+  a.year - b.year || seasonRank(a.seasonType) - seasonRank(b.seasonType) || a.week - b.week;
 
 export default function ForsaljningClient({ rows, isAdmin, defaultYear, defaultSeasonType }: Props) {
   const [search, setSearch] = useState("");
@@ -93,10 +100,12 @@ export default function ForsaljningClient({ rows, isAdmin, defaultYear, defaultS
         case "customerType": cmp = (customerTypeLabels[a.customerType] ?? "").localeCompare(customerTypeLabels[b.customerType] ?? "", "sv"); break;
         case "status": cmp = a.status.localeCompare(b.status); break;
         case "districtNumber": cmp = a.districtNumber - b.districtNumber; break;
+        case "season": cmp = a.year - b.year || seasonRank(a.seasonType) - seasonRank(b.seasonType); break;
         default: cmp = (a[sortKey] as number) - (b[sortKey] as number);
       }
-      // Sekundär: vecka, sedan kundnamn — stabil och läsbar
-      if (cmp === 0) cmp = a.week - b.week || a.customerName.localeCompare(b.customerName, "sv");
+      // Sekundär: kronologiskt, sedan kundnamn. Utan året hamnade samma vecka
+      // från olika år intill varandra i godtycklig ordning.
+      if (cmp === 0) cmp = byTime(a, b) || a.customerName.localeCompare(b.customerName, "sv");
       return cmp * dir;
     });
     return result;
@@ -229,9 +238,10 @@ export default function ForsaljningClient({ rows, isAdmin, defaultYear, defaultS
       {/* Tabell */}
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm min-w-[760px]">
+          <table className="w-full text-sm min-w-[860px]">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50">
+                <th className={th} onClick={() => toggleSort("season")}>Säsong{arrow("season")}</th>
                 <th className={th} onClick={() => toggleSort("week")}>Vecka{arrow("week")}</th>
                 {isAdmin && <th className={th} onClick={() => toggleSort("districtNumber")}>Distrikt{arrow("districtNumber")}</th>}
                 <th className={th} onClick={() => toggleSort("customerName")}>Kund{arrow("customerName")}</th>
@@ -248,6 +258,7 @@ export default function ForsaljningClient({ rows, isAdmin, defaultYear, defaultS
             <tbody className="divide-y divide-slate-100">
               {filtered.map(r => (
                 <tr key={r.id} className="hover:bg-slate-50">
+                  <td className="px-3 py-2.5 text-slate-500 whitespace-nowrap">{r.seasonLabel}</td>
                   <td className="px-3 py-2.5 font-medium text-slate-700">{r.week}</td>
                   {isAdmin && <td className="px-3 py-2.5 text-blue-700 whitespace-nowrap">{r.districtLabel}</td>}
                   <td className="px-3 py-2.5 text-slate-800">{r.customerName}</td>
@@ -268,7 +279,7 @@ export default function ForsaljningClient({ rows, isAdmin, defaultYear, defaultS
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={isAdmin ? 11 : 8} className="px-4 py-10 text-center text-slate-400">
+                  <td colSpan={isAdmin ? 12 : 9} className="px-4 py-10 text-center text-slate-400">
                     {rows.length === 0 ? "Inga försäljningar rapporterade än." : "Inga rader matchar filtret."}
                   </td>
                 </tr>
