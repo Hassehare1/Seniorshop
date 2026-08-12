@@ -85,7 +85,16 @@ export async function GET(req: NextRequest) {
       (typeLabels[r.customerType] ?? "").toLowerCase().includes(q) ||
       (isAdmin && r.districtLabel.toLowerCase().includes(q)))
   );
-  rows.sort((a, b) => a.week - b.week || a.customerName.localeCompare(b.customerName, "sv"));
+  // Kronologiskt: år, sedan säsong (Vår före Höst), sedan vecka. Utan året
+  // blandades samma vecka från olika år om vartannat.
+  const seasonRank = (t: string) => (t === "VAR" ? 0 : 1);
+  rows.sort(
+    (a, b) =>
+      a.year - b.year ||
+      seasonRank(a.seasonType) - seasonRank(b.seasonType) ||
+      a.week - b.week ||
+      a.customerName.localeCompare(b.customerName, "sv"),
+  );
 
   // Exporten visar öre — beloppen kommer som Decimal och formateras exakt.
   const fmt = (n: MoneyInput) =>
@@ -106,6 +115,7 @@ export async function GET(req: NextRequest) {
   ];
 
   const header = [
+    "Säsong",
     "Vecka",
     ...(isAdmin ? ["Distrikt"] : []),
     "Kund", "Typ", "Antal kunder", "Försäljning ink. moms",
@@ -114,6 +124,7 @@ export async function GET(req: NextRequest) {
   ];
 
   const dataRows = rows.map(r => [
+    `${r.seasonType === "VAR" ? "Vår" : "Höst"} ${r.year}`,
     r.week,
     ...(isAdmin ? [r.districtLabel] : []),
     r.customerName,
