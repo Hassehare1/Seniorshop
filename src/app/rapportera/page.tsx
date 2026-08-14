@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { getCurrentWeekAndYear } from "@/lib/week";
+import { resolveReportSeason } from "@/lib/season";
 import ReportForm from "./ReportForm";
 
 export default async function RapporteraPage({
@@ -25,14 +26,12 @@ export default async function RapporteraPage({
     }),
   ]);
 
-  // Aktiv säsong = den vars veckointervall + år matchar dagens datum
+  // Säsongen att skriva till. Ingen fallback till senaste säsongen — se
+  // resolveReportSeason för varför.
   const { week: currentWeekNum, year: currentYear } = getCurrentWeekAndYear();
-  const currentSeason =
-    seasons.find(
-      s => s.year === currentYear && s.weekStart <= currentWeekNum && s.weekEnd >= currentWeekNum
-    ) ?? seasons[0] ?? null;
+  const initialSeason = resolveReportSeason(seasons, currentWeekNum, currentYear, seasonParam);
 
-  if (!currentSeason) {
+  if (!initialSeason) {
     return (
       <div>
         <div className="mb-6">
@@ -42,16 +41,14 @@ export default async function RapporteraPage({
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-8 text-center">
           <p className="text-2xl mb-2">📅</p>
           <p className="font-semibold text-amber-800">Ingen aktiv säsong</p>
-          <p className="text-amber-700 text-sm mt-1">Kontakta admin för att skapa en säsong innan du kan rapportera.</p>
+          <p className="text-amber-700 text-sm mt-1">
+            Vecka {currentWeekNum} {currentYear} ligger inte i någon säsong. Kontakta admin så att
+            säsongen läggs in — då kan du rapportera som vanligt.
+          </p>
         </div>
       </div>
     );
   }
-
-  // Om URL innehåller ?season=... använd den säsongen (t.ex. länk från dashboard)
-  const initialSeason = seasonParam
-    ? seasons.find(s => s.id === seasonParam) ?? currentSeason
-    : currentSeason;
 
   const initialWeek = weekParam ? parseInt(weekParam, 10) : undefined;
 
