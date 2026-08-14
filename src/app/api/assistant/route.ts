@@ -9,6 +9,14 @@ import { assistantTools, runAssistantTool, type ToolScope } from "@/lib/insights
 // rollerna (se resolveDistrict i lib/insights/tools.ts).
 const ADMIN_ONLY = true;
 
+// Billigaste modellen medan detta är ett försök: Haiku 4.5 kostar 1 kr in /
+// 5 kr ut per miljon tokens, mot Opus 5:s 5 / 25. Uppgiften är enkel — välja
+// verktyg, läsa JSON och skriva en mening — vilket är precis vad Haiku är bra på.
+// Vill du prova en dyrare modell räcker det att sätta ASSISTANT_MODEL i Vercel.
+// OBS: `effort` och `fallbacks` finns bara på 4.6+ och ger 400 här. Byter du
+// upp till Opus 5 är det de två du vill lägga tillbaka.
+const MODEL = process.env.ASSISTANT_MODEL ?? "claude-haiku-4-5";
+
 const SYSTEM = `Du är en assistent i SeniorShops franchiseportal. Du svarar på frågor om
 försäljning, besök och mål genom att anropa portalens verktyg.
 
@@ -62,12 +70,8 @@ export async function POST(req: NextRequest) {
 
   try {
     const message = await client.beta.messages.toolRunner({
-      model: "claude-opus-5",
-      // Tänkandet ryms i max_tokens tillsammans med svaret — snålt tak kapar svaret.
-      max_tokens: 16000,
-      output_config: { effort: "medium" },
-      betas: ["server-side-fallback-2026-07-01"],
-      fallbacks: "default",
+      model: MODEL,
+      max_tokens: 4096,
       system: SYSTEM,
       tools,
       messages: [{ role: "user", content: fraga }],
