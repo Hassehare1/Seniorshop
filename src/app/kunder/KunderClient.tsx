@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { customerTypeLabels, customerTypeColors, customerTypeOptions } from "@/lib/customerTypes";
-import { postalCodeDigits, validatePostalCode } from "@/lib/postalCode";
+import { formatPostalCode, postalCodeDigits, validatePostalCode } from "@/lib/postalCode";
 import type { Customer } from "@prisma/client";
 import ImportKunder from "./ImportKunder";
 
@@ -76,14 +76,28 @@ export default function KunderClient({ customers: initial, districtId, districtN
     try {
       const XLSX = await import("xlsx");
       const label = seasons.find(s => s.id === season)?.label ?? "";
+      // Hela registret följer med, inte bara namn och typ — exporten ska duga
+      // som säkerhetskopia och gå att läsa in i vilket verktyg som helst.
       const rows = filtered.map(c => ({
+        Kundnr: `D${districtNumber}-${c.customerNumber}`,
         Namn: c.name,
         Typ: customerTypeLabels[c.type] ?? c.type,
+        Kontaktperson: c.contactPerson ?? "",
+        Kontaktroll: c.contactRole ?? "",
+        Telefon: c.phone ?? "",
+        "E-post": c.email ?? "",
+        Adress: c.address ?? "",
+        Postnummer: formatPostalCode(c.postalCode, region),
+        Kommentar: c.notes ?? "",
         [`Besök ${label}`]: visitCount(c.id),
         "Senaste vecka": lastWeek(c.id) || "",
         Status: c.active ? "Aktiv" : "Inaktiv",
+        Granskning: c.approved ? "Godkänd" : "Väntar granskning",
       }));
       const ws = XLSX.utils.json_to_sheet(rows);
+      ws["!cols"] = Object.keys(rows[0] ?? {}).map(h => ({
+        wch: h === "Namn" || h === "Adress" || h === "Kommentar" || h === "E-post" ? 26 : 15,
+      }));
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Kunder");
       XLSX.writeFile(wb, `Kunder_besok_${label.replace(/\s+/g, "_") || "lista"}.xlsx`);

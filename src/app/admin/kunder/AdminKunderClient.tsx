@@ -17,7 +17,9 @@ interface Customer {
   contactRole: string | null;
   email: string | null;
   phone: string | null;
+  address: string | null;
   postalCode: string | null;
+  notes: string | null;
   active: boolean;
   approved: boolean;
   district: { number: number; name: string; region: string };
@@ -104,16 +106,29 @@ export default function AdminKunderClient({ customers: initial, seasons, visitMa
     try {
       const XLSX = await import("xlsx");
       const label = seasons.find(s => s.id === season)?.label ?? "";
+      // Hela registret följer med, inte bara namn och typ — exporten ska duga
+      // som säkerhetskopia och gå att läsa in i vilket verktyg som helst.
       const rows = filtered.map(c => ({
         Distrikt: `D${c.district.number} – ${c.district.name}`,
+        Kundnr: `D${c.district.number}-${c.customerNumber}`,
         Namn: c.name,
         Typ: typeLabels[c.type] ?? c.type,
+        Kontaktperson: c.contactPerson ?? "",
+        Kontaktroll: c.contactRole ?? "",
+        Telefon: c.phone ?? "",
+        "E-post": c.email ?? "",
+        Adress: c.address ?? "",
+        Postnummer: formatPostalCode(c.postalCode, c.district.region) || "SAKNAS",
+        Kommentar: c.notes ?? "",
         [`Besök ${label}`]: visitCount(c.id),
         "Senaste vecka": lastWeek(c.id) || "",
-        Postnummer: formatPostalCode(c.postalCode, c.district.region) || "SAKNAS",
         Status: c.active ? "Aktiv" : "Inaktiv",
+        Granskning: c.approved ? "Godkänd" : "Väntar granskning",
       }));
       const ws = XLSX.utils.json_to_sheet(rows);
+      ws["!cols"] = Object.keys(rows[0] ?? {}).map(h => ({
+        wch: h === "Namn" || h === "Adress" || h === "Kommentar" || h === "E-post" || h === "Distrikt" ? 26 : 15,
+      }));
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Kunder");
       XLSX.writeFile(wb, `Alla_kunder_besok_${label.replace(/\s+/g, "_") || "lista"}.xlsx`);
