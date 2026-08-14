@@ -18,9 +18,9 @@ import {
   goalActualsFrom,
   uniqueWeeks,
   type DistAgg,
-  type ReportInput,
   type TypeAgg,
 } from "@/lib/insights/aggregate";
+import { loadSeasonReports, toAggregateInput } from "@/lib/insights/load";
 
 // Måndagen i en given ISO-vecka (UTC). Används för att avgöra om en säsong är
 // avslutad, pågående eller kommande i förhållande till dagens datum — ISO-vecka
@@ -83,18 +83,9 @@ export default async function DashboardPage({
   const showDistrictBreakdown = isAdmin && !selectedDistrictId;
 
   if (currentSeason) {
-    const where = {
+    const reports = await loadSeasonReports({
       seasonId: currentSeason.id,
-      ...(selectedDistrictId ? { districtId: selectedDistrictId } : {}),
-    };
-
-    const reports = await prisma.weeklyReport.findMany({
-      where,
-      include: {
-        district: { select: { number: true, name: true } },
-        visits: { include: { customer: { select: { name: true, type: true } } } },
-      },
-      orderBy: { week: "asc" },
+      districtId: selectedDistrictId,
     });
 
     // Unika veckor — flera distrikt kan rapportera samma vecka (en rapport per
@@ -128,25 +119,9 @@ export default async function DashboardPage({
       }),
     }));
 
-    // Beloppen görs om till tal här, ett besök i taget — aggregeringen i
-    // lib/insights räknar sedan på vanliga tal och kan därför testas.
     // Presentationsaggregat: varje term är ett exakt öresbelopp, summan visas i
     // hela kronor. Det bindande beloppet är redan lagrat exakt.
-    const aggInput: ReportInput[] = reports.map(r => ({
-      week: r.week,
-      districtId: r.districtId,
-      districtNumber: r.district.number,
-      districtName: r.district.name,
-      visits: r.visits.map(v => ({
-        customerType: v.customer.type,
-        sales: toNumber(money(v.sales).plus(v.fashionShowSales)),
-        ftFee: toNumber(v.ftFee),
-        mfFee: toNumber(v.mfFee),
-        numberOfCustomers: v.numberOfCustomers,
-        isFashionShow: v.isFashionShow,
-        isHangerShow: v.isHangerShow,
-      })),
-    }));
+    const aggInput = toAggregateInput(reports);
 
     const { byType, showType } = aggregateByType(aggInput, stats.weeks);
     stats.byType = byType;
