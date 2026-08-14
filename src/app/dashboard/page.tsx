@@ -11,23 +11,16 @@ import ShowTypeAnalytics, { type ShowTypeItem } from "./ShowTypeAnalytics";
 import SeasonSwitcher from "./SeasonSwitcher";
 import DistrictSwitcher from "./DistrictSwitcher";
 import ForecastCard, { type ForecastData, type ForecastSeason, type SeasonStatus } from "./ForecastCard";
-
-// Aggregat per kundtyp (server-sidan), mappas sedan till BreakdownItem
-interface TypeAgg {
-  type: string;
-  sales: number; ftFee: number; mfFee: number;
-  customers: number; besok: number; fashionShows: number; hangerShows: number;
-  weekly: number[];
-}
-
-// Aggregat per distrikt (admin-översikt över alla distrikt)
-interface DistAgg {
-  id: string;
-  label: string;
-  sales: number; ftFee: number; mfFee: number;
-  customers: number; besok: number; fashionShows: number; hangerShows: number;
-  weekly: number[];
-}
+import {
+  TYPE_KEYS,
+  aggregateByDistrict,
+  aggregateByType,
+  goalActualsFrom,
+  uniqueWeeks,
+  type DistAgg,
+  type ReportInput,
+  type TypeAgg,
+} from "@/lib/insights/aggregate";
 
 // Måndagen i en given ISO-vecka (UTC). Används för att avgöra om en säsong är
 // avslutad, pågående eller kommande i förhållande till dagens datum — ISO-vecka
@@ -106,7 +99,7 @@ export default async function DashboardPage({
 
     // Unika veckor — flera distrikt kan rapportera samma vecka (en rapport per
     // distrikt × vecka); utan dedup dubbleras x-axeln och staplarna splittras
-    stats.weeks = [...new Set(reports.map(r => r.week))].sort((a, b) => a - b);
+    stats.weeks = uniqueWeeks(reports);
     stats.reports = reports.map(r => ({
       id: r.id,
       week: r.week,
@@ -135,80 +128,40 @@ export default async function DashboardPage({
       }),
     }));
 
-    // Per kundtyp: aggregat + försäljning per vecka (för korsfiltrering)
-    const weeksOrder = stats.weeks;
-    const weekIdx = new Map(weeksOrder.map((w, i) => [w, i]));
-    const typeKeys = ["TRAFFPUNKT", "FORENING", "VARDHEM", "BOENDE_55", "STOD_HALSOSAMVERKAN", "OVRIGT"];
-    const aggMap: Record<string, TypeAgg> = {};
-    // Visningstyp-nedbrytning per kundtyp (Modevisning/Galge/Övriga). Modevisning
-    // och Galge är ömsesidigt uteslutande (spärr i formulär + server), så
-    // kategorierna summerar exakt till totalen utan dubbelräkning.
-    type ShowSplit = { modevisning: { sales: number; besok: number }; galge: { sales: number; besok: number }; ovriga: { sales: number; besok: number } };
-    const showMap: Record<string, ShowSplit> = {};
-    for (const k of typeKeys) {
-      aggMap[k] = { type: k, sales: 0, ftFee: 0, mfFee: 0, customers: 0, besok: 0, fashionShows: 0, hangerShows: 0, weekly: new Array(weeksOrder.length).fill(0) };
-      showMap[k] = { modevisning: { sales: 0, besok: 0 }, galge: { sales: 0, besok: 0 }, ovriga: { sales: 0, besok: 0 } };
-    }
-    for (const r of reports) {
-      const wi = weekIdx.get(r.week);
-      for (const v of r.visits) {
-        const a = aggMap[v.customer.type] ?? aggMap.OVRIGT;
-        // Presentationsaggregat: varje term är ett exakt öresbelopp, summan
-        // visas i hela kronor. Det bindande beloppet är redan lagrat exakt.
-        const sale = toNumber(money(v.sales).plus(v.fashionShowSales));
-        a.sales += sale;
-        a.ftFee += toNumber(v.ftFee);
-        a.mfFee += toNumber(v.mfFee);
-        a.customers += v.numberOfCustomers;
-        a.besok += 1;
-        if (v.isFashionShow) a.fashionShows += 1;
-        if (v.isHangerShow) a.hangerShows += 1;
-        if (wi !== undefined) a.weekly[wi] += sale;
+    // Beloppen görs om till tal här, ett besök i taget — aggregeringen i
+    // lib/insights räknar sedan på vanliga tal och kan därför testas.
+    // Presentationsaggregat: varje term är ett exakt öresbelopp, summan visas i
+    // hela kronor. Det bindande beloppet är redan lagrat exakt.
+    const aggInput: ReportInput[] = reports.map(r => ({
+      week: r.week,
+      districtId: r.districtId,
+      districtNumber: r.district.number,
+      districtName: r.district.name,
+      visits: r.visits.map(v => ({
+        customerType: v.customer.type,
+        sales: toNumber(money(v.sales).plus(v.fashionShowSales)),
+        ftFee: toNumber(v.ftFee),
+        mfFee: toNumber(v.mfFee),
+        numberOfCustomers: v.numberOfCustomers,
+        isFashionShow: v.isFashionShow,
+        isHangerShow: v.isHangerShow,
+      })),
+    }));
 
-        // Modevisning = hela besöket; annars galge; annars övriga.
-        const cat = v.isFashionShow ? "modevisning" : v.isHangerShow ? "galge" : "ovriga";
-        const s = (showMap[v.customer.type] ?? showMap.OVRIGT)[cat];
-        s.sales += sale;
-        s.besok += 1;
-      }
-    }
-    stats.byType = typeKeys.map(k => aggMap[k]).filter(a => a.besok > 0);
-    stats.showType = typeKeys
+    const { byType, showType } = aggregateByType(aggInput, stats.weeks);
+    stats.byType = byType;
+    stats.showType = TYPE_KEYS
       .map(k => ({
         key: k,
         label: customerTypeLabels[k] ?? k,
         color: customerTypeChartColors[k] ?? "#64748b",
-        categories: showMap[k],
+        categories: showType[k],
       }))
       .filter(i => i.categories.modevisning.besok + i.categories.galge.besok + i.categories.ovriga.besok > 0);
 
     // Per distrikt (endast för admin-översikt över alla distrikt)
     if (showDistrictBreakdown) {
-      const distMap: Record<string, DistAgg> = {};
-      for (const r of reports) {
-        let a = distMap[r.districtId];
-        if (!a) {
-          a = distMap[r.districtId] = {
-            id: r.districtId,
-            label: `D${r.district.number} – ${r.district.name}`,
-            sales: 0, ftFee: 0, mfFee: 0, customers: 0, besok: 0, fashionShows: 0, hangerShows: 0,
-            weekly: new Array(weeksOrder.length).fill(0),
-          };
-        }
-        const wi = weekIdx.get(r.week);
-        for (const v of r.visits) {
-          const sale = toNumber(money(v.sales).plus(v.fashionShowSales));
-          a.sales += sale;
-          a.ftFee += toNumber(v.ftFee);
-          a.mfFee += toNumber(v.mfFee);
-          a.customers += v.numberOfCustomers;
-          a.besok += 1;
-          if (v.isFashionShow) a.fashionShows += 1;
-        if (v.isHangerShow) a.hangerShows += 1;
-          if (wi !== undefined) a.weekly[wi] += sale;
-        }
-      }
-      stats.byDistrict = Object.values(distMap).sort((x, y) => x.label.localeCompare(y.label, "sv"));
+      stats.byDistrict = aggregateByDistrict(aggInput, stats.weeks);
     }
   }
 
@@ -224,14 +177,7 @@ export default async function DashboardPage({
         where: { districtId_seasonId: { districtId: selectedDistrictId!, seasonId: currentSeason!.id } },
       })
     : null;
-  const actualSales = stats.byType.reduce((s, t) => s + t.sales, 0);
-  const actualVisits = stats.byType.reduce((s, t) => s + t.besok, 0);
-  const goalActuals = {
-    sales: actualSales,
-    visits: actualVisits,
-    avgPerVisit: actualVisits > 0 ? actualSales / actualVisits : 0,
-    fashionShows: stats.byType.reduce((s, t) => s + t.fashionShows, 0),
-  };
+  const goalActuals = goalActualsFrom(stats.byType);
 
   // Samlad mål-översikt för admin i alla-distrikt-vyn: alla FT:ers mål vs utfall.
   const showGoalOverview = isAdmin && !selectedDistrictId && !!currentSeason;

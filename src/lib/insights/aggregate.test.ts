@@ -1,0 +1,161 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import {
+  aggregateByDistrict,
+  aggregateByType,
+  goalActualsFrom,
+  uniqueWeeks,
+  type ReportInput,
+  type VisitInput,
+} from "./aggregate.ts";
+
+const visit = (over: Partial<VisitInput> = {}): VisitInput => ({
+  customerType: "TRAFFPUNKT",
+  sales: 1000,
+  ftFee: 75,
+  mfFee: 10,
+  numberOfCustomers: 5,
+  isFashionShow: false,
+  isHangerShow: false,
+  ...over,
+});
+
+const report = (over: Partial<ReportInput> = {}): ReportInput => ({
+  week: 10,
+  districtId: "d6",
+  districtNumber: 6,
+  districtName: "Småland",
+  visits: [],
+  ...over,
+});
+
+test("unika veckor dedupliceras och sorteras", () => {
+  // Flera distrikt rapporterar samma vecka — utan dedup dubbleras x-axeln
+  const reports = [
+    report({ week: 12 }),
+    report({ week: 10, districtId: "d7" }),
+    report({ week: 12, districtId: "d7" }),
+    report({ week: 11 }),
+  ];
+  assert.deepEqual(uniqueWeeks(reports), [10, 11, 12]);
+  assert.deepEqual(uniqueWeeks([]), []);
+});
+
+test("summerar per kundtyp", () => {
+  const reports = [
+    report({ visits: [visit(), visit({ customerType: "VARDHEM", sales: 500, numberOfCustomers: 3 })] }),
+  ];
+  const { byType } = aggregateByType(reports, [10]);
+
+  const traff = byType.find(t => t.type === "TRAFFPUNKT")!;
+  assert.equal(traff.sales, 1000);
+  assert.equal(traff.besok, 1);
+  assert.equal(traff.customers, 5);
+  assert.equal(traff.ftFee, 75);
+  assert.equal(traff.mfFee, 10);
+
+  const vard = byType.find(t => t.type === "VARDHEM")!;
+  assert.equal(vard.sales, 500);
+  assert.equal(vard.customers, 3);
+});
+
+test("kundtyper utan besök utelämnas, och ordningen är den fasta", () => {
+  const reports = [report({ visits: [visit({ customerType: "VARDHEM" }), visit({ customerType: "FORENING" })] })];
+  const { byType } = aggregateByType(reports, [10]);
+  assert.deepEqual(byType.map(t => t.type), ["FORENING", "VARDHEM"]);
+});
+
+test("okänd kundtyp hamnar under OVRIGT i stället för att tappas", () => {
+  const reports = [report({ visits: [visit({ customerType: "FINNS_INTE", sales: 700 })] })];
+  const { byType, showType } = aggregateByType(reports, [10]);
+  const ovrigt = byType.find(t => t.type === "OVRIGT")!;
+  assert.equal(ovrigt.sales, 700);
+  assert.equal(showType.OVRIGT.ovriga.sales, 700);
+});
+
+test("veckofördelningen hamnar i rätt fack", () => {
+  const reports = [
+    report({ week: 10, visits: [visit({ sales: 100 })] }),
+    report({ week: 12, visits: [visit({ sales: 300 })] }),
+  ];
+  const weeks = [10, 11, 12];
+  const { byType } = aggregateByType(reports, weeks);
+  assert.deepEqual(byType[0].weekly, [100, 0, 300]);
+});
+
+test("veckor utanför urvalet räknas i totalen men inte i veckofördelningen", () => {
+  const reports = [
+    report({ week: 10, visits: [visit({ sales: 100 })] }),
+    report({ week: 99, visits: [visit({ sales: 400 })] }),
+  ];
+  const { byType } = aggregateByType(reports, [10]);
+  assert.equal(byType[0].sales, 500);
+  assert.deepEqual(byType[0].weekly, [100]);
+});
+
+test("visningstyperna summerar till totalen utan dubbelräkning", () => {
+  const reports = [
+    report({
+      visits: [
+        visit({ sales: 1000, isFashionShow: true }),
+        visit({ sales: 200, isHangerShow: true }),
+        visit({ sales: 300 }),
+      ],
+    }),
+  ];
+  const { byType, showType } = aggregateByType(reports, [10]);
+  const s = showType.TRAFFPUNKT;
+
+  assert.equal(s.modevisning.sales, 1000);
+  assert.equal(s.galge.sales, 200);
+  assert.equal(s.ovriga.sales, 300);
+  assert.equal(s.modevisning.sales + s.galge.sales + s.ovriga.sales, byType[0].sales);
+  assert.equal(s.modevisning.besok + s.galge.besok + s.ovriga.besok, byType[0].besok);
+});
+
+test("modevisning vinner över galge när båda är satta", () => {
+  // Formulär och server spärrar kombinationen, men regeln ska ändå vara entydig
+  const reports = [report({ visits: [visit({ sales: 900, isFashionShow: true, isHangerShow: true })] })];
+  const { byType, showType } = aggregateByType(reports, [10]);
+  assert.equal(showType.TRAFFPUNKT.modevisning.sales, 900);
+  assert.equal(showType.TRAFFPUNKT.galge.sales, 0);
+  // Räknarna för respektive visningstyp är däremot oberoende
+  assert.equal(byType[0].fashionShows, 1);
+  assert.equal(byType[0].hangerShows, 1);
+});
+
+test("summerar per distrikt och sorterar på etikett", () => {
+  const reports = [
+    report({ districtId: "d7", districtNumber: 7, districtName: "Halland", visits: [visit({ sales: 200 })] }),
+    report({ districtId: "d6", visits: [visit({ sales: 100 })] }),
+    report({ districtId: "d6", week: 11, visits: [visit({ sales: 50 })] }),
+  ];
+  const byDistrict = aggregateByDistrict(reports, [10, 11]);
+
+  assert.deepEqual(byDistrict.map(d => d.label), ["D6 – Småland", "D7 – Halland"]);
+  assert.equal(byDistrict[0].sales, 150);
+  assert.equal(byDistrict[0].besok, 2);
+  assert.deepEqual(byDistrict[0].weekly, [100, 50]);
+  assert.equal(byDistrict[1].sales, 200);
+});
+
+test("målutfall räknas ur kundtypsaggregatet", () => {
+  const reports = [
+    report({ visits: [visit({ sales: 1000, isFashionShow: true }), visit({ sales: 500 })] }),
+    report({ visits: [visit({ sales: 300, customerType: "VARDHEM" })] }),
+  ];
+  const { byType } = aggregateByType(reports, [10]);
+  const actuals = goalActualsFrom(byType);
+
+  assert.equal(actuals.sales, 1800);
+  assert.equal(actuals.visits, 3);
+  assert.equal(actuals.avgPerVisit, 600);
+  assert.equal(actuals.fashionShows, 1);
+});
+
+test("inga besök ger noll i snitt i stället för division med noll", () => {
+  const actuals = goalActualsFrom([]);
+  assert.equal(actuals.sales, 0);
+  assert.equal(actuals.visits, 0);
+  assert.equal(actuals.avgPerVisit, 0);
+});
