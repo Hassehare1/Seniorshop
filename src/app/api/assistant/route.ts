@@ -39,6 +39,9 @@ Viktigt:
   förstått frågan rätt.
 - Får du tillbaka sasongerMedMal betyder det att målen saknas för den säsongen
   men finns för andra. Nämn vilka i stället för att bara säga att målen saknas.
+- Jämför du år mot år: skriv alltid ut fältet omfattning. En pågående säsong
+  jämförs bara på de veckor som hunnit passera, och utelämnas det låter en
+  avkortad jämförelse som en hel säsong.
 - Håll isär vad portalen vet och vad du själv slutit dig till. Siffrorna och
   jämförelserna kommer ur verktygen och skrivs som de står. Drar du en egen
   slutsats om varför något ser ut som det gör är det ofta värdefullt — men

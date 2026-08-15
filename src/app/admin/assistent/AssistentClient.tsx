@@ -7,6 +7,7 @@ const EXEMPEL = [
   "Vilken kundtyp säljer bäst?",
   "Hur ligger D6 mot sina mål?",
   "Vilket distrikt går bäst?",
+  "Går det bättre än förra året?",
 ];
 
 const VERKTYGSNAMN: Record<string, string> = {
@@ -14,6 +15,7 @@ const VERKTYGSNAMN: Record<string, string> = {
   forsaljning_per_kundtyp: "försäljning per kundtyp",
   mal_mot_utfall: "mål mot utfall",
   jamfor_distrikt: "jämförelse mellan distrikt",
+  ar_mot_ar: "år mot år",
 };
 
 type Uppslag = { verktyg: string; urval?: string; sasong?: string };
