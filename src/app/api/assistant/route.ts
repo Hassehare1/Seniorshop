@@ -3,6 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { betaTool } from "@anthropic-ai/sdk/helpers/beta/json-schema";
 import { auth } from "@/lib/auth";
 import { assistantTools, currentSeason, runAssistantTool, type ToolScope } from "@/lib/insights/tools";
+import { parseMeddelanden } from "@/lib/insights/messages";
 
 // Assistenten är admin-låst medan den mognar. Öppnas den för FT är det den här
 // raden som tas bort — behörigheten i verktygen är redan skriven för båda
@@ -38,10 +39,19 @@ Viktigt:
   förstått frågan rätt.
 - Får du tillbaka sasongerMedMal betyder det att målen saknas för den säsongen
   men finns för andra. Nämn vilka i stället för att bara säga att målen saknas.
+- Håll isär vad portalen vet och vad du själv slutit dig till. Siffrorna och
+  jämförelserna kommer ur verktygen och skrivs som de står. Drar du en egen
+  slutsats om varför något ser ut som det gör är det ofta värdefullt — men
+  skriv den som en egen mening som börjar med t.ex. "Rimligen" eller "En
+  förklaring kan vara", så att läsaren ser att den är din och inte portalens.
 - Svara kort och på svenska, i löpande text. Inga rubriker eller punktlistor om
   frågan inte handlar om en lista.
 - Beloppen från verktygen är redan formaterade — skriv dem som de står.`;
 }
+
+/** Vad servern faktiskt slog upp. Byggs ur verktygens svar, inte ur modellens text. */
+type Uppslag = { verktyg: string; urval?: string; sasong?: string };
+
 
 export async function POST(req: NextRequest) {
   const session = await auth();
@@ -59,8 +69,8 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { fraga } = await req.json();
-  if (typeof fraga !== "string" || fraga.trim() === "") {
+  const meddelanden = parseMeddelanden(await req.json());
+  if (meddelanden.length === 0) {
     return NextResponse.json({ error: "Ingen fråga skickades." }, { status: 400 });
   }
 
@@ -72,13 +82,23 @@ export async function POST(req: NextRequest) {
   };
 
   const client = new Anthropic();
+  const uppslag: Uppslag[] = [];
   const tools = assistantTools.map(t =>
     betaTool({
       name: t.name,
       description: t.description,
       inputSchema: t.inputSchema,
-      run: (input: Record<string, unknown>) =>
-        runAssistantTool(t.name, input, scope).then(r => JSON.stringify(r)),
+      run: async (input: Record<string, unknown>) => {
+        const r = (await runAssistantTool(t.name, input, scope)) as Record<string, unknown>;
+        // Loggas ur resultatet, alltså serverns egna värden. Skulle modellen
+        // påstå fel säsong eller distrikt i texten syns avvikelsen här.
+        uppslag.push({
+          verktyg: t.name,
+          urval: typeof r.urval === "string" ? r.urval : undefined,
+          sasong: typeof r.sasong === "string" ? r.sasong : undefined,
+        });
+        return JSON.stringify(r);
+      },
     }),
   );
 
@@ -88,7 +108,7 @@ export async function POST(req: NextRequest) {
       max_tokens: 4096,
       system: systemPrompt(await currentSeason()),
       tools,
-      messages: [{ role: "user", content: fraga }],
+      messages: meddelanden,
     });
 
     if (message.stop_reason === "refusal") {
@@ -104,7 +124,7 @@ export async function POST(req: NextRequest) {
       .join("\n")
       .trim();
 
-    return NextResponse.json({ svar: svar || "Modellen svarade utan text." });
+    return NextResponse.json({ svar: svar || "Modellen svarade utan text.", uppslag });
   } catch (err) {
     if (err instanceof Anthropic.RateLimitError) {
       return NextResponse.json({ error: "För många frågor just nu — försök igen om en stund." }, { status: 429 });
