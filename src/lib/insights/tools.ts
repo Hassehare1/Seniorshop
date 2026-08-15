@@ -4,7 +4,8 @@ import { customerTypeLabels } from "@/lib/customerTypes";
 import { salesPace } from "@/lib/goals";
 import { resolveReportSeason } from "@/lib/season";
 import { getCurrentWeekAndYear } from "@/lib/week";
-import { aggregateByType, goalActualsFrom, uniqueWeeks } from "./aggregate";
+import { aggregateByDistrict, aggregateByType, goalActualsFrom, uniqueWeeks } from "./aggregate";
+import { rankDistricts } from "./compare";
 import { loadSeasonReports, toAggregateInput } from "./load";
 
 /**
@@ -124,6 +125,22 @@ export const assistantTools = [
             "Säsongens id från lista_sasonger. Utelämnas för den säsong som pågår nu — gör det när frågan inte nämner någon säsong.",
         },
         ...distriktParam,
+      },
+      required: [],
+    },
+  },
+  {
+    name: "jamfor_distrikt",
+    description:
+      "Alla distrikt för en säsong, rangordnade efter hur stor andel av säljmålet de nått. Använd när frågan gäller vilket distrikt som går bäst eller sämst, hur ett distrikt ligger jämfört med de andra, eller hur landet ser ut som helhet. Endast för admin.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        seasonId: {
+          type: "string",
+          description:
+            "Säsongens id från lista_sasonger. Utelämnas för den säsong som pågår nu — gör det när frågan inte nämner någon säsong.",
+        },
       },
       required: [],
     },
@@ -249,6 +266,61 @@ export async function runAssistantTool(
               : pace.kind === "visitsExhausted"
                 ? `Besöksmålet är nått, ${formatSEK(Math.round(pace.salesLeft))} kvar till säljmålet.`
                 : "Går inte att räkna — mål saknas.",
+      };
+    }
+
+    case "jamfor_distrikt": {
+      // Det här verktyget är distriktsöverskridande till sin natur och går
+      // därför inte att skydda med resolveDistrict. Öppnas assistenten för FT
+      // är det den här spärren som hindrar att andras siffror läcker ut.
+      if (!scope.isAdmin) {
+        return { fel: "Jämförelser mellan distrikt är bara tillgängliga för admin." };
+      }
+
+      const seasonId = await resolveSeasonId(input);
+      if (!seasonId) return { fel: "Det finns inga säsonger upplagda i portalen." };
+      const season = await prisma.season.findUnique({ where: { id: seasonId } });
+
+      const reports = await loadSeasonReports({ seasonId });
+      const agg = toAggregateInput(reports);
+      const rapporterade = aggregateByDistrict(agg, uniqueWeeks(agg));
+
+      // Distrikt som inte rapporterat något saknas i aggregeringen. De tas med
+      // som nollor — ett tyst distrikt är ett svar, inte ett distrikt som inte finns.
+      const alla = await prisma.district.findMany({ orderBy: { number: "asc" } });
+      const perId = new Map(rapporterade.map(d => [d.id, d]));
+      const rader = alla.map(d => {
+        const a = perId.get(d.id);
+        return {
+          id: d.id,
+          label: `D${d.number} – ${d.name}`,
+          sales: a?.sales ?? 0,
+          besok: a?.besok ?? 0,
+          customers: a?.customers ?? 0,
+          fashionShows: a?.fashionShows ?? 0,
+        };
+      });
+
+      const goals = await prisma.seasonGoal.findMany({ where: { seasonId } });
+      const rankade = rankDistricts(
+        rader,
+        goals.map(g => ({ districtId: g.districtId, salesTarget: g.salesTarget })),
+      );
+
+      return {
+        sasong: season ? seasonLabel(season) : "okänd säsong",
+        sorteringsgrund:
+          "Andel av säljmålet, störst först. Distrikt utan mål ligger sist och är sorterade på försäljning.",
+        distrikt: rankade.map(d => ({
+          distrikt: d.label,
+          forsaljning: formatSEK(Math.round(d.sales)),
+          andelAvMal: d.goalPercent == null ? "inget mål satt" : `${Math.round(d.goalPercent)} %`,
+          maal: d.salesTarget == null ? null : formatSEK(Math.round(d.salesTarget)),
+          besok: d.besok,
+          besokare: d.customers,
+          snittPerBesok: formatSEK(Math.round(d.avgPerVisit)),
+          modevisningar: d.fashionShows,
+        })),
       };
     }
 
