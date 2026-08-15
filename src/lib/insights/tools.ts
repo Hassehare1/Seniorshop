@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { formatSEK } from "@/lib/fees";
 import { customerTypeLabels } from "@/lib/customerTypes";
 import { salesPace } from "@/lib/goals";
+import { resolveReportSeason } from "@/lib/season";
+import { getCurrentWeekAndYear } from "@/lib/week";
 import { aggregateByType, goalActualsFrom, uniqueWeeks } from "./aggregate";
 import { loadSeasonReports, toAggregateInput } from "./load";
 
@@ -39,6 +41,43 @@ async function resolveDistrict(
   return { districtId: d.id, label: `D${d.number} – ${d.name}` };
 }
 
+const seasonLabel = (s: { type: string; year: number }) =>
+  `${s.type === "VAR" ? "Vår" : "Höst"} ${s.year}`;
+
+/** Säsongerna, nyast först. Sorteras i JS så ordningen inte hänger på enum-ordningen. */
+async function seasonsNewestFirst() {
+  const seasons = await prisma.season.findMany();
+  return seasons.sort((a, b) => b.year - a.year || b.weekStart - a.weekStart);
+}
+
+/**
+ * Vilken säsong "nu" är, enligt samma regel som rapporteringssidan.
+ *
+ * Utan den här gissar modellen — den vet inte vilket datum det är, och valde
+ * en säsong flera år tillbaka när frågan inte nämnde någon. Ligger dagens
+ * vecka i glappet mellan två säsonger faller vi tillbaka på den senaste, för
+ * här läser vi bara och en ungefärlig säsong slår ett obesvarat svar.
+ */
+export async function currentSeason() {
+  const { week, year } = getCurrentWeekAndYear();
+  const seasons = await seasonsNewestFirst();
+  const träff = resolveReportSeason(seasons, week, year);
+  const vald = träff ?? seasons[0];
+  if (!vald) return null;
+  return {
+    seasonId: vald.id,
+    namn: seasonLabel(vald),
+    pagaende: träff != null,
+    idag: `vecka ${week} ${year}`,
+  };
+}
+
+/** Säsongen frågan gäller: den modellen bad om, annars den aktuella. */
+async function resolveSeasonId(input: Record<string, unknown>): Promise<string | null> {
+  if (typeof input.seasonId === "string" && input.seasonId !== "") return input.seasonId;
+  return (await currentSeason())?.seasonId ?? null;
+}
+
 const distriktParam = {
   distriktsnummer: {
     type: "number",
@@ -62,10 +101,14 @@ export const assistantTools = [
     inputSchema: {
       type: "object",
       properties: {
-        seasonId: { type: "string", description: "Säsongens id från lista_sasonger." },
+        seasonId: {
+          type: "string",
+          description:
+            "Säsongens id från lista_sasonger. Utelämnas för den säsong som pågår nu — gör det när frågan inte nämner någon säsong.",
+        },
         ...distriktParam,
       },
-      required: ["seasonId"],
+      required: [],
     },
   },
   {
@@ -75,10 +118,14 @@ export const assistantTools = [
     inputSchema: {
       type: "object",
       properties: {
-        seasonId: { type: "string", description: "Säsongens id från lista_sasonger." },
+        seasonId: {
+          type: "string",
+          description:
+            "Säsongens id från lista_sasonger. Utelämnas för den säsong som pågår nu — gör det när frågan inte nämner någon säsong.",
+        },
         ...distriktParam,
       },
-      required: ["seasonId"],
+      required: [],
     },
   },
 ] as const;
@@ -96,28 +143,34 @@ export async function runAssistantTool(
 ): Promise<unknown> {
   switch (name) {
     case "lista_sasonger": {
-      const seasons = await prisma.season.findMany({
-        orderBy: [{ year: "desc" }, { type: "desc" }],
-      });
+      const seasons = await seasonsNewestFirst();
+      const nu = await currentSeason();
       return {
+        idag: nu?.idag,
+        aktuellSasong: nu?.namn,
         sasonger: seasons.map(s => ({
           seasonId: s.id,
-          namn: `${s.type === "VAR" ? "Vår" : "Höst"} ${s.year}`,
+          namn: seasonLabel(s),
           ar: s.year,
           veckor: `${s.weekStart}–${s.weekEnd}`,
+          aktuell: s.id === nu?.seasonId,
         })),
       };
     }
 
     case "forsaljning_per_kundtyp": {
       const { districtId, label } = await resolveDistrict(scope, input.distriktsnummer as number | undefined);
-      const reports = await loadSeasonReports({ seasonId: String(input.seasonId), districtId });
+      const seasonId = await resolveSeasonId(input);
+      if (!seasonId) return { fel: "Det finns inga säsonger upplagda i portalen." };
+      const season = await prisma.season.findUnique({ where: { id: seasonId } });
+      const reports = await loadSeasonReports({ seasonId, districtId });
       const agg = toAggregateInput(reports);
       const { byType } = aggregateByType(agg, uniqueWeeks(agg));
       const totals = goalActualsFrom(byType);
 
       return {
         urval: label,
+        sasong: season ? seasonLabel(season) : "okänd säsong",
         totalt: {
           forsaljning: formatSEK(Math.round(totals.sales)),
           besok: totals.visits,
@@ -144,11 +197,30 @@ export async function runAssistantTool(
         };
       }
 
-      const seasonId = String(input.seasonId);
+      const seasonId = await resolveSeasonId(input);
+      if (!seasonId) return { fel: "Det finns inga säsonger upplagda i portalen." };
+      const season = await prisma.season.findUnique({ where: { id: seasonId } });
+      const sasongNamn = season ? seasonLabel(season) : "okänd säsong";
+
       const goal = await prisma.seasonGoal.findUnique({
         where: { districtId_seasonId: { districtId, seasonId } },
       });
-      if (!goal) return { urval: label, fel: "Inga mål satta för den säsongen." };
+      if (!goal) {
+        // Säg inte bara nej. Saknas målen för den säsong modellen råkade välja
+        // är nästan alltid rätt svar att peka på de säsonger som faktiskt har mål.
+        const andra = await prisma.seasonGoal.findMany({
+          where: { districtId },
+          include: { season: true },
+        });
+        return {
+          urval: label,
+          sasong: sasongNamn,
+          fel: `Inga mål satta för ${sasongNamn}.`,
+          sasongerMedMal: andra
+            .map(g => ({ seasonId: g.seasonId, namn: seasonLabel(g.season) }))
+            .sort((a, b) => a.namn.localeCompare(b.namn, "sv")),
+        };
+      }
 
       const reports = await loadSeasonReports({ seasonId, districtId });
       const agg = toAggregateInput(reports);
@@ -164,6 +236,7 @@ export async function runAssistantTool(
 
       return {
         urval: label,
+        sasong: sasongNamn,
         forsaljning: jamfor(actuals.sales, goal.salesTarget, true),
         besok: jamfor(actuals.visits, goal.visitsTarget, false),
         snittPerBesok: jamfor(actuals.avgPerVisit, goal.avgPerVisitTarget, true),
