@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { betaTool } from "@anthropic-ai/sdk/helpers/beta/json-schema";
 import { auth } from "@/lib/auth";
-import { assistantTools, runAssistantTool, type ToolScope } from "@/lib/insights/tools";
+import { assistantTools, currentSeason, runAssistantTool, type ToolScope } from "@/lib/insights/tools";
 
 // Assistenten är admin-låst medan den mognar. Öppnas den för FT är det den här
 // raden som tas bort — behörigheten i verktygen är redan skriven för båda
@@ -17,17 +17,31 @@ const ADMIN_ONLY = true;
 // upp till Opus 5 är det de två du vill lägga tillbaka.
 const MODEL = process.env.ASSISTANT_MODEL ?? "claude-haiku-4-5";
 
-const SYSTEM = `Du är en assistent i SeniorShops franchiseportal. Du svarar på frågor om
+function systemPrompt(nu: { namn: string; idag: string; pagaende: boolean } | null) {
+  const tidsbild = nu
+    ? `I dag är det ${nu.idag}. Den säsong som ${nu.pagaende ? "pågår" : "senast var aktuell"} är ${nu.namn}.`
+    : "Det finns inga säsonger upplagda i portalen ännu.";
+
+  return `Du är en assistent i SeniorShops franchiseportal. Du svarar på frågor om
 försäljning, besök och mål genom att anropa portalens verktyg.
+
+${tidsbild}
 
 Viktigt:
 - Räkna ALDRIG själv. Alla siffror ska komma ur verktygens svar, ordagrant.
   Kan du inte hämta en siffra säger du det i stället för att uppskatta.
-- Gäller frågan en säsong: anropa lista_sasonger först för att få rätt seasonId.
-  "Hösten" eller "i höstas" betyder den senaste Höst-säsongen om inget år anges.
+- Nämner frågan ingen säsong gäller den den aktuella. Utelämna då seasonId helt
+  i stället för att gissa — verktyget fyller i rätt säsong åt dig.
+- Anropa lista_sasonger bara när frågan gäller en annan säsong än den aktuella,
+  eller när du behöver veta vilka som finns.
+- Skriv alltid ut vilken säsong svaret gäller, så att läsaren kan se om du
+  förstått frågan rätt.
+- Får du tillbaka sasongerMedMal betyder det att målen saknas för den säsongen
+  men finns för andra. Nämn vilka i stället för att bara säga att målen saknas.
 - Svara kort och på svenska, i löpande text. Inga rubriker eller punktlistor om
   frågan inte handlar om en lista.
 - Beloppen från verktygen är redan formaterade — skriv dem som de står.`;
+}
 
 export async function POST(req: NextRequest) {
   const session = await auth();
@@ -72,7 +86,7 @@ export async function POST(req: NextRequest) {
     const message = await client.beta.messages.toolRunner({
       model: MODEL,
       max_tokens: 4096,
-      system: SYSTEM,
+      system: systemPrompt(await currentSeason()),
       tools,
       messages: [{ role: "user", content: fraga }],
     });
