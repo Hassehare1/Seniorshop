@@ -32,8 +32,8 @@ export default async function AssistentPage() {
         <p className="text-sm text-slate-600">
           Försök, bara för admin. Siffrorna hämtas alltid ur databasen — modellen väljer vilken
           fråga som ska ställas och skriver svaret, men räknar aldrig själv. Den kan svara på
-          försäljning per kundtyp, mål mot utfall och hur distrikten ligger mot varandra; allt
-          annat säger den ifrån om.
+          försäljning per kundtyp, mål mot utfall, hur distrikten ligger mot varandra och år mot
+          år; allt annat säger den ifrån om.
         </p>
       </div>
 

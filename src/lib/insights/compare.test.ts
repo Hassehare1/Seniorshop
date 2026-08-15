@@ -1,6 +1,69 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { rankDistricts, type DistrictRow } from "./compare.ts";
+import {
+  comparableWeeks,
+  elapsedWeeks,
+  rankDistricts,
+  type DistrictRow,
+} from "./compare.ts";
+
+const host = (year: number) => ({ year, weekStart: 27, weekEnd: 52 });
+
+test("gångna veckor: tidigare år är alltid färdigt, kommande har inte börjat", () => {
+  assert.equal(elapsedWeeks(host(2025), { week: 33, year: 2026 }), 26);
+  assert.equal(elapsedWeeks(host(2027), { week: 33, year: 2026 }), 0);
+});
+
+test("gångna veckor under innevarande år styrs av veckan", () => {
+  assert.equal(elapsedWeeks(host(2026), { week: 20, year: 2026 }), 0, "före säsongsstart");
+  assert.equal(elapsedWeeks(host(2026), { week: 27, year: 2026 }), 1, "första veckan räknas");
+  assert.equal(elapsedWeeks(host(2026), { week: 33, year: 2026 }), 7);
+  assert.equal(elapsedWeeks(host(2026), { week: 52, year: 2026 }), 26, "sista veckan");
+  assert.equal(elapsedWeeks(host(2026), { week: 2, year: 2027 }), 26, "efter säsongsslut");
+});
+
+test("en pågående säsong klipper fjolåret vid lika många veckor", () => {
+  const ut = comparableWeeks(host(2026), host(2025), { week: 33, year: 2026 });
+  assert.equal(ut.veckor, 7);
+  assert.equal(ut.pagaende, true);
+  assert.deepEqual(ut.innevarande, { from: 27, to: 33 });
+  assert.deepEqual(ut.fjolaret, { from: 27, to: 33 });
+});
+
+test("en avslutad säsong jämförs i sin helhet", () => {
+  const ut = comparableWeeks(host(2026), host(2025), { week: 10, year: 2027 });
+  assert.equal(ut.veckor, 26);
+  assert.equal(ut.pagaende, false);
+  assert.deepEqual(ut.innevarande, { from: 27, to: 52 });
+});
+
+test("olika veckospann mellan åren klipps från respektive säsongsstart", () => {
+  // Fjolåret började två veckor tidigare — jämförelsen ska ändå bli lika lång.
+  const ut = comparableWeeks(host(2026), { year: 2025, weekStart: 25, weekEnd: 50 }, {
+    week: 33,
+    year: 2026,
+  });
+  assert.equal(ut.veckor, 7);
+  assert.deepEqual(ut.innevarande, { from: 27, to: 33 });
+  assert.deepEqual(ut.fjolaret, { from: 25, to: 31 }, "samma antal veckor, inte samma veckonummer");
+});
+
+test("en kortare fjolårssäsong kortar båda sidor", () => {
+  const ut = comparableWeeks(host(2026), { year: 2025, weekStart: 27, weekEnd: 30 }, {
+    week: 40,
+    year: 2026,
+  });
+  assert.equal(ut.veckor, 4, "fjolåret hade bara fyra veckor");
+  assert.deepEqual(ut.innevarande, { from: 27, to: 30 });
+  assert.deepEqual(ut.fjolaret, { from: 27, to: 30 });
+});
+
+test("en säsong som inte börjat ger inget att jämföra", () => {
+  const ut = comparableWeeks(host(2026), host(2025), { week: 10, year: 2026 });
+  assert.equal(ut.veckor, 0);
+  assert.equal(ut.innevarande, null);
+  assert.equal(ut.fjolaret, null);
+});
 
 const rad = (id: string, sales: number, besok = 10, extra: Partial<DistrictRow> = {}) => ({
   id,

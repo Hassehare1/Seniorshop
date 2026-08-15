@@ -5,7 +5,7 @@ import { salesPace } from "@/lib/goals";
 import { resolveReportSeason } from "@/lib/season";
 import { getCurrentWeekAndYear } from "@/lib/week";
 import { aggregateByDistrict, aggregateByType, goalActualsFrom, uniqueWeeks } from "./aggregate";
-import { rankDistricts } from "./compare";
+import { comparableWeeks, rankDistricts } from "./compare";
 import { loadSeasonReports, toAggregateInput } from "./load";
 
 /**
@@ -141,6 +141,23 @@ export const assistantTools = [
           description:
             "Säsongens id från lista_sasonger. Utelämnas för den säsong som pågår nu — gör det när frågan inte nämner någon säsong.",
         },
+      },
+      required: [],
+    },
+  },
+  {
+    name: "ar_mot_ar",
+    description:
+      "Jämför en säsong med samma säsong föregående år — Höst 2026 mot Höst 2025. Använd när frågan gäller utveckling över tid: växer vi, går det bättre än förra året, hur ligger vi jämfört med i fjol. Pågår säsongen klipps fjolåret vid lika många veckor, så jämförelsen blir rättvis.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        seasonId: {
+          type: "string",
+          description:
+            "Säsongen att utgå från, från lista_sasonger. Utelämnas för den säsong som pågår nu.",
+        },
+        ...distriktParam,
       },
       required: [],
     },
@@ -321,6 +338,74 @@ export async function runAssistantTool(
           snittPerBesok: formatSEK(Math.round(d.avgPerVisit)),
           modevisningar: d.fashionShows,
         })),
+      };
+    }
+
+    case "ar_mot_ar": {
+      const { districtId, label } = await resolveDistrict(scope, input.distriktsnummer as number | undefined);
+      const seasonId = await resolveSeasonId(input);
+      if (!seasonId) return { fel: "Det finns inga säsonger upplagda i portalen." };
+
+      const innevarande = await prisma.season.findUnique({ where: { id: seasonId } });
+      if (!innevarande) return { fel: "Säsongen finns inte." };
+
+      const fjolaret = await prisma.season.findFirst({
+        where: { type: innevarande.type, year: innevarande.year - 1 },
+      });
+      if (!fjolaret) {
+        return {
+          urval: label,
+          sasong: seasonLabel(innevarande),
+          fel: `${seasonLabel({ type: innevarande.type, year: innevarande.year - 1 })} finns inte i portalen, så det går inte att jämföra med fjolåret.`,
+        };
+      }
+
+      const fönster = comparableWeeks(innevarande, fjolaret, getCurrentWeekAndYear());
+      if (!fönster.innevarande || !fönster.fjolaret) {
+        return {
+          urval: label,
+          sasong: seasonLabel(innevarande),
+          fel: `${seasonLabel(innevarande)} har inte börjat ännu, så det finns inget att jämföra.`,
+        };
+      }
+
+      /** Utfallet för ett veckospann. Veckorna filtreras efter hämtningen. */
+      const utfall = async (id: string, från: number, till: number) => {
+        const reports = await loadSeasonReports({ seasonId: id, districtId });
+        const agg = toAggregateInput(reports).filter(r => r.week >= från && r.week <= till);
+        const { byType } = aggregateByType(agg, uniqueWeeks(agg));
+        return goalActualsFrom(byType);
+      };
+
+      const nu = await utfall(seasonId, fönster.innevarande.from, fönster.innevarande.to);
+      const då = await utfall(fjolaret.id, fönster.fjolaret.from, fönster.fjolaret.to);
+
+      const jamfor = (a: number, b: number, pengar: boolean) => ({
+        iar: pengar ? formatSEK(Math.round(a)) : Math.round(a),
+        ifjol: pengar ? formatSEK(Math.round(b)) : Math.round(b),
+        skillnad: pengar
+          ? `${a - b >= 0 ? "+" : "−"}${formatSEK(Math.abs(Math.round(a - b)))}`
+          : Math.round(a - b),
+        forandring:
+          b > 0
+            ? `${a - b >= 0 ? "+" : "−"}${Math.abs(Math.round(((a - b) / b) * 100))} %`
+            : a === 0
+              ? "oförändrat, noll båda åren"
+              : "fanns inget i fjol att jämföra med",
+      });
+
+      return {
+        urval: label,
+        sasong: seasonLabel(innevarande),
+        jamfortMed: seasonLabel(fjolaret),
+        // Måste skrivas ut i svaret: annars låter en avkortad jämförelse som en hel.
+        omfattning: fönster.pagaende
+          ? `De första ${fönster.veckor} veckorna av säsongen, eftersom ${seasonLabel(innevarande)} fortfarande pågår. Fjolåret är klippt vid lika många veckor.`
+          : `Hela säsongen, ${fönster.veckor} veckor.`,
+        forsaljning: jamfor(nu.sales, då.sales, true),
+        besok: jamfor(nu.visits, då.visits, false),
+        snittPerBesok: jamfor(nu.avgPerVisit, då.avgPerVisit, true),
+        modevisningar: jamfor(nu.fashionShows, då.fashionShows, false),
       };
     }
 
