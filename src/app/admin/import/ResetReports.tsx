@@ -36,8 +36,8 @@ export default function ResetReports() {
       if (!res.ok) setErr(data.error ?? "Något gick fel.");
       else {
         setMsg(
-          data.customers > 0
-            ? `Raderat: ${data.reports} rapporter, ${data.visits} besök och ${data.customers} kunder.`
+          data.scope === "all"
+            ? `Raderat: ${data.reports} rapporter, ${data.visits} besök, ${data.customers} kunder och ${data.goals} säsongsmål.`
             : `Tömt: ${data.reports} rapporter och ${data.visits} besök raderade.`,
         );
         stäng();
@@ -102,14 +102,15 @@ export default function ResetReports() {
       <div className="border-2 border-red-400 rounded-xl p-5 bg-red-50">
         <p className="font-semibold text-red-800 text-sm">Radera allt inför skarp start</p>
         <p className="text-sm text-slate-700 mt-1">
-          Raderar siffrorna <strong>och hela kundregistret</strong> — namn, kategorier,
-          kontaktpersoner, telefonnummer och postnummer försvinner. Kunderna skapas på nytt vid
-          nästa import, med de kategorier som står i filen.
+          Raderar siffrorna, <strong>hela kundregistret</strong> — namn, kategorier,
+          kontaktpersoner, telefonnummer och postnummer — och <strong>alla säsongsmål</strong>.
+          Kunderna skapas på nytt vid nästa import, med de kategorier som står i filen.
         </p>
         <p className="text-sm text-slate-700 mt-2">
           Avsedd för <strong>en enda sak</strong>: att gå från testdata till skarp start. Har
           någon franchisetagare fyllt i kontaktuppgifter för hand är de borta. Distrikt, säsonger,
-          mål, avgifter och användare rörs inte.
+          avgifter och användare rörs inte — dem får du rensa manuellt om det ligger kvar
+          testdistrikt.
         </p>
         {open !== "all" ? (
           <button
