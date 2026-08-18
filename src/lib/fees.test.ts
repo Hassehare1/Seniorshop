@@ -1,6 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { calculateFees, formatOre, money, type FeeConfig } from "./fees.ts";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { calculateFees, formatOre, money, STANDARD_FEE_CONFIG, type FeeConfig } from "./fees.ts";
 
 const config: FeeConfig = {
   ftFeePercent: 0.075,
@@ -97,4 +99,44 @@ test("formatOre ger exakta öresträngar för export", () => {
   assert.equal(formatOre("0.1"), "0.10");
   // 0.1 + 0.2 i flyttal = 0.30000000000000004; Decimal ger 0.30
   assert.equal(formatOre(money("0.1").plus(money("0.2"))), "0.30");
+});
+
+
+// ── Standardvillkoren ────────────────────────────────────────────────────────
+// Talen låg tidigare på sju ställen i koden och en kopia hade glidit isär
+// (taket skapades som 5999.812 i fee-config-routen). Nu finns de på ett ställe.
+// Testerna nedan är en larmtråd: ändras villkoren ska det vara ett medvetet
+// beslut som syns i en diff, inte något som råkar hända.
+
+test("standardvillkoren är de avtalade", () => {
+  assert.equal(STANDARD_FEE_CONFIG.ftFeePercent, 0.075, "FT-avgift 7,5 %");
+  assert.equal(STANDARD_FEE_CONFIG.mfFeePercent, 0.01, "MF-avgift 1 %");
+  assert.equal(STANDARD_FEE_CONFIG.mfFeeCap, 6000, "MF-tak 6000 kr ink moms");
+  assert.equal(STANDARD_FEE_CONFIG.vatMultiplier, 1.25, "moms 25 %");
+});
+
+test("taket ex moms blir 4800, som beräkningen jämför mot", () => {
+  const exMoms = money(STANDARD_FEE_CONFIG.mfFeeCap).div(STANDARD_FEE_CONFIG.vatMultiplier);
+  assert.equal(exMoms.toNumber(), 4800);
+});
+
+// Prisma kan inte läsa TypeScript, så @default-värdena i schemat är den enda
+// kopian som fortfarande underhålls för hand. Det här testet läser schemat och
+// jämför, så att de två inte kan glida isär tyst.
+test("prisma-schemats @default matchar standardvillkoren", () => {
+  const schemaPath = fileURLToPath(new URL("../../prisma/schema.prisma", import.meta.url));
+  const schema = readFileSync(schemaPath, "utf8");
+  const model = schema.match(/model FeeConfig \{([\s\S]*?)\n\}/)?.[1];
+  assert.ok(model, "hittade inte model FeeConfig i schemat");
+
+  const defaultFor = (fält: string) => {
+    const m = model.match(new RegExp(`\\n\\s*${fält}\\s+\\S+\\s+@default\\(([^)]+)\\)`));
+    assert.ok(m, `hittade inget @default för ${fält}`);
+    return Number(m[1]);
+  };
+
+  assert.equal(defaultFor("ftFeePercent"), STANDARD_FEE_CONFIG.ftFeePercent);
+  assert.equal(defaultFor("mfFeePercent"), STANDARD_FEE_CONFIG.mfFeePercent);
+  assert.equal(defaultFor("mfFeeCap"), STANDARD_FEE_CONFIG.mfFeeCap);
+  assert.equal(defaultFor("vatMultiplier"), STANDARD_FEE_CONFIG.vatMultiplier);
 });

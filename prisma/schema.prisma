@@ -69,6 +69,10 @@ model District {
   updatedAt DateTime       @updatedAt
 }
 
+// Standardvillkoren finns i src/lib/fees.ts (STANDARD_FEE_CONFIG) — ändra DÄR först.
+// @default-värdena nedan måste hållas i takt för hand; ett test i fees.test.ts
+// läser den här filen och larmar om de glider isär. Defaults gäller bara nya
+// rader — ändrade villkor kräver en migration för befintliga FeeConfig-rader.
 model FeeConfig {
   id            String   @id @default(cuid())
   districtId    String   @unique

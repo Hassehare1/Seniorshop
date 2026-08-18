@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { STANDARD_FEE_CONFIG } from "@/lib/fees";
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -28,10 +29,10 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     },
     create: {
       districtId,
-      ftFeePercent: ftFeePercent ?? 0.075,
-      mfFeePercent: mfFeePercent ?? 0.01,
-      mfFeeCap: mfFeeCap ?? 5999.812,
-      vatMultiplier: vatMultiplier ?? 1.25,
+      ftFeePercent: ftFeePercent ?? STANDARD_FEE_CONFIG.ftFeePercent,
+      mfFeePercent: mfFeePercent ?? STANDARD_FEE_CONFIG.mfFeePercent,
+      mfFeeCap: mfFeeCap ?? STANDARD_FEE_CONFIG.mfFeeCap,
+      vatMultiplier: vatMultiplier ?? STANDARD_FEE_CONFIG.vatMultiplier,
       updatedBy: session.user.email ?? session.user.id,
     },
   });
