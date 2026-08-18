@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { customerTypeLabels } from "@/lib/customerTypes";
 
 interface Summary {
   districtNumber: number;
@@ -15,6 +16,7 @@ interface Summary {
   willOverwrite: boolean;
   existingReports: number;
   warnings: string[];
+  typeConflicts: { name: string; existing: string; inFile: string }[];
 }
 
 interface Result {
@@ -175,6 +177,28 @@ export default function ImportSlutrapportClient({ districts }: Props) {
             <p className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-2 rounded-lg">
               ✓ Ny rapportering för {preview.seasonLabel} i D{preview.districtNumber} — inget tidigare rapporterat skrivs över.
             </p>
+          )}
+
+          {preview.typeConflicts?.length > 0 && (
+            <div className="text-sm text-amber-900 bg-amber-50 border border-amber-300 px-3 py-3 rounded-lg">
+              <p className="font-semibold mb-1">
+                {preview.typeConflicts.length} kund(er) har en annan kundtyp i filen än i portalen
+              </p>
+              <p className="text-amber-800 mb-2">
+                Portalen behåller sin egen typ — filen ändrar den inte. Kundtypen styr hur
+                försäljningen grupperas i all statistik, så stämmer filen kan du rätta typen
+                efteråt under <strong>Alla kunder</strong>.
+              </p>
+              <ul className="space-y-0.5">
+                {preview.typeConflicts.map((c, i) => (
+                  <li key={i}>
+                    <strong>{c.name}</strong>: behålls som{" "}
+                    {customerTypeLabels[c.existing] ?? c.existing} (filen säger{" "}
+                    {customerTypeLabels[c.inFile] ?? c.inFile})
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
 
           {preview.warnings.length > 0 && (
