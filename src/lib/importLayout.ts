@@ -29,7 +29,8 @@ export const importHeaderToType: Record<string, string> = {
   "förening": "OVRIGA_FORENINGAR",
   "boende +55": "PLUS_55",
   "boende+55": "PLUS_55",
-  "övrigt": "OVRIGT",
+  // Johans beslut 2026-08-18: gamla filers Övrigt hör hemma i Mindre försäljning.
+  "övrigt": "MINDRE_FORSALJNING",
 };
 
 /** Rubriker jämförs normaliserade: gemener, hopdragna mellanslag, utan radbrytningar. */
