@@ -65,6 +65,8 @@ export async function POST(req: NextRequest) {
   const rows = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, blankrows: false });
 
   const warnings: string[] = [];
+  /** Kunder som finns sedan tidigare men har en annan kundtyp i filen. */
+  const typeConflicts: { name: string; existing: string; inFile: string }[] = [];
   const parsed: ParsedVisit[] = [];
 
   for (const r of rows) {
@@ -121,7 +123,10 @@ export async function POST(req: NextRequest) {
       seen.add(p.name);
       const ex = byName.get(norm(p.name));
       if (ex && ex.type !== p.type) {
-        warnings.push(`"${p.name}" är ${ex.type} sedan tidigare men ${p.type} i filen — behåller ${ex.type}.`);
+        // Egen lista, inte bland varningarna. Kundtyp styr hur försäljningen
+        // grupperas i all analys, så en tyst avvikelse flyttar pengar mellan
+        // staplar utan att något ser trasigt ut. Den ska synas för sig.
+        typeConflicts.push({ name: p.name, existing: ex.type, inFile: p.type });
       }
     }
   }
@@ -149,6 +154,7 @@ export async function POST(req: NextRequest) {
     willOverwrite: existingReports > 0,
     existingReports,
     warnings,
+    typeConflicts,
   };
 
   // --- Granskning (torrkörning) ---
