@@ -79,7 +79,7 @@ test("gamla kolumnerna känns igen och mappas till de nya kategorierna", () => {
     { col: 5, type: "OVRIGA_FORENINGAR" },
     { col: 6, type: "TRAFFPUNKTER" },
     { col: 7, type: "PLUS_55" },
-    { col: 8, type: "OVRIGT" },
+    { col: 8, type: "MINDRE_FORSALJNING" },
   ]);
 });
 
@@ -158,4 +158,12 @@ test("en rad vars enda värde låg i borttagna Övrigt räknas inte som kategori
   const l = findLayout([framtidaRubrik]);
   assert.ok(l);
   assert.equal(l.typeCols.some(t => t.type === "OVRIGT"), false);
+});
+
+test("gamla filers Övrigt-kolumn läses som Mindre försäljning", () => {
+  // Övrigt finns inte bland FT:s tio. Johans beslut: de hör dit.
+  const l = findLayout([["Vecka", "Namn på besök", "Vårdhem", "Träffpunkt", "Övrigt"]]);
+  assert.ok(l);
+  assert.equal(l.typeCols.find(t => t.col === 4)?.type, "MINDRE_FORSALJNING");
+  assert.equal(l.typeCols.some(t => t.type === "OVRIGT"), false, "inget hamnar i OVRIGT längre");
 });

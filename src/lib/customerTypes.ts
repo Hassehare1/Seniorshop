@@ -5,9 +5,11 @@
 // rubrikraden). Ordningen nedan är den ordning de står i där, och den styr
 // visningsordningen i hela portalen.
 //
-// OVRIGT står inte i FT:s lista men behålls medvetet: aggregeringen använder
-// den som uppsamling för okända typer (se aggregate.ts), och importen behöver
-// någonstans att lägga en kategori den inte känner igen.
+// OVRIGT står inte i FT:s lista och går INTE att välja i formulär — den saknas
+// medvetet i customerTypeOptions. Men etikett och färg finns kvar, eftersom
+// aggregeringen använder den som uppsamling för okända typer (se aggregate.ts)
+// och en rad som ändå hamnar där måste kunna visas. Gamla filers Övrigt-kolumn
+// läses numera in som Mindre försäljning (Johans beslut 2026-08-18).
 
 export const customerTypeLabels: Record<string, string> = {
   ALDREBOENDE: "Äldreboende",
@@ -64,5 +66,4 @@ export const customerTypeOptions = [
   { value: "EGET_ARRANGEMANG", label: "Eget arrangemang" },
   { value: "CAMPINGPLATSER", label: "Campingplatser" },
   { value: "MINDRE_FORSALJNING", label: "Mindre försäljning" },
-  { value: "OVRIGT", label: "Övrigt" },
 ];
