@@ -1,40 +1,68 @@
 // Delad källa för kundtyper — används i kundlistor, rapportformulär,
-// dashboard och Excel-export. Ändra på ett ställe i stället för sex.
+// dashboard, import och Excel-export. Ändra på ett ställe i stället för sex.
+//
+// Kategorierna följer FT:s egen indelning i slutrapporten (fliken Rapport,
+// rubrikraden). Ordningen nedan är den ordning de står i där, och den styr
+// visningsordningen i hela portalen.
+//
+// OVRIGT står inte i FT:s lista men behålls medvetet: aggregeringen använder
+// den som uppsamling för okända typer (se aggregate.ts), och importen behöver
+// någonstans att lägga en kategori den inte känner igen.
 
 export const customerTypeLabels: Record<string, string> = {
-  VARDHEM: "Vårdhem",
-  FORENING: "Förening",
-  TRAFFPUNKT: "Träffpunkt",
-  BOENDE_55: "Boende +55",
-  STOD_HALSOSAMVERKAN: "Stöd- och Hälsosamverkan",
+  ALDREBOENDE: "Äldreboende",
+  TRAFFPUNKTER: "Träffpunkter",
+  PENSIONARSFORENING: "Pensionärsförening",
+  FORENING_STOD_HALSA: "Förening Stöd & Hälsoverksamhet",
+  OVRIGA_FORENINGAR: "Övriga föreningar",
+  FORSAMLINGSHEM: "Församlingshem arrangerat av kyrkan",
+  PLUS_55: "55+",
+  EGET_ARRANGEMANG: "Eget arrangemang",
+  CAMPINGPLATSER: "Campingplatser",
+  MINDRE_FORSALJNING: "Mindre försäljning",
   OVRIGT: "Övrigt",
 };
 
 export const customerTypeColors: Record<string, string> = {
-  TRAFFPUNKT: "bg-blue-100 text-blue-700",
-  FORENING: "bg-green-100 text-green-700",
-  VARDHEM: "bg-purple-100 text-purple-700",
-  BOENDE_55: "bg-orange-100 text-orange-700",
-  STOD_HALSOSAMVERKAN: "bg-teal-100 text-teal-700",
+  ALDREBOENDE: "bg-purple-100 text-purple-700",
+  TRAFFPUNKTER: "bg-blue-100 text-blue-700",
+  PENSIONARSFORENING: "bg-green-100 text-green-700",
+  FORENING_STOD_HALSA: "bg-teal-100 text-teal-700",
+  OVRIGA_FORENINGAR: "bg-lime-100 text-lime-700",
+  FORSAMLINGSHEM: "bg-indigo-100 text-indigo-700",
+  PLUS_55: "bg-orange-100 text-orange-700",
+  EGET_ARRANGEMANG: "bg-pink-100 text-pink-700",
+  CAMPINGPLATSER: "bg-cyan-100 text-cyan-700",
+  MINDRE_FORSALJNING: "bg-amber-100 text-amber-700",
   OVRIGT: "bg-slate-100 text-slate-600",
 };
 
 // Hex-färger för diagram (recharts kan inte läsa Tailwind-klasser)
 export const customerTypeChartColors: Record<string, string> = {
-  TRAFFPUNKT: "#2563eb",
-  FORENING: "#16a34a",
-  VARDHEM: "#7c3aed",
-  BOENDE_55: "#ea580c",
-  STOD_HALSOSAMVERKAN: "#0d9488",
+  ALDREBOENDE: "#7c3aed",
+  TRAFFPUNKTER: "#2563eb",
+  PENSIONARSFORENING: "#16a34a",
+  FORENING_STOD_HALSA: "#0d9488",
+  OVRIGA_FORENINGAR: "#65a30d",
+  FORSAMLINGSHEM: "#4f46e5",
+  PLUS_55: "#ea580c",
+  EGET_ARRANGEMANG: "#db2777",
+  CAMPINGPLATSER: "#0891b2",
+  MINDRE_FORSALJNING: "#d97706",
   OVRIGT: "#64748b",
 };
 
-// Ordnade alternativ för formulär (select-dropdowns)
+/** Ordnade alternativ för formulär (select-dropdowns). Samma ordning som i slutrapporten. */
 export const customerTypeOptions = [
-  { value: "TRAFFPUNKT", label: "Träffpunkt" },
-  { value: "FORENING", label: "Förening" },
-  { value: "VARDHEM", label: "Vårdhem" },
-  { value: "BOENDE_55", label: "Boende +55" },
-  { value: "STOD_HALSOSAMVERKAN", label: "Stöd- och Hälsosamverkan" },
+  { value: "ALDREBOENDE", label: "Äldreboende" },
+  { value: "TRAFFPUNKTER", label: "Träffpunkter" },
+  { value: "PENSIONARSFORENING", label: "Pensionärsförening" },
+  { value: "FORENING_STOD_HALSA", label: "Förening Stöd & Hälsoverksamhet" },
+  { value: "OVRIGA_FORENINGAR", label: "Övriga föreningar" },
+  { value: "FORSAMLINGSHEM", label: "Församlingshem arrangerat av kyrkan" },
+  { value: "PLUS_55", label: "55+" },
+  { value: "EGET_ARRANGEMANG", label: "Eget arrangemang" },
+  { value: "CAMPINGPLATSER", label: "Campingplatser" },
+  { value: "MINDRE_FORSALJNING", label: "Mindre försäljning" },
   { value: "OVRIGT", label: "Övrigt" },
 ];

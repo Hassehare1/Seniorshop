@@ -15,13 +15,22 @@ enum Role {
   FRANCHISEE
 }
 
+// Följer FT:s indelning i slutrapporten. Etiketter, färger och ordning bor i
+// src/lib/customerTypes.ts — lägg aldrig till ett värde här utan att lägga till
+// det där också. OVRIGT står inte i FT:s lista men behövs som uppsamling:
+// aggregeringen använder den för okända typer och importen för okända rubriker.
 enum CustomerType {
-  VARDHEM
-  FORENING
-  TRAFFPUNKT
-  BOENDE_55
+  ALDREBOENDE
+  TRAFFPUNKTER
+  PENSIONARSFORENING
+  FORENING_STOD_HALSA
+  OVRIGA_FORENINGAR
+  FORSAMLINGSHEM
+  PLUS_55
+  EGET_ARRANGEMANG
+  CAMPINGPLATSER
+  MINDRE_FORSALJNING
   OVRIGT
-  STOD_HALSOSAMVERKAN
 }
 
 enum SeasonType {

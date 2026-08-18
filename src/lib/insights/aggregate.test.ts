@@ -10,7 +10,7 @@ import {
 } from "./aggregate.ts";
 
 const visit = (over: Partial<VisitInput> = {}): VisitInput => ({
-  customerType: "TRAFFPUNKT",
+  customerType: "TRAFFPUNKTER",
   sales: 1000,
   ftFee: 75,
   mfFee: 10,
@@ -43,26 +43,26 @@ test("unika veckor dedupliceras och sorteras", () => {
 
 test("summerar per kundtyp", () => {
   const reports = [
-    report({ visits: [visit(), visit({ customerType: "VARDHEM", sales: 500, numberOfCustomers: 3 })] }),
+    report({ visits: [visit(), visit({ customerType: "ALDREBOENDE", sales: 500, numberOfCustomers: 3 })] }),
   ];
   const { byType } = aggregateByType(reports, [10]);
 
-  const traff = byType.find(t => t.type === "TRAFFPUNKT")!;
+  const traff = byType.find(t => t.type === "TRAFFPUNKTER")!;
   assert.equal(traff.sales, 1000);
   assert.equal(traff.besok, 1);
   assert.equal(traff.customers, 5);
   assert.equal(traff.ftFee, 75);
   assert.equal(traff.mfFee, 10);
 
-  const vard = byType.find(t => t.type === "VARDHEM")!;
+  const vard = byType.find(t => t.type === "ALDREBOENDE")!;
   assert.equal(vard.sales, 500);
   assert.equal(vard.customers, 3);
 });
 
 test("kundtyper utan besök utelämnas, och ordningen är den fasta", () => {
-  const reports = [report({ visits: [visit({ customerType: "VARDHEM" }), visit({ customerType: "FORENING" })] })];
+  const reports = [report({ visits: [visit({ customerType: "ALDREBOENDE" }), visit({ customerType: "OVRIGA_FORENINGAR" })] })];
   const { byType } = aggregateByType(reports, [10]);
-  assert.deepEqual(byType.map(t => t.type), ["FORENING", "VARDHEM"]);
+  assert.deepEqual(byType.map(t => t.type), ["ALDREBOENDE", "OVRIGA_FORENINGAR"]);
 });
 
 test("okänd kundtyp hamnar under OVRIGT i stället för att tappas", () => {
@@ -104,7 +104,7 @@ test("visningstyperna summerar till totalen utan dubbelräkning", () => {
     }),
   ];
   const { byType, showType } = aggregateByType(reports, [10]);
-  const s = showType.TRAFFPUNKT;
+  const s = showType.TRAFFPUNKTER;
 
   assert.equal(s.modevisning.sales, 1000);
   assert.equal(s.galge.sales, 200);
@@ -117,8 +117,8 @@ test("modevisning vinner över galge när båda är satta", () => {
   // Formulär och server spärrar kombinationen, men regeln ska ändå vara entydig
   const reports = [report({ visits: [visit({ sales: 900, isFashionShow: true, isHangerShow: true })] })];
   const { byType, showType } = aggregateByType(reports, [10]);
-  assert.equal(showType.TRAFFPUNKT.modevisning.sales, 900);
-  assert.equal(showType.TRAFFPUNKT.galge.sales, 0);
+  assert.equal(showType.TRAFFPUNKTER.modevisning.sales, 900);
+  assert.equal(showType.TRAFFPUNKTER.galge.sales, 0);
   // Räknarna för respektive visningstyp är däremot oberoende
   assert.equal(byType[0].fashionShows, 1);
   assert.equal(byType[0].hangerShows, 1);
@@ -142,7 +142,7 @@ test("summerar per distrikt och sorterar på etikett", () => {
 test("målutfall räknas ur kundtypsaggregatet", () => {
   const reports = [
     report({ visits: [visit({ sales: 1000, isFashionShow: true }), visit({ sales: 500 })] }),
-    report({ visits: [visit({ sales: 300, customerType: "VARDHEM" })] }),
+    report({ visits: [visit({ sales: 300, customerType: "ALDREBOENDE" })] }),
   ];
   const { byType } = aggregateByType(reports, [10]);
   const actuals = goalActualsFrom(byType);

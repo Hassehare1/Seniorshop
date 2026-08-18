@@ -8,7 +8,7 @@ import type { Customer } from "@prisma/client";
 import ImportKunder from "./ImportKunder";
 
 const emptyForm = {
-  name: "", type: "TRAFFPUNKT", contactPerson: "", contactRole: "", email: "",
+  name: "", type: "TRAFFPUNKTER", contactPerson: "", contactRole: "", email: "",
   phone: "", address: "", postalCode: "", notes: "", active: true,
 };
 

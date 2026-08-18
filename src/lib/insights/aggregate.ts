@@ -56,11 +56,16 @@ export type ShowSplit = {
 
 /** Kundtyperna i visningsordning. Okända typer räknas som OVRIGT. */
 export const TYPE_KEYS = [
-  "TRAFFPUNKT",
-  "FORENING",
-  "VARDHEM",
-  "BOENDE_55",
-  "STOD_HALSOSAMVERKAN",
+  "ALDREBOENDE",
+  "TRAFFPUNKTER",
+  "PENSIONARSFORENING",
+  "FORENING_STOD_HALSA",
+  "OVRIGA_FORENINGAR",
+  "FORSAMLINGSHEM",
+  "PLUS_55",
+  "EGET_ARRANGEMANG",
+  "CAMPINGPLATSER",
+  "MINDRE_FORSALJNING",
   "OVRIGT",
 ] as const;
 
