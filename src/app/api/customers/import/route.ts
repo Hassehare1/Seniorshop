@@ -7,7 +7,7 @@ import * as XLSX from "xlsx";
 const MAX_ROWS = 500;
 const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5 MB — kollas FÖRE inläsning i minnet
 
-// Matcha typ mot etikett ("Träffpunkt") eller enum-nyckel ("TRAFFPUNKT"), skiftlägesokänsligt
+// Matcha typ mot etikett ("Träffpunkter") eller enum-nyckel ("TRAFFPUNKTER"), skiftlägesokänsligt
 function parseType(raw: unknown): string | null {
   const v = String(raw ?? "").trim().toLowerCase();
   if (!v) return null;

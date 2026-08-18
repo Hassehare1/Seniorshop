@@ -3,18 +3,10 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { calculateFees, money, STANDARD_FEE_CONFIG, type FeeConfig } from "@/lib/fees";
 import { CustomerType } from "@prisma/client";
+import { findLayout } from "@/lib/importLayout";
 import * as XLSX from "xlsx";
 
 const DEFAULT_FEE_CONFIG: FeeConfig = STANDARD_FEE_CONFIG;
-
-// Försäljningen ligger i E–I, kolumnen avgör kundtypen (0-indexerat: E=4 … I=8)
-const TYPE_BY_COL: Record<number, CustomerType> = {
-  4: CustomerType.VARDHEM,
-  5: CustomerType.FORENING,
-  6: CustomerType.TRAFFPUNKT,
-  7: CustomerType.BOENDE_55,
-  8: CustomerType.OVRIGT,
-};
 
 const norm = (s: string) => s.trim().replace(/\s+/g, " ").toLowerCase();
 const err = (msg: string, status = 400) => NextResponse.json({ error: msg }, { status });
@@ -69,29 +61,49 @@ export async function POST(req: NextRequest) {
   const typeConflicts: { name: string; existing: string; inFile: string }[] = [];
   const parsed: ParsedVisit[] = [];
 
+  // Kolumnerna hittas på RUBRIK, aldrig på position — se lib/importLayout.ts.
+  // Filformatet har redan flyttat sig en gång och tog med sig importen i fallet.
+  const layout = findLayout(rows);
+  if (!layout) {
+    return err(
+      'Kunde inte hitta rubrikraden i fliken "Rapport". Den ska innehålla "Vecka", ' +
+        '"Namn på besök" och kategorikolumnerna (Äldreboende, Träffpunkter, 55+ …).',
+    );
+  }
+
+  const cell = (r: unknown[], i: number | null) => (i === null ? undefined : r[i]);
+
   for (const r of rows) {
-    // Datarad känns igen på STRUKTUR: giltig vecka (1–53) i B + kundnamn i D.
+    // Datarad känns igen på STRUKTUR: giltig vecka (1–53) + kundnamn.
     // Kolumn A (distrikt/FT-etikett) matchas INTE — en fil = ett distrikt (admin väljer det),
-    // och etiketten kan vara nummer eller namn. Rubrik-/summarader saknar namn i D → filtreras.
-    const week = Number(r[1]);
-    const name = typeof r[3] === "string" ? r[3].trim() : "";
+    // och etiketten kan vara nummer eller namn. Rubrik-/summarader saknar namn → filtreras.
+    const week = Number(r[layout.week]);
+    const nameCell = r[layout.name];
+    const name = typeof nameCell === "string" ? nameCell.trim() : "";
     if (!Number.isFinite(week) || week < 1 || week > 53 || !name) continue;
 
-    const typeCols = [4, 5, 6, 7, 8].filter((c) => typeof r[c] === "number" && !Number.isNaN(r[c] as number));
-    if (typeCols.length === 0) {
+    const ifyllda = layout.typeCols.filter(
+      (t) => typeof r[t.col] === "number" && !Number.isNaN(r[t.col] as number),
+    );
+    if (ifyllda.length === 0) {
       warnings.push(`"${name}" (v.${week}) saknar kundtyp/försäljning — hoppas över.`);
       continue;
     }
-    if (typeCols.length > 1) warnings.push(`"${name}" (v.${week}) har flera kundtyp-kolumner ifyllda — använder första.`);
+    // typeCols är vänster till höger, så en fil som har både den nya och den
+    // gamla kolumnuppsättningen läses med den nya.
+    if (ifyllda.length > 1) warnings.push(`"${name}" (v.${week}) har flera kundtyp-kolumner ifyllda — använder första.`);
+
+    const antal = Number(cell(r, layout.customers));
+    const kommentar = cell(r, layout.comment);
 
     parsed.push({
       week,
       name,
-      type: TYPE_BY_COL[typeCols[0]],
-      sales: Number(r[typeCols[0]]) || 0,
-      isFashionShow: !!r[9],
-      numberOfCustomers: Number.isFinite(Number(r[10])) ? Number(r[10]) : 0,
-      comment: typeof r[17] === "string" && r[17].trim() ? (r[17] as string) : null,
+      type: ifyllda[0].type as CustomerType,
+      sales: Number(r[ifyllda[0].col]) || 0,
+      isFashionShow: !!cell(r, layout.fashionShow),
+      numberOfCustomers: Number.isFinite(antal) ? antal : 0,
+      comment: typeof kommentar === "string" && kommentar.trim() ? kommentar : null,
     });
   }
 
