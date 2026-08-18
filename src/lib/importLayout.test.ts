@@ -14,6 +14,17 @@ const nyRubrik = [
   "Total försäljning", "Total marknadsföring", "Att betala ink moms", "Kommentar",
 ];
 
+/** Formatet FT går över till: bara de tio nya kategorierna, de gamla fem borttagna.
+ *  Bekräftat av Johan 2026-08-18 — O–S plockas bort innan nästa import. */
+const framtidaRubrik = [
+  "Distrikt", "Vecka", "Antal", "Namn på besök",
+  "Äldreboende", "Träffpunkter", "Pensionärsförening", "Förening Stöd & Hälsoverksamhet",
+  "Övriga föreningar", "Församlingshem arrangerat av kyrkan", "55+", "Eget arrangemang",
+  "Campingplatser", "Mindre försäljning",
+  "Modevisning", "Antal kunder", "Avgift", "Marknadsföring", "Marknadsföring totalt",
+  "Total försäljning", "Total marknadsföring", "Att betala ink moms", "Kommentar",
+];
+
 /** Gamla formatet: fem kategorier direkt efter namnet. */
 const gammalRubrik = [
   "Distrikt", "Vecka", "Antal", "Namn på besök",
@@ -115,4 +126,36 @@ test("kolumnen 'Antal' förväxlas inte med 'Antal kunder'", () => {
   const l = findLayout([["Vecka", "Antal", "Namn på besök", "Äldreboende", "Träffpunkter", "55+", "Antal kunder"]]);
   assert.ok(l);
   assert.equal(l.customers, 6);
+});
+
+test("bekräftat framtida format: tio kategorier, de gamla borttagna", () => {
+  const l = findLayout([framtidaRubrik]);
+  assert.ok(l);
+  assert.equal(l.typeCols.length, 10, "exakt de tio — ingen gammal kolumn kvar");
+  assert.deepEqual(l.typeCols.map(t => t.col), [4, 5, 6, 7, 8, 9, 10, 11, 12, 13], "E–N");
+  assert.deepEqual(l.typeCols.map(t => t.type), [
+    "ALDREBOENDE", "TRAFFPUNKTER", "PENSIONARSFORENING", "FORENING_STOD_HALSA",
+    "OVRIGA_FORENINGAR", "FORSAMLINGSHEM", "PLUS_55", "EGET_ARRANGEMANG",
+    "CAMPINGPLATSER", "MINDRE_FORSALJNING",
+  ]);
+});
+
+test("när de gamla kolumnerna tas bort flyttar metadata med sig", () => {
+  // Modevisning låg i T när båda uppsättningarna fanns; utan de fem gamla
+  // hamnar den i O. Rubrikmatchningen ska följa med utan att någon rör koden.
+  const l = findLayout([framtidaRubrik]);
+  assert.ok(l);
+  assert.equal(l.fashionShow, 14, "Modevisning i O");
+  assert.equal(l.customers, 15, "Antal kunder i P");
+  assert.equal(l.comment, 22, "Kommentar i W");
+  assert.equal(l.week, 1);
+  assert.equal(l.name, 3);
+});
+
+test("en rad vars enda värde låg i borttagna Övrigt räknas inte som kategori", () => {
+  // Övrigt finns inte bland de tio. En rad som bara hade ett tal där får ingen
+  // kategori och hoppas över med varning i importen — högljutt, inte tyst.
+  const l = findLayout([framtidaRubrik]);
+  assert.ok(l);
+  assert.equal(l.typeCols.some(t => t.type === "OVRIGT"), false);
 });
