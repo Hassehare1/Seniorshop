@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { STANDARD_FEE_CONFIG } from "@/lib/fees";
 
 export async function POST(req: NextRequest) {
   const session = await auth();
@@ -16,12 +17,7 @@ export async function POST(req: NextRequest) {
         name,
         region: region ?? "SE",
         feeConfig: {
-          create: {
-            ftFeePercent: 0.075,
-            mfFeePercent: 0.01,
-            mfFeeCap: 6000,
-            vatMultiplier: 1.25,
-          },
+          create: { ...STANDARD_FEE_CONFIG },
         },
       },
       include: {

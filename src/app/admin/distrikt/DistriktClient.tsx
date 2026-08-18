@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { STANDARD_FEE_CONFIG } from "@/lib/fees";
 
 interface FeeConfig {
   ftFeePercent: number;
@@ -26,7 +27,7 @@ interface Props {
 export default function DistriktClient({ districts: initial }: Props) {
   const [districts, setDistricts] = useState(initial);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [feeForm, setFeeForm] = useState<FeeConfig>({ ftFeePercent: 0.075, mfFeePercent: 0.01, mfFeeCap: 6000, vatMultiplier: 1.25 });
+  const [feeForm, setFeeForm] = useState<FeeConfig>({ ...STANDARD_FEE_CONFIG });
   const [saving, setSaving] = useState(false);
   const [showNewForm, setShowNewForm] = useState(false);
   const [newForm, setNewForm] = useState({ number: "", name: "", region: "SE" });
@@ -35,7 +36,7 @@ export default function DistriktClient({ districts: initial }: Props) {
 
   function startEdit(d: District) {
     setEditingId(d.id);
-    setFeeForm(d.feeConfig ?? { ftFeePercent: 0.075, mfFeePercent: 0.01, mfFeeCap: 6000, vatMultiplier: 1.25 });
+    setFeeForm(d.feeConfig ?? { ...STANDARD_FEE_CONFIG });
   }
 
   async function saveFee() {

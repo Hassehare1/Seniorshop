@@ -40,6 +40,35 @@ export interface FeeConfig {
   vatMultiplier: number;
 }
 
+/**
+ * Standardvillkoren i SeniorShops franchiseavtal.
+ *
+ * ENDA STÄLLET dessa tal ska stå i koden. De låg tidigare utspridda på sju
+ * ställen, och en av kopiorna hade hunnit glida isär: fee-config-routen skapade
+ * taket som 5999.812 (4799,85 × 1,25) i stället för 6000. Ingenting larmade,
+ * eftersom varje ställe för sig såg rimligt ut.
+ *
+ * Taket är 6000 kr INKLUSIVE moms — verifierat mot FT:s Excel. Beräkningen
+ * jämför internt mot beloppet ex moms (6000 / 1,25 = 4800), se calculateFees.
+ *
+ * OBS: `@default`-värdena i prisma/schema.prisma måste hållas i takt för hand.
+ * Prisma kan inte läsa TypeScript, och defaults gäller bara nya rader — ändras
+ * villkoren måste befintliga FeeConfig-rader uppdateras med en migration.
+ */
+export type StandardFeeConfig = {
+  ftFeePercent: number;
+  mfFeePercent: number;
+  mfFeeCap: number;
+  vatMultiplier: number;
+};
+
+export const STANDARD_FEE_CONFIG: StandardFeeConfig = Object.freeze({
+  ftFeePercent: 0.075,
+  mfFeePercent: 0.01,
+  mfFeeCap: 6000, // ink moms
+  vatMultiplier: 1.25,
+});
+
 export interface FeeCalculation {
   ftFee: Decimal;
   mfFee: Decimal;

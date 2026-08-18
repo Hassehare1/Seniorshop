@@ -3,7 +3,7 @@ import type { Prisma } from "@prisma/client";
 import type Decimal from "decimal.js";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { calculateFees, money, sumMoney, type FeeConfig } from "@/lib/fees";
+import { calculateFees, money, sumMoney, STANDARD_FEE_CONFIG, type FeeConfig } from "@/lib/fees";
 
 // MF-taket ackumuleras över säsongens veckor, så veckor EFTER den ändrade
 // måste räknas om — både när en vecka sparas och när den tas bort.
@@ -44,12 +44,7 @@ async function recomputeLaterWeeks(
   }
 }
 
-const DEFAULT_FEE_CONFIG: FeeConfig = {
-  ftFeePercent: 0.075,
-  mfFeePercent: 0.01,
-  mfFeeCap: 6000, // ink moms
-  vatMultiplier: 1.25,
-};
+const DEFAULT_FEE_CONFIG: FeeConfig = STANDARD_FEE_CONFIG;
 
 const MAX_VISITS = 500;
 

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { getCurrentWeekAndYear } from "@/lib/week";
 import { resolveReportSeason } from "@/lib/season";
+import { STANDARD_FEE_CONFIG } from "@/lib/fees";
 import ReportForm from "./ReportForm";
 
 export default async function RapporteraPage({
@@ -97,10 +98,8 @@ export default async function RapporteraPage({
                 vatMultiplier: feeConfig.vatMultiplier,
               }
             : {
-                ftFeePercent: 0.075,
-                mfFeePercent: 0.01,
-                mfFeeCap: "6000.00",
-                vatMultiplier: 1.25,
+                ...STANDARD_FEE_CONFIG,
+                mfFeeCap: STANDARD_FEE_CONFIG.mfFeeCap.toFixed(2),
               }
         }
       />

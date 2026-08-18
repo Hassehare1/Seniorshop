@@ -1,16 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { calculateFees, money, type FeeConfig } from "@/lib/fees";
+import { calculateFees, money, STANDARD_FEE_CONFIG, type FeeConfig } from "@/lib/fees";
 import { CustomerType } from "@prisma/client";
 import * as XLSX from "xlsx";
 
-const DEFAULT_FEE_CONFIG: FeeConfig = {
-  ftFeePercent: 0.075,
-  mfFeePercent: 0.01,
-  mfFeeCap: 6000, // ink moms
-  vatMultiplier: 1.25,
-};
+const DEFAULT_FEE_CONFIG: FeeConfig = STANDARD_FEE_CONFIG;
 
 // Försäljningen ligger i E–I, kolumnen avgör kundtypen (0-indexerat: E=4 … I=8)
 const TYPE_BY_COL: Record<number, CustomerType> = {
