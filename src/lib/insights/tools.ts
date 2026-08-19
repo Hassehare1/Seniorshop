@@ -164,8 +164,6 @@ export const assistantTools = [
   },
 ] as const;
 
-export type AssistantToolName = (typeof assistantTools)[number]["name"];
-
 /**
  * Kör ett verktyg. Returnerar vanlig JSON — modellen ser bara resultatet och
  * räknar aldrig själv.

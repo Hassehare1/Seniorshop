@@ -36,8 +36,6 @@ export function loadSeasonReports(scope: SeasonScope) {
   });
 }
 
-export type LoadedReport = Awaited<ReturnType<typeof loadSeasonReports>>[number];
-
 /** Minsta form `toAggregateInput` behöver — Prisma-raderna uppfyller den. */
 type RawVisit = {
   customer: { type: string };
