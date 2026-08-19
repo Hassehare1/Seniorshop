@@ -171,9 +171,11 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function EditField({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div>
-      <label className="block text-xs font-medium text-slate-600 mb-1">{label}</label>
+    // Etiketten omsluter fältet: children är godtycklig JSX, så implicit
+    // koppling är enda sättet som fungerar för alla varianter.
+    <label className="block">
+      <span className="block text-xs font-medium text-slate-600 mb-1">{label}</span>
       {children}
-    </div>
+    </label>
   );
 }

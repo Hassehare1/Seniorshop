@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useId } from "react";
 import Link from "next/link";
 import {
   customerTypeLabels as typeLabels,
@@ -36,6 +36,7 @@ interface Props {
 }
 
 export default function AdminKunderClient({ customers: initial, seasons, visitMap, defaultSeasonId }: Props) {
+  const uid = useId();
   const [customers, setCustomers] = useState(initial);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("ALL");
@@ -209,8 +210,8 @@ export default function AdminKunderClient({ customers: initial, seasons, visitMa
               </p>
             </div>
 
-            <label className="block text-xs font-medium text-slate-600 mt-4 mb-1">Ny typ</label>
-            <select
+            <label className="block text-xs font-medium text-slate-600 mt-4 mb-1" htmlFor={`${uid}-ny-typ`}>Ny typ</label>
+            <select id={`${uid}-ny-typ`}
               value={typeEdit.valdTyp}
               onChange={e => setTypeEdit({ ...typeEdit, valdTyp: e.target.value })}
               className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"

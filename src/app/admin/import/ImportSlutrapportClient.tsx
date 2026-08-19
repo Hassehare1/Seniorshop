@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useId } from "react";
 import { customerTypeLabels } from "@/lib/customerTypes";
 
 interface Summary {
@@ -34,6 +34,7 @@ interface Props {
 const fmtSEK = (n: number) => new Intl.NumberFormat("sv-SE", { maximumFractionDigits: 0 }).format(n) + " kr";
 
 export default function ImportSlutrapportClient({ districts }: Props) {
+  const uid = useId();
   const currentYear = new Date().getFullYear();
   const [year, setYear] = useState(currentYear);
   const [seasonType, setSeasonType] = useState("VAR");
@@ -105,19 +106,19 @@ export default function ImportSlutrapportClient({ districts }: Props) {
       <div className="bg-white border border-slate-200 rounded-xl p-6 space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">År</label>
-            <input type="number" value={year} min={2000} max={2100} onChange={(e) => setYear(Number(e.target.value))} className={input} />
+            <label className="block text-xs font-medium text-slate-600 mb-1" htmlFor={`${uid}-ar`}>År</label>
+            <input id={`${uid}-ar`} type="number" value={year} min={2000} max={2100} onChange={(e) => setYear(Number(e.target.value))} className={input} />
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">Säsong</label>
-            <select value={seasonType} onChange={(e) => setSeasonType(e.target.value)} className={input}>
+            <label className="block text-xs font-medium text-slate-600 mb-1" htmlFor={`${uid}-sasong`}>Säsong</label>
+            <select id={`${uid}-sasong`} value={seasonType} onChange={(e) => setSeasonType(e.target.value)} className={input}>
               <option value="VAR">Vår</option>
               <option value="HOST">Höst</option>
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">Distriktsnummer</label>
-            <input type="number" min={1} value={districtNumber} onChange={(e) => setDistrictNumber(e.target.value)} placeholder="t.ex. 2" className={input} />
+            <label className="block text-xs font-medium text-slate-600 mb-1" htmlFor={`${uid}-distriktsnummer`}>Distriktsnummer</label>
+            <input id={`${uid}-distriktsnummer`} type="number" min={1} value={districtNumber} onChange={(e) => setDistrictNumber(e.target.value)} placeholder="t.ex. 2" className={input} />
             {districtNumber && (
               <p className="text-xs mt-1 text-slate-500">
                 {existing ? `Befintligt: ${existing.name}` : "Nytt distrikt — ange namn →"}
@@ -125,8 +126,8 @@ export default function ImportSlutrapportClient({ districts }: Props) {
             )}
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">Distriktsnamn {existing && <span className="text-slate-400">(befintligt)</span>}</label>
-            <input
+            <label className="block text-xs font-medium text-slate-600 mb-1" htmlFor={`${uid}-distriktsnamn`}>Distriktsnamn {existing && <span className="text-slate-400">(befintligt)</span>}</label>
+            <input id={`${uid}-distriktsnamn`}
               type="text"
               value={existing ? existing.name : districtName}
               disabled={!!existing}
@@ -138,8 +139,8 @@ export default function ImportSlutrapportClient({ districts }: Props) {
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-slate-600 mb-1">Excel-fil (slutrapport)</label>
-          <input
+          <label className="block text-xs font-medium text-slate-600 mb-1" htmlFor={`${uid}-excel-fil-slutrapport`}>Excel-fil (slutrapport)</label>
+          <input id={`${uid}-excel-fil-slutrapport`}
             type="file"
             accept=".xlsx"
             onChange={(e) => { setFile(e.target.files?.[0] ?? null); setPreview(null); }}

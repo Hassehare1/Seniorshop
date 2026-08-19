@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useId } from "react";
 import PasswordInput from "@/components/ui/PasswordInput";
 
 interface District {
@@ -27,6 +27,7 @@ interface Props {
 const emptyForm = { name: "", email: "", password: "", role: "FRANCHISEE", districtId: "", active: true };
 
 export default function AnvandareClient({ users: initial, districts }: Props) {
+  const uid = useId();
   const [users, setUsers] = useState(initial);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -117,8 +118,8 @@ export default function AnvandareClient({ users: initial, districts }: Props) {
           </h3>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Namn</label>
-              <input
+              <label className="block text-xs font-medium text-slate-600 mb-1" htmlFor={`${uid}-namn`}>Namn</label>
+              <input id={`${uid}-namn`}
                 type="text"
                 value={form.name}
                 onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
@@ -127,8 +128,8 @@ export default function AnvandareClient({ users: initial, districts }: Props) {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">E-post *</label>
-              <input
+              <label className="block text-xs font-medium text-slate-600 mb-1" htmlFor={`${uid}-e-post`}>E-post *</label>
+              <input id={`${uid}-e-post`}
                 type="email"
                 value={form.email}
                 onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
@@ -137,10 +138,11 @@ export default function AnvandareClient({ users: initial, districts }: Props) {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">
+              <label className="block text-xs font-medium text-slate-600 mb-1" htmlFor={`${uid}-losenord`}>
                 {editingId ? "Nytt lösenord (lämna tomt = oförändrat)" : "Lösenord *"}
               </label>
               <PasswordInput
+                id={`${uid}-losenord`}
                 value={form.password}
                 onChange={v => setForm(f => ({ ...f, password: v }))}
                 placeholder={editingId ? "Lämna tomt för oförändrat" : "Minst 6 tecken"}
@@ -149,8 +151,8 @@ export default function AnvandareClient({ users: initial, districts }: Props) {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Roll *</label>
-              <select
+              <label htmlFor={`${uid}-roll`} className="block text-xs font-medium text-slate-600 mb-1">Roll *</label>
+              <select id={`${uid}-roll`}
                 value={form.role}
                 onChange={e => setForm(f => ({ ...f, role: e.target.value }))}
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -160,8 +162,8 @@ export default function AnvandareClient({ users: initial, districts }: Props) {
               </select>
             </div>
             <div className="col-span-2">
-              <label className="block text-xs font-medium text-slate-600 mb-1">Distrikt</label>
-              <select
+              <label className="block text-xs font-medium text-slate-600 mb-1" htmlFor={`${uid}-distrikt`}>Distrikt</label>
+              <select id={`${uid}-distrikt`}
                 value={form.districtId}
                 onChange={e => setForm(f => ({ ...f, districtId: e.target.value }))}
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -177,17 +179,23 @@ export default function AnvandareClient({ users: initial, districts }: Props) {
             </div>
             {editingId && (
               <div className="col-span-2">
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <div
-                    onClick={() => setForm(f => ({ ...f, active: !f.active }))}
-                    className={`relative w-10 h-6 rounded-full transition-colors ${form.active ? "bg-green-500" : "bg-slate-300"}`}
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={form.active}
+                  onClick={() => setForm(f => ({ ...f, active: !f.active }))}
+                  className="flex items-center gap-3 cursor-pointer text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 rounded"
+                >
+                  <span
+                    aria-hidden="true"
+                    className={`relative w-10 h-6 rounded-full transition-colors shrink-0 ${form.active ? "bg-green-500" : "bg-slate-300"}`}
                   >
                     <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${form.active ? "left-5" : "left-1"}`} />
-                  </div>
+                  </span>
                   <span className="text-sm text-slate-700">
                     {form.active ? "Aktivt konto" : "Spärrat (kan inte logga in)"}
                   </span>
-                </label>
+                </button>
               </div>
             )}
           </div>

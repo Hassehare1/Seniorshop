@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useId } from "react";
 import { STANDARD_FEE_CONFIG } from "@/lib/fees";
 
 interface FeeConfig {
@@ -25,6 +25,7 @@ interface Props {
 }
 
 export default function DistriktClient({ districts: initial }: Props) {
+  const uid = useId();
   const [districts, setDistricts] = useState(initial);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [feeForm, setFeeForm] = useState<FeeConfig>({ ...STANDARD_FEE_CONFIG });
@@ -98,8 +99,8 @@ export default function DistriktClient({ districts: initial }: Props) {
           <h3 className="font-semibold text-slate-700 mb-4">Skapa nytt distrikt</h3>
           <div className="grid grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Distriktsnummer *</label>
-              <input
+              <label className="block text-xs font-medium text-slate-600 mb-1" htmlFor={`${uid}-distriktsnummer`}>Distriktsnummer *</label>
+              <input id={`${uid}-distriktsnummer`}
                 type="number"
                 value={newForm.number}
                 onChange={e => setNewForm(f => ({ ...f, number: e.target.value }))}
@@ -108,8 +109,8 @@ export default function DistriktClient({ districts: initial }: Props) {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Namn *</label>
-              <input
+              <label className="block text-xs font-medium text-slate-600 mb-1" htmlFor={`${uid}-namn`}>Namn *</label>
+              <input id={`${uid}-namn`}
                 type="text"
                 value={newForm.name}
                 onChange={e => setNewForm(f => ({ ...f, name: e.target.value }))}
@@ -118,8 +119,8 @@ export default function DistriktClient({ districts: initial }: Props) {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Region</label>
-              <select
+              <label className="block text-xs font-medium text-slate-600 mb-1" htmlFor={`${uid}-region`}>Region</label>
+              <select id={`${uid}-region`}
                 value={newForm.region}
                 onChange={e => setNewForm(f => ({ ...f, region: e.target.value }))}
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -152,8 +153,8 @@ export default function DistriktClient({ districts: initial }: Props) {
           </h3>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">FT-avgift (%)</label>
-              <input
+              <label className="block text-xs font-medium text-slate-600 mb-1" htmlFor={`${uid}-ft-avgift`}>FT-avgift (%)</label>
+              <input id={`${uid}-ft-avgift`}
                 type="number"
                 step="0.1"
                 min="0"
@@ -163,8 +164,8 @@ export default function DistriktClient({ districts: initial }: Props) {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">MF-avgift (%)</label>
-              <input
+              <label className="block text-xs font-medium text-slate-600 mb-1" htmlFor={`${uid}-mf-avgift`}>MF-avgift (%)</label>
+              <input id={`${uid}-mf-avgift`}
                 type="number"
                 step="0.1"
                 min="0"
@@ -174,8 +175,8 @@ export default function DistriktClient({ districts: initial }: Props) {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">MF-tak (kr ink moms)</label>
-              <input
+              <label className="block text-xs font-medium text-slate-600 mb-1" htmlFor={`${uid}-mf-tak-kr-ink-moms`}>MF-tak (kr ink moms)</label>
+              <input id={`${uid}-mf-tak-kr-ink-moms`}
                 type="number"
                 step="1"
                 min="0"
@@ -185,8 +186,8 @@ export default function DistriktClient({ districts: initial }: Props) {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Momssats (%)</label>
-              <input
+              <label className="block text-xs font-medium text-slate-600 mb-1" htmlFor={`${uid}-momssats`}>Momssats (%)</label>
+              <input id={`${uid}-momssats`}
                 type="number"
                 step="1"
                 min="0"

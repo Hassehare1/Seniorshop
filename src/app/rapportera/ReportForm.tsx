@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useId } from "react";
 import { calculateFees, formatSEK, money, sumMoney, type FeeConfig, type MoneyInput } from "@/lib/fees";
 import { customerTypeLabels } from "@/lib/customerTypes";
 import { getISOWeek } from "@/lib/week";
@@ -55,6 +55,7 @@ interface VisitRowProps {
 }
 
 function VisitRow({ index, visit, customers, feeRow, status, takenCustomerIds, onUpdate, onRemove }: VisitRowProps) {
+  const uid = useId();
   const [inputValue, setInputValue] = useState(() => customers.find(c => c.id === visit.customerId)?.name ?? "");
   const [open, setOpen] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState(false);
@@ -123,8 +124,8 @@ function VisitRow({ index, visit, customers, feeRow, status, takenCustomerIds, o
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="lg:col-span-2 relative" ref={ref}>
-          <label className="block text-xs font-medium text-slate-600 mb-1">Kund</label>
-          <input
+          <label className="block text-xs font-medium text-slate-600 mb-1" htmlFor={`${uid}-kund`}>Kund</label>
+          <input id={`${uid}-kund`}
             type="text"
             value={inputValue}
             placeholder="Sök kund..."
@@ -172,8 +173,8 @@ function VisitRow({ index, visit, customers, feeRow, status, takenCustomerIds, o
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-slate-600 mb-1">Antal kunder</label>
-          <input
+          <label className="block text-xs font-medium text-slate-600 mb-1" htmlFor={`${uid}-antal-kunder`}>Antal kunder</label>
+          <input id={`${uid}-antal-kunder`}
             type="number"
             min={0}
             value={visit.numberOfCustomers === 0 ? "" : visit.numberOfCustomers}
@@ -184,8 +185,8 @@ function VisitRow({ index, visit, customers, feeRow, status, takenCustomerIds, o
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-slate-600 mb-1">Försäljning (ink. moms)</label>
-          <input
+          <label className="block text-xs font-medium text-slate-600 mb-1" htmlFor={`${uid}-forsaljning-ink-moms`}>Försäljning (ink. moms)</label>
+          <input id={`${uid}-forsaljning-ink-moms`}
             type="number"
             min={0}
             step={0.01}
@@ -232,8 +233,8 @@ function VisitRow({ index, visit, customers, feeRow, status, takenCustomerIds, o
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-slate-600 mb-1">Kommentar</label>
-          <textarea
+          <label className="block text-xs font-medium text-slate-600 mb-1" htmlFor={`${uid}-kommentar`}>Kommentar</label>
+          <textarea id={`${uid}-kommentar`}
             value={visit.comment}
             rows={2}
             placeholder="Valfri notering om besöket"
@@ -273,6 +274,7 @@ export default function ReportForm({
   initialWeek,
   initialSeasonId,
 }: Props) {
+  const uid = useId();
   const [selectedSeasonId, setSelectedSeasonId] = useState(
     initialSeasonId ?? currentSeason?.id ?? ""
   );
@@ -562,8 +564,8 @@ export default function ReportForm({
         <div className="flex flex-wrap gap-4 items-end">
           {seasons.length > 1 && (
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Säsong</label>
-              <select
+              <label className="block text-sm font-medium text-slate-700 mb-1" htmlFor={`${uid}-sasong`}>Säsong</label>
+              <select id={`${uid}-sasong`}
                 value={selectedSeasonId}
                 onChange={e => {
                   setSelectedSeasonId(e.target.value);
@@ -584,7 +586,7 @@ export default function ReportForm({
           )}
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Vecka</label>
+            <label htmlFor={`${uid}-vecka`} className="block text-sm font-medium text-slate-700 mb-1">Vecka</label>
             <div className="flex items-center gap-1">
               <button
                 type="button"
@@ -595,7 +597,7 @@ export default function ReportForm({
               >
                 ‹
               </button>
-              <select
+              <select id={`${uid}-vecka`}
                 value={selectedWeek}
                 onChange={(e) => requestWeekChange(Number(e.target.value))}
                 className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"

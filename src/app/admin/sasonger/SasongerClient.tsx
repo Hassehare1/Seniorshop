@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useId } from "react";
 
 interface Season {
   id: string;
@@ -24,6 +24,7 @@ const defaultWeeks = {
 };
 
 export default function SasongerClient({ seasons: initial }: { seasons: Season[] }) {
+  const uid = useId();
   const [seasons, setSeasons] = useState(initial);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ type: "VAR", year: currentYear, weekStart: 5, weekEnd: 26 });
@@ -105,8 +106,8 @@ export default function SasongerClient({ seasons: initial }: { seasons: Season[]
           <h3 className="font-semibold text-slate-700 mb-4">Skapa ny säsong</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Typ</label>
-              <select
+              <label className="block text-xs font-medium text-slate-600 mb-1" htmlFor={`${uid}-typ`}>Typ</label>
+              <select id={`${uid}-typ`}
                 value={form.type}
                 onChange={e => handleTypeChange(e.target.value)}
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -116,8 +117,8 @@ export default function SasongerClient({ seasons: initial }: { seasons: Season[]
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">År</label>
-              <input
+              <label className="block text-xs font-medium text-slate-600 mb-1" htmlFor={`${uid}-ar`}>År</label>
+              <input id={`${uid}-ar`}
                 type="number"
                 value={form.year}
                 onChange={e => setForm(f => ({ ...f, year: Number(e.target.value) }))}
@@ -125,8 +126,8 @@ export default function SasongerClient({ seasons: initial }: { seasons: Season[]
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Startvecka</label>
-              <input
+              <label className="block text-xs font-medium text-slate-600 mb-1" htmlFor={`${uid}-startvecka`}>Startvecka</label>
+              <input id={`${uid}-startvecka`}
                 type="number"
                 min={1}
                 max={52}
@@ -136,8 +137,8 @@ export default function SasongerClient({ seasons: initial }: { seasons: Season[]
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Slutvecka</label>
-              <input
+              <label className="block text-xs font-medium text-slate-600 mb-1" htmlFor={`${uid}-slutvecka`}>Slutvecka</label>
+              <input id={`${uid}-slutvecka`}
                 type="number"
                 min={1}
                 max={52}

@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 interface Props {
+  id?: string;
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
@@ -12,6 +13,7 @@ interface Props {
 }
 
 export default function PasswordInput({
+  id,
   value,
   onChange,
   placeholder,
@@ -24,6 +26,7 @@ export default function PasswordInput({
   return (
     <div className="relative">
       <input
+        id={id}
         type={show ? "text" : "password"}
         value={value}
         onChange={e => onChange(e.target.value)}

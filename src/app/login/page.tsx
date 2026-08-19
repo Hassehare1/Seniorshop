@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useId } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import PasswordInput from "@/components/ui/PasswordInput";
 
 export default function LoginPage() {
+  const uid = useId();
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -50,10 +51,10 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
+            <label className="block text-sm font-medium text-slate-700 mb-1" htmlFor={`${uid}-e-post`}>
               E-post
             </label>
-            <input
+            <input id={`${uid}-e-post`}
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -64,10 +65,11 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
+            <label htmlFor={`${uid}-losenord`} className="block text-sm font-medium text-slate-700 mb-1">
               Lösenord
             </label>
             <PasswordInput
+              id={`${uid}-losenord`}
               value={password}
               onChange={setPassword}
               placeholder="••••••••"

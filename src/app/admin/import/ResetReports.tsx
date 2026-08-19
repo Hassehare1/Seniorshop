@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useId } from "react";
 
 type Scope = "numbers" | "all";
 
@@ -10,6 +10,7 @@ const LÄGEN: Record<Scope, { ord: string; knapp: string; körKnapp: string }> =
 };
 
 export default function ResetReports() {
+  const uid = useId();
   const [open, setOpen] = useState<Scope | null>(null);
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
@@ -50,10 +51,10 @@ export default function ResetReports() {
 
   const bekräftelse = (scope: Scope) => (
     <div className="mt-3 space-y-2">
-      <label className="block text-sm text-slate-700">
+      <label className="block text-sm text-slate-700" htmlFor={`${uid}-skriv-for-att-bekrafta`}>
         Skriv <strong>{LÄGEN[scope].ord}</strong> för att bekräfta:
       </label>
-      <input
+      <input id={`${uid}-skriv-for-att-bekrafta`}
         value={confirm}
         onChange={e => setConfirm(e.target.value)}
         placeholder={LÄGEN[scope].ord}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useId } from "react";
 import Link from "next/link";
 import { customerTypeLabels, customerTypeColors, customerTypeOptions } from "@/lib/customerTypes";
 import { formatPostalCode, postalCodeDigits, validatePostalCode } from "@/lib/postalCode";
@@ -25,6 +25,7 @@ interface Props {
 }
 
 export default function KunderClient({ customers: initial, districtId, districtNumber, seasons, visitMap, defaultSeasonId, region }: Props) {
+  const uid = useId();
   const [customers, setCustomers] = useState(initial);
   const [showForm, setShowForm] = useState(false);
   const [showImport, setShowImport] = useState(false);
@@ -238,8 +239,8 @@ export default function KunderClient({ customers: initial, districtId, districtN
           </h3>
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
-              <label className="block text-xs font-medium text-slate-600 mb-1">Namn *</label>
-              <input
+              <label className="block text-xs font-medium text-slate-600 mb-1" htmlFor={`${uid}-namn`}>Namn *</label>
+              <input id={`${uid}-namn`}
                 type="text"
                 value={form.name}
                 onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
@@ -248,8 +249,8 @@ export default function KunderClient({ customers: initial, districtId, districtN
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Typ *</label>
-              <select
+              <label className="block text-xs font-medium text-slate-600 mb-1" htmlFor={`${uid}-typ`}>Typ *</label>
+              <select id={`${uid}-typ`}
                 value={form.type}
                 onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -260,8 +261,8 @@ export default function KunderClient({ customers: initial, districtId, districtN
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Kontaktperson</label>
-              <input
+              <label className="block text-xs font-medium text-slate-600 mb-1" htmlFor={`${uid}-kontaktperson`}>Kontaktperson</label>
+              <input id={`${uid}-kontaktperson`}
                 type="text"
                 value={form.contactPerson}
                 onChange={e => setForm(f => ({ ...f, contactPerson: e.target.value }))}
@@ -270,8 +271,8 @@ export default function KunderClient({ customers: initial, districtId, districtN
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Kontaktroll</label>
-              <input
+              <label className="block text-xs font-medium text-slate-600 mb-1" htmlFor={`${uid}-kontaktroll`}>Kontaktroll</label>
+              <input id={`${uid}-kontaktroll`}
                 type="text"
                 value={form.contactRole}
                 onChange={e => setForm(f => ({ ...f, contactRole: e.target.value }))}
@@ -280,8 +281,8 @@ export default function KunderClient({ customers: initial, districtId, districtN
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Telefon</label>
-              <input
+              <label className="block text-xs font-medium text-slate-600 mb-1" htmlFor={`${uid}-telefon`}>Telefon</label>
+              <input id={`${uid}-telefon`}
                 type="text"
                 value={form.phone}
                 onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
@@ -290,8 +291,8 @@ export default function KunderClient({ customers: initial, districtId, districtN
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">E-post</label>
-              <input
+              <label className="block text-xs font-medium text-slate-600 mb-1" htmlFor={`${uid}-e-post`}>E-post</label>
+              <input id={`${uid}-e-post`}
                 type="email"
                 value={form.email}
                 onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
@@ -300,8 +301,8 @@ export default function KunderClient({ customers: initial, districtId, districtN
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Adress</label>
-              <input
+              <label className="block text-xs font-medium text-slate-600 mb-1" htmlFor={`${uid}-adress`}>Adress</label>
+              <input id={`${uid}-adress`}
                 type="text"
                 value={form.address}
                 onChange={e => setForm(f => ({ ...f, address: e.target.value }))}
@@ -310,8 +311,8 @@ export default function KunderClient({ customers: initial, districtId, districtN
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Postnummer</label>
-              <input
+              <label className="block text-xs font-medium text-slate-600 mb-1" htmlFor={`${uid}-postnummer`}>Postnummer</label>
+              <input id={`${uid}-postnummer`}
                 type="text"
                 inputMode="numeric"
                 value={form.postalCode}
@@ -321,8 +322,8 @@ export default function KunderClient({ customers: initial, districtId, districtN
               />
             </div>
             <div className="col-span-2">
-              <label className="block text-xs font-medium text-slate-600 mb-1">Kommentar</label>
-              <textarea
+              <label className="block text-xs font-medium text-slate-600 mb-1" htmlFor={`${uid}-kommentar`}>Kommentar</label>
+              <textarea id={`${uid}-kommentar`}
                 value={form.notes}
                 onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
                 rows={2}
@@ -332,17 +333,23 @@ export default function KunderClient({ customers: initial, districtId, districtN
             </div>
             {editingId && (
               <div className="col-span-2">
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <div
-                    onClick={() => setForm(f => ({ ...f, active: !f.active }))}
-                    className={`relative w-10 h-6 rounded-full transition-colors ${form.active ? "bg-green-500" : "bg-slate-300"}`}
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={form.active}
+                  onClick={() => setForm(f => ({ ...f, active: !f.active }))}
+                  className="flex items-center gap-3 cursor-pointer text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 rounded"
+                >
+                  <span
+                    aria-hidden="true"
+                    className={`relative w-10 h-6 rounded-full transition-colors shrink-0 ${form.active ? "bg-green-500" : "bg-slate-300"}`}
                   >
                     <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${form.active ? "left-5" : "left-1"}`} />
-                  </div>
+                  </span>
                   <span className="text-sm text-slate-700">
                     {form.active ? "Aktiv kund" : "Inaktiv (visas ej i rapportformuläret)"}
                   </span>
-                </label>
+                </button>
               </div>
             )}
           </div>
