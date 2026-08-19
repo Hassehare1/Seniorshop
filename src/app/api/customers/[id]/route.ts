@@ -10,7 +10,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const { id: rawId } = await params;
   const body = await req.json();
-  const { name, type, contactPerson, contactRole, email, phone, address, postalCode, notes, active } = body;
+  const { name, type, contactPerson, contactRole, email, phone, address, postalCode, city, notes, active } = body;
 
   // Tål id med svenska tecken (URL-kodning + NFC/NFD)
   let decoded = rawId;
@@ -50,6 +50,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       ...(email !== undefined && { email }),
       ...(phone !== undefined && { phone }),
       ...(address !== undefined && { address }),
+      ...(city !== undefined && { city: String(city ?? "").trim() || null }),
       ...(postalCode !== undefined && {
         postalCode: normalizePostalCode(String(postalCode ?? "")) || null,
       }),

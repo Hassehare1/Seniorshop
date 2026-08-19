@@ -108,6 +108,10 @@ model Customer {
   // Enbart siffror, utan mellanslag ("12345"). Längden följer distriktets
   // region: 5 för SE/FI, 4 för DK. Se src/lib/postalCode.ts.
   postalCode    String?
+  // Postorten. Fri text — det finns ingen uppslagstabell i portalen, så den
+  // fylls i för hand precis som postnumret. Hör ihop med postalCode och visas
+  // alltid tillsammans med det.
+  city          String?
   notes         String?
   active        Boolean      @default(true)
   approved      Boolean      @default(false)
