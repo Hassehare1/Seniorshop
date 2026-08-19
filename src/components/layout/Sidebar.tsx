@@ -137,12 +137,15 @@ export default function Sidebar() {
   const { data: session } = useSession();
   const isAdmin = session?.user.role === "ADMIN";
   const nav = isAdmin ? adminNav : franchiseeNav;
-  const [open, setOpen] = useState(false);
+  // Drawern hör till den sida den öppnades på. Genom att spara sökvägen i
+  // stället för en boolean stängs den av sig själv vid navigering — även bakåt
+  // och framåt — utan en effekt som städar upp i efterhand.
+  const [openPath, setOpenPath] = useState<string | null>(null);
+  const open = openPath === pathname;
+  const setOpen = (öppen: boolean) => setOpenPath(öppen ? pathname : null);
   const [submittedCount, setSubmittedCount] = useState(0);
   const [confirmLogout, setConfirmLogout] = useState(false);
   const drawerRef = useRef<HTMLElement>(null);
-
-  useEffect(() => { setOpen(false); }, [pathname]);
 
   // Mobil-drawer: Esc stänger, Tab hålls kvar i menyn (fokus-trap)
   useEffect(() => {
@@ -151,7 +154,7 @@ export default function Sidebar() {
       Array.from(drawerRef.current?.querySelectorAll<HTMLElement>("a[href], button:not([disabled])") ?? []);
     focusables()[0]?.focus();
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") { setOpen(false); return; }
+      if (e.key === "Escape") { setOpenPath(null); return; }
       if (e.key !== "Tab") return;
       const els = focusables();
       if (els.length === 0) return;
