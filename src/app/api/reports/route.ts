@@ -200,6 +200,8 @@ export async function POST(req: NextRequest) {
         isFashionShow,
         fashionShowSales,
         isHangerShow,
+        // REA är ortogonal mot visningstypen — inget ömsesidigt uteslutande här.
+        isSale: !!v.isSale,
         ftFee: fees.ftFee,
         mfFee: fees.mfFee,
         mfFeeAccumulated: fees.mfFeeAccumulated,

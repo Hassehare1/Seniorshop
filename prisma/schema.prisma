@@ -184,6 +184,11 @@ model Visit {
   isFashionShow     Boolean      @default(false)
   fashionShowSales  Decimal      @default(0) @db.Decimal(12, 2)
   isHangerShow      Boolean      @default(false)
+  // REA-besök. Fristående från visningstypen ovan — ett reabesök kan vara
+  // antingen modevisning eller galge. FT återvänder till sina bästa ställen
+  // med rea, och de besöken har ett annat snittkvitto än de ordinarie; utan
+  // den här flaggan drar de ned statistiken just på de kunder som går bäst.
+  isSale            Boolean      @default(false)
   ftFee             Decimal      @default(0) @db.Decimal(12, 2)
   mfFee             Decimal      @default(0) @db.Decimal(12, 2)
   mfFeeAccumulated  Decimal      @default(0) @db.Decimal(12, 2)
