@@ -24,6 +24,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
+  // Namnet är kundens identitet i listor och rapporter — klienten stoppar
+  // tomma namn, men servern är sista ordet.
+  if (name !== undefined && !String(name ?? "").trim()) {
+    return NextResponse.json({ error: "Namnet kan inte vara tomt." }, { status: 400 });
+  }
+
   if (type !== undefined && !Object.values(CustomerType).includes(type)) {
     return NextResponse.json({ error: "Ogiltig kundtyp." }, { status: 400 });
   }
@@ -43,7 +49,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const updated = await prisma.customer.update({
     where: { id: customer.id },
     data: {
-      ...(name !== undefined && { name }),
+      ...(name !== undefined && { name: String(name).trim() }),
       ...(type !== undefined && { type }),
       ...(contactPerson !== undefined && { contactPerson }),
       ...(contactRole !== undefined && { contactRole }),

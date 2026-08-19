@@ -1,9 +1,11 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { formatPostalCode, postalCodeDigits, validatePostalCode } from "@/lib/postalCode";
 
 type Values = {
+  name: string;
   contactPerson: string;
   contactRole: string;
   phone: string;
@@ -23,6 +25,7 @@ export default function ContactCard({
   initial: Values;
   region: string;
 }) {
+  const router = useRouter();
   const [values, setValues] = useState<Values>(initial); // sparat läge (visas)
   const [form, setForm] = useState<Values>(initial);      // redigeringsbuffert
   const [editing, setEditing] = useState(false);
@@ -41,6 +44,13 @@ export default function ContactCard({
   }
 
   async function save() {
+    // Namnet är kundens identitet i listor och rapporter — det får inte tömmas.
+    // (Kundnumret består oavsett, men en namnlös rad går inte att hitta.)
+    if (!form.name.trim()) {
+      setError("Namnet kan inte vara tomt.");
+      return;
+    }
+
     // Fånga fel format innan anropet — samma regel gäller på servern.
     const postalCodeError = validatePostalCode(form.postalCode, region);
     if (postalCodeError) {
@@ -58,6 +68,9 @@ export default function ContactCard({
     if (res.ok) {
       setValues(form);
       setEditing(false);
+      // Rubriken högst upp på sidan renderas på servern — utan detta står det
+      // gamla namnet kvar där tills sidan laddas om.
+      router.refresh();
     } else {
       const { error } = await res.json().catch(() => ({ error: "Något gick fel vid sparning." }));
       setError(error ?? "Något gick fel vid sparning.");
@@ -105,6 +118,11 @@ export default function ContactCard({
 
       {editing ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="sm:col-span-2">
+            <EditField label="Namn">
+              <input type="text" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className={input} placeholder="t.ex. Träffpunkt Centrum" />
+            </EditField>
+          </div>
           <EditField label="Kontaktperson">
             <input type="text" value={form.contactPerson} onChange={e => setForm(f => ({ ...f, contactPerson: e.target.value }))} className={input} placeholder="Förnamn Efternamn" />
           </EditField>
