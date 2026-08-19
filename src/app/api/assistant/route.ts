@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { betaTool } from "@anthropic-ai/sdk/helpers/beta/json-schema";
 import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import { assistantTools, currentSeason, runAssistantTool, type ToolScope } from "@/lib/insights/tools";
 import { parseMeddelanden } from "@/lib/insights/messages";
 
@@ -17,6 +18,18 @@ const ADMIN_ONLY = true;
 // OBS: `effort` och `fallbacks` finns bara på 4.6+ och ger 400 här. Byter du
 // upp till Opus 5 är det de två du vill lägga tillbaka.
 const MODEL = process.env.ASSISTANT_MODEL ?? "claude-haiku-4-5";
+
+// Kostnadstak. Varje fråga kostar pengar hos Anthropic, och utan tak kan en
+// loop i klienten eller ett tappat webbläsarfönster mala i timmar utan att
+// någon märker det förrän på fakturan. 60 frågor i timmen är rikligt för en
+// människa men stoppar en skenande slinga.
+//
+// Räknas i databasen och inte i minnet: Vercel kan köra flera instanser, och
+// en minnesräknare hade nollställts vid varje kallstart. Samma mönster som
+// inloggningsspärren i lib/auth.ts, och samma index bär frågan.
+const FRAGOR_PER_TIMME = 60;
+const FONSTER_MS = 60 * 60 * 1000;
+const AI_ACTION = "AI_FRAGA";
 
 function systemPrompt(nu: { namn: string; idag: string; pagaende: boolean } | null) {
   const tidsbild = nu
@@ -77,6 +90,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Ingen fråga skickades." }, { status: 400 });
   }
 
+  const epost = session.user.email ?? null;
+  const senaste = await prisma.auditLog.count({
+    where: { action: AI_ACTION, userEmail: epost, createdAt: { gte: new Date(Date.now() - FONSTER_MS) } },
+  });
+  if (senaste >= FRAGOR_PER_TIMME) {
+    return NextResponse.json(
+      { error: `Taket på ${FRAGOR_PER_TIMME} frågor i timmen är nått. Försök igen om en stund.` },
+      { status: 429 },
+    );
+  }
+
   // Härleds ur sessionen, aldrig ur frågan. En FT kan inte fråga sig till ett
   // annat distrikt, oavsett hur hon formulerar sig.
   const scope: ToolScope = {
@@ -126,6 +150,22 @@ export async function POST(req: NextRequest) {
       .map(b => b.text)
       .join("\n")
       .trim();
+
+    // Loggas efter svaret: ett anrop som föll på ett API-fel ska inte äta av
+    // kvoten. Frågan kortas — loggen ska ge spårbarhet, inte bli ett arkiv.
+    await prisma.auditLog.create({
+      data: {
+        action: AI_ACTION,
+        entity: "Assistant",
+        entityId: MODEL,
+        userId: session.user.id ?? null,
+        userEmail: epost,
+        details: JSON.stringify({
+          fraga: meddelanden[meddelanden.length - 1].content.slice(0, 200),
+          verktyg: uppslag.map(u => u.verktyg),
+        }),
+      },
+    });
 
     return NextResponse.json({ svar: svar || "Modellen svarade utan text.", uppslag });
   } catch (err) {
