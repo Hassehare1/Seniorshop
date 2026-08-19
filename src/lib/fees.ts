@@ -120,7 +120,3 @@ export function formatSEK(amount: MoneyInput): string {
   }).format(money(amount).toNumber());
 }
 
-// Exakt öresbelopp för Excel-export ("1234.50"), utan tusentalsavgränsare.
-export function formatOre(amount: MoneyInput): string {
-  return toOre(money(amount)).toFixed(ORE);
-}

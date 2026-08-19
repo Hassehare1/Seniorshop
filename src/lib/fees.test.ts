@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { calculateFees, formatOre, money, STANDARD_FEE_CONFIG, type FeeConfig } from "./fees.ts";
+import { calculateFees, money, STANDARD_FEE_CONFIG, type FeeConfig } from "./fees.ts";
 
 const config: FeeConfig = {
   ftFeePercent: 0.075,
@@ -94,12 +94,6 @@ test("ackumulering över många besök landar exakt på taket", () => {
   exact(nextVisit.mfFee, 0, "MF slut efter taket");
 });
 
-test("formatOre ger exakta öresträngar för export", () => {
-  assert.equal(formatOre(1062.5), "1062.50");
-  assert.equal(formatOre("0.1"), "0.10");
-  // 0.1 + 0.2 i flyttal = 0.30000000000000004; Decimal ger 0.30
-  assert.equal(formatOre(money("0.1").plus(money("0.2"))), "0.30");
-});
 
 
 // ── Standardvillkoren ────────────────────────────────────────────────────────
