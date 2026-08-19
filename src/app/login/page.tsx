@@ -1,109 +1,15 @@
-"use client";
+import LoginForm from "./LoginForm";
 
-import { useState, useId } from "react";
-import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
-import PasswordInput from "@/components/ui/PasswordInput";
+/**
+ * Måste renderas per request.
+ *
+ * CSP:ns nonce sätts vid rendering. En statiskt prerenderad sida får ingen —
+ * och då blockerar strict-dynamic samtliga script, så inloggningen slutar
+ * fungera helt. Alla andra sidor är dynamiska av sig själva eftersom de
+ * anropar auth(); den här gör det inte, och behöver därför sägas till.
+ */
+export const dynamic = "force-dynamic";
 
 export default function LoginPage() {
-  const uid = useId();
-  const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [locked, setLocked] = useState(false);
-  const [loading, setLoading] = useState(false);
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
-    setLocked(false);
-
-    const res = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-    });
-
-    if (res?.error) {
-      // Tillfällig spärr efter för många försök — eget, tydligt meddelande så
-      // att rätt lösenord inte misstas för fel. Allt annat: generiskt fel.
-      if (res.code === "too_many_attempts") {
-        setLocked(true);
-        setError("För många misslyckade försök. Vänta omkring 15 minuter och försök sedan igen.");
-      } else {
-        setError("Fel e-post eller lösenord");
-      }
-      setLoading(false);
-    } else {
-      router.push("/dashboard");
-    }
-  }
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8">
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-slate-800">SeniorShop Portal</h1>
-          <p className="text-slate-500 mt-1">Logga in för att fortsätta</p>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1" htmlFor={`${uid}-e-post`}>
-              E-post
-            </label>
-            <input id={`${uid}-e-post`}
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="din@epost.se"
-            />
-          </div>
-
-          <div>
-            <label htmlFor={`${uid}-losenord`} className="block text-sm font-medium text-slate-700 mb-1">
-              Lösenord
-            </label>
-            <PasswordInput
-              id={`${uid}-losenord`}
-              value={password}
-              onChange={setPassword}
-              placeholder="••••••••"
-              autoComplete="current-password"
-              required
-              className="px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          {error && (
-            <p
-              className={
-                locked
-                  ? "text-amber-700 text-sm bg-amber-50 border border-amber-200 px-3 py-2 rounded-lg"
-                  : "text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg"
-              }
-            >
-              {error}
-            </p>
-          )}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium py-2.5 rounded-lg transition-colors"
-          >
-            {loading ? "Loggar in..." : "Logga in"}
-          </button>
-
-          <p className="text-center text-sm text-slate-500 pt-1">
-            Glömt lösenordet? Kontakta din administratör — hen kan återställa det åt dig.
-          </p>
-        </form>
-      </div>
-    </div>
-  );
+  return <LoginForm />;
 }
