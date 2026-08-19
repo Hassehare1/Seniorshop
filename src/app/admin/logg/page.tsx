@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import LoggClient from "./LoggClient";
+import { GALLRING_DAGAR, GALLRING_DAGAR_LOGIN_FAILED } from "@/lib/audit-gallring";
 
 export default async function LoggPage() {
   const session = await auth();
@@ -24,7 +25,10 @@ export default async function LoggPage() {
     <div>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-slate-800">Händelselogg</h1>
-        <p className="text-slate-500 text-sm mt-1">Senaste {logs.length} händelserna</p>
+        <p className="text-slate-500 text-sm mt-1">
+          Senaste {logs.length} händelserna · gallras efter {GALLRING_DAGAR} dagar
+          (misslyckade inloggningar efter {GALLRING_DAGAR_LOGIN_FAILED})
+        </p>
       </div>
       <LoggClient logs={serialized} />
     </div>
