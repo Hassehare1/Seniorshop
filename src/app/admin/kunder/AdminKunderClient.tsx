@@ -20,6 +20,7 @@ interface Customer {
   phone: string | null;
   address: string | null;
   postalCode: string | null;
+  city: string | null;
   notes: string | null;
   active: boolean;
   approved: boolean;
@@ -124,6 +125,7 @@ export default function AdminKunderClient({ customers: initial, seasons, visitMa
         "E-post": c.email ?? "",
         Adress: c.address ?? "",
         Postnummer: formatPostalCode(c.postalCode, c.district.region) || "SAKNAS",
+      Postort: c.city ?? "",
         Kommentar: c.notes ?? "",
         [`Besök ${label}`]: visitCount(c.id),
         "Senaste vecka": lastWeek(c.id) || "",
@@ -363,6 +365,7 @@ export default function AdminKunderClient({ customers: initial, seasons, visitMa
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Kontakt</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Telefon</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Postnr</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Ort</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Status</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Granskning</th>
               </tr>
@@ -406,6 +409,7 @@ export default function AdminKunderClient({ customers: initial, seasons, visitMa
                       </span>
                     )}
                   </td>
+                  <td className="px-4 py-3 text-slate-600">{c.city ?? "–"}</td>
                   <td className="px-4 py-3">
                     <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${c.active ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-500"}`}>
                       {c.active ? "Aktiv" : "Inaktiv"}
@@ -431,7 +435,7 @@ export default function AdminKunderClient({ customers: initial, seasons, visitMa
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={seasons.length > 0 ? 9 : 8} className="px-4 py-10 text-center text-slate-400">
+                  <td colSpan={seasons.length > 0 ? 10 : 9} className="px-4 py-10 text-center text-slate-400">
                     Inga kunder matchar sökningen.
                   </td>
                 </tr>

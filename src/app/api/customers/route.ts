@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
-  const { name, type, contactPerson, contactRole, email, phone, address, postalCode, notes, districtId } = body;
+  const { name, type, contactPerson, contactRole, email, phone, address, postalCode, city, notes, districtId } = body;
 
   const targetDistrictId =
     session.user.role === "ADMIN" ? districtId : session.user.districtId;
@@ -59,6 +59,7 @@ export async function POST(req: NextRequest) {
     data: {
       name, type, contactPerson, contactRole, email, phone, address, notes,
       postalCode: normalizePostalCode(String(postalCode ?? "")) || null,
+      city: String(city ?? "").trim() || null,
       districtId: targetDistrictId,
       customerNumber: (maxNr._max.customerNumber ?? 0) + 1,
     },

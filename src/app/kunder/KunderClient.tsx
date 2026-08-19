@@ -9,7 +9,7 @@ import ImportKunder from "./ImportKunder";
 
 const emptyForm = {
   name: "", type: "TRAFFPUNKTER", contactPerson: "", contactRole: "", email: "",
-  phone: "", address: "", postalCode: "", notes: "", active: true,
+  phone: "", address: "", postalCode: "", city: "", notes: "", active: true,
 };
 
 export type VisitMap = Record<string, Record<string, { count: number; lastWeek: number }>>;
@@ -89,6 +89,7 @@ export default function KunderClient({ customers: initial, districtId, districtN
         "E-post": c.email ?? "",
         Adress: c.address ?? "",
         Postnummer: formatPostalCode(c.postalCode, region),
+        Postort: c.city ?? "",
         Kommentar: c.notes ?? "",
         [`Besök ${label}`]: visitCount(c.id),
         "Senaste vecka": lastWeek(c.id) || "",
@@ -118,6 +119,7 @@ export default function KunderClient({ customers: initial, districtId, districtN
       phone: c.phone ?? "",
       address: c.address ?? "",
       postalCode: c.postalCode ?? "",
+      city: c.city ?? "",
       notes: c.notes ?? "",
       active: c.active,
     });
@@ -319,6 +321,16 @@ export default function KunderClient({ customers: initial, districtId, districtN
                 onChange={e => setForm(f => ({ ...f, postalCode: e.target.value }))}
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder={postalCodeDigits(region) === 4 ? "1234" : "123 45"}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1" htmlFor={`${uid}-postort`}>Postort</label>
+              <input id={`${uid}-postort`}
+                type="text"
+                value={form.city}
+                onChange={e => setForm(f => ({ ...f, city: e.target.value }))}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="t.ex. Gärsnäs"
               />
             </div>
             <div className="col-span-2">

@@ -10,6 +10,7 @@ type Values = {
   email: string;
   address: string;
   postalCode: string;
+  city: string;
   notes: string;
 };
 
@@ -129,6 +130,15 @@ export default function ContactCard({
               placeholder={postalCodeDigits(region) === 4 ? "1234" : "123 45"}
             />
           </EditField>
+          <EditField label="Postort">
+            <input
+              type="text"
+              value={form.city}
+              onChange={e => setForm(f => ({ ...f, city: e.target.value }))}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="t.ex. Gärsnäs"
+            />
+          </EditField>
           <div className="sm:col-span-2">
             <EditField label="Kommentar">
               <textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={2} className={input} placeholder="Noteringar, öppettider, m.m." />
@@ -149,6 +159,7 @@ export default function ContactCard({
           </Field>
           <Field label="Adress">{values.address || "–"}</Field>
           <Field label="Postnummer">{formatPostalCode(values.postalCode, region) || "–"}</Field>
+          <Field label="Postort">{values.city || "–"}</Field>
           <div className="sm:col-span-2">
             <Field label="Kommentar">{values.notes || "–"}</Field>
           </div>
