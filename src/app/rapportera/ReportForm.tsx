@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState, useEffect, useRef, useId } from "react";
 import { calculateFees, formatSEK, money, sumMoney, type FeeConfig, type MoneyInput } from "@/lib/fees";
 import { customerTypeLabels } from "@/lib/customerTypes";
@@ -28,6 +29,11 @@ interface VisitRow {
 // eller är ny och osparad. Utan detta ser sparade och osparade besök likadana
 // ut, vilket gör det lätt att rapportera samma kund två gånger.
 type VisitStatus = "saved" | "changed" | "new";
+
+function seasonLabel(season: Season | undefined | null): string {
+  if (!season) return "en annan säsong";
+  return `${season.type === "VAR" ? "Vår" : "Höst"} ${season.year}`;
+}
 
 function StatusChip({ status }: { status: VisitStatus }) {
   const style =
@@ -275,7 +281,8 @@ export default function ReportForm({
   initialSeasonId,
 }: Props) {
   const uid = useId();
-  const [selectedSeasonId, setSelectedSeasonId] = useState(
+  const router = useRouter();
+  const [selectedSeasonId] = useState(
     initialSeasonId ?? currentSeason?.id ?? ""
   );
   const [selectedWeek, setSelectedWeek] = useState<number>(() => {
@@ -299,6 +306,7 @@ export default function ReportForm({
   const [mfAccumulated, setMfAccumulated] = useState("0.00");
   const [isDirty, setIsDirty] = useState(false);
   const [pendingWeek, setPendingWeek] = useState<number | null>(null);
+  const [pendingSeasonId, setPendingSeasonId] = useState<string | null>(null);
 
   const selectedSeason = seasons.find(s => s.id === selectedSeasonId) ?? currentSeason;
   const weekStart = selectedSeason?.weekStart ?? 1;
@@ -361,6 +369,31 @@ export default function ReportForm({
   }, [isDirty]);
 
   // Begär vecko-byte — visar varning om det finns osparade ändringar
+  /**
+   * Säsongsbytet går via URL:en i stället för att bara ändra state.
+   *
+   * Listan över rapporterade veckor hämtas på servern för den säsong sidan
+   * renderas med. Byttes säsongen enbart i klienten låg gammal säsongs lista
+   * kvar: veckorna såg orapporterade ut, besöken laddades aldrig, och en
+   * godkänd vecka visades som olåst. Servern får avgöra.
+   */
+  function requestSeasonChange(newSeasonId: string) {
+    if (newSeasonId === selectedSeasonId) return;
+    if (isDirty && visits.length > 0) {
+      setPendingSeasonId(newSeasonId);
+    } else {
+      applySeasonChange(newSeasonId);
+    }
+  }
+
+  function applySeasonChange(newSeasonId: string) {
+    setPendingSeasonId(null);
+    setIsDirty(false);
+    // Ingen vecka i länken — den nya säsongen har sitt eget veckointervall och
+    // formuläret klampar veckan när det monteras om.
+    router.push(`/rapportera?season=${newSeasonId}`);
+  }
+
   function requestWeekChange(newWeek: number) {
     if (isDirty && visits.length > 0) {
       setPendingWeek(newWeek);
@@ -537,22 +570,26 @@ export default function ReportForm({
   return (
     <div className="space-y-6">
       {/* Osparade ändringar — bekräftelse */}
-      {pendingWeek !== null && (
+      {(pendingWeek !== null || pendingSeasonId !== null) && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex flex-wrap items-center gap-3">
           <svg className="w-5 h-5 text-amber-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
           </svg>
           <span className="text-amber-800 text-sm flex-1">
-            Du har osparade ändringar — byt till vecka {pendingWeek} ändå?
+            Du har osparade ändringar — byt till{" "}
+            {pendingWeek !== null
+              ? `vecka ${pendingWeek}`
+              : seasonLabel(seasons.find(s => s.id === pendingSeasonId))}{" "}
+            ändå?
           </span>
           <button
-            onClick={() => applyWeekChange(pendingWeek)}
+            onClick={() => pendingWeek !== null ? applyWeekChange(pendingWeek) : applySeasonChange(pendingSeasonId!)}
             className="bg-amber-500 hover:bg-amber-600 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
           >
             Byt ändå
           </button>
           <button
-            onClick={() => setPendingWeek(null)}
+            onClick={() => { setPendingWeek(null); setPendingSeasonId(null); }}
             className="text-amber-700 hover:text-amber-900 text-xs font-medium px-2 py-1.5 transition-colors"
           >
             Avbryt
@@ -567,18 +604,12 @@ export default function ReportForm({
               <label className="block text-sm font-medium text-slate-700 mb-1" htmlFor={`${uid}-sasong`}>Säsong</label>
               <select id={`${uid}-sasong`}
                 value={selectedSeasonId}
-                onChange={e => {
-                  setSelectedSeasonId(e.target.value);
-                  setSavedReportId(null);
-                  setVisits([]);
-                  setSavedVisits([]);
-                  setIsDirty(false);
-                }}
+                onChange={e => requestSeasonChange(e.target.value)}
                 className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 {seasons.map(s => (
                   <option key={s.id} value={s.id}>
-                    {s.type === "VAR" ? "Vår" : "Höst"} {s.year}
+                    {seasonLabel(s)}
                   </option>
                 ))}
               </select>

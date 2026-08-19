@@ -79,7 +79,10 @@ export default async function RapporteraPage({
           📅 Nästa säsong börjar vecka {initialSeason.weekStart} — du rapporterar i förväg.
         </div>
       )}
+      {/* Säsongen finns i URL:en — nyckeln monterar om formuläret vid byte, så
+          att vald vecka och serverns rapportlista hör ihop. */}
       <ReportForm
+        key={initialSeason.id}
         customers={customers}
         seasons={seasons}
         currentSeason={initialSeason}
