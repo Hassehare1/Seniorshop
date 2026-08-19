@@ -87,6 +87,7 @@ export default async function CustomerCardPage({ params }: { params: Promise<{ i
       <ContactCard
         customerId={customer.id}
         initial={{
+          name: customer.name,
           contactPerson: customer.contactPerson ?? "",
           contactRole: customer.contactRole ?? "",
           phone: customer.phone ?? "",
