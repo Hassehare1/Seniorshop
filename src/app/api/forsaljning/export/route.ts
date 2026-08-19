@@ -26,6 +26,8 @@ export async function GET(req: NextRequest) {
   const fDistrict = isAdmin ? (searchParams.get("district") ?? "") : "";
   const fType = searchParams.get("type") ?? "";
   const fStatus = searchParams.get("status") ?? "";
+  // "sale" | "regular" | tomt (båda) — samma val som i vyn.
+  const fSale = searchParams.get("sale") ?? "";
   const q = (searchParams.get("q") ?? "").trim().toLowerCase();
 
   // FT scopas hårt till eget distrikt; admin kan välja distrikt (annars alla)
@@ -48,7 +50,7 @@ export async function GET(req: NextRequest) {
     districtLabel: string; districtNumber: number;
     customerName: string; customerType: string;
     numberOfCustomers: number; sales: MoneyInput;
-    isFashionShow: boolean; isHangerShow: boolean;
+    isFashionShow: boolean; isHangerShow: boolean; isSale: boolean;
     ftFee: MoneyInput; mfFee: MoneyInput; totalToPay: MoneyInput;
     status: string; comment: string | null;
   };
@@ -66,6 +68,7 @@ export async function GET(req: NextRequest) {
       sales: money(v.sales).plus(v.fashionShowSales),
       isFashionShow: v.isFashionShow,
       isHangerShow: v.isHangerShow,
+      isSale: v.isSale,
       ftFee: v.ftFee,
       mfFee: v.mfFee,
       totalToPay: v.totalToPay,
@@ -80,6 +83,7 @@ export async function GET(req: NextRequest) {
     (!fSeason || r.seasonType === fSeason) &&
     (!fType || r.customerType === fType) &&
     (!fStatus || r.status === fStatus) &&
+    (!fSale || (fSale === "sale" ? r.isSale : !r.isSale)) &&
     (!q ||
       r.customerName.toLowerCase().includes(q) ||
       (typeLabels[r.customerType] ?? "").toLowerCase().includes(q) ||
@@ -111,6 +115,7 @@ export async function GET(req: NextRequest) {
     ...(isAdmin ? [`Distrikt: ${districtLabel}`] : []),
     `Kundtyp: ${fType ? (typeLabels[fType] ?? fType) : "Alla"}`,
     `Status: ${fStatus ? (statusLabels[fStatus] ?? fStatus) : "Alla"}`,
+    `Rea: ${fSale === "sale" ? "Endast rea" : fSale === "regular" ? "Endast ordinarie" : "Rea och ordinarie"}`,
     ...(q ? [`Sök: "${searchParams.get("q")}"`] : []),
   ];
 
@@ -119,7 +124,7 @@ export async function GET(req: NextRequest) {
     "Vecka",
     ...(isAdmin ? ["Distrikt"] : []),
     "Kund", "Typ", "Antal kunder", "Försäljning ink. moms",
-    "Modevisning", "Visning på galge",
+    "Modevisning", "Visning på galge", "REA",
     ...(isAdmin ? ["FT-avgift ex moms", "MF-avgift ex moms"] : []), "Att betala", "Status", "Kommentar",
   ];
 
@@ -133,23 +138,28 @@ export async function GET(req: NextRequest) {
     fmt(r.sales),
     r.isFashionShow ? "Ja" : "Nej",
     r.isHangerShow ? "Ja" : "Nej",
+    r.isSale ? "Ja" : "Nej",
     ...(isAdmin ? [fmt(r.ftFee), fmt(r.mfFee)] : []),
     fmt(r.totalToPay),
     statusLabels[r.status] ?? r.status,
     r.comment ?? "",
   ]);
 
+  // Summaraden måste ha exakt lika många celler som header, annars glider
+  // siffrorna in under fel rubrik i Excel. Ordningen nedan följer header rad
+  // för rad — lägg till en cell här varje gång en kolumn tillkommer där.
   const totals = [
-    "Summa",
-    ...(isAdmin ? [""] : []),
-    `${rows.length} besök`,
-    "",
-    rows.reduce((s, r) => s + r.numberOfCustomers, 0),
-    fmt(sumMoney(rows.map((r) => r.sales))),
-    "", "",
+    "Summa",                                            // Säsong
+    "",                                                 // Vecka
+    ...(isAdmin ? [""] : []),                           // Distrikt
+    `${rows.length} besök`,                             // Kund
+    "",                                                 // Typ
+    rows.reduce((s, r) => s + r.numberOfCustomers, 0),  // Antal kunder
+    fmt(sumMoney(rows.map((r) => r.sales))),            // Försäljning
+    "", "", "",                                         // Modevisning, Galge, REA
     ...(isAdmin ? [fmt(sumMoney(rows.map((r) => r.ftFee))), fmt(sumMoney(rows.map((r) => r.mfFee)))] : []),
-    fmt(sumMoney(rows.map((r) => r.totalToPay))),
-    "", "",
+    fmt(sumMoney(rows.map((r) => r.totalToPay))),       // Att betala
+    "", "",                                             // Status, Kommentar
   ];
 
   const aoa: (string | number)[][] = [

@@ -22,6 +22,7 @@ interface VisitRow {
   isFashionShow: boolean;
   fashionShowSales: number;
   isHangerShow: boolean;
+  isSale: boolean;
   comment: string;
 }
 
@@ -238,6 +239,21 @@ function VisitRow({ index, visit, customers, feeRow, status, takenCustomerIds, o
           <p className="text-xs text-slate-400 mt-1">Ett besök räknas antingen som modevisning eller galge — inte båda.</p>
         </div>
 
+        {/* REA är en egen fråga, inte en tredje visningstyp: ett reabesök kan
+            vara antingen modevisning eller galge. */}
+        <div>
+          <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer w-fit">
+            <input
+              type="checkbox"
+              checked={visit.isSale}
+              onChange={e => onUpdate("isSale", e.target.checked)}
+              className="rounded"
+            />
+            REA-besök
+          </label>
+          <p className="text-xs text-slate-400 mt-1">Kryssa i när besöket är ett reabesök — de redovisas för sig i försäljningsvyn.</p>
+        </div>
+
         <div>
           <label className="block text-xs font-medium text-slate-600 mb-1" htmlFor={`${uid}-kommentar`}>Kommentar</label>
           <textarea id={`${uid}-kommentar`}
@@ -346,6 +362,7 @@ export default function ReportForm({
             isFashionShow: v.isFashionShow,
             fashionShowSales: v.fashionShowSales,
             isHangerShow: v.isHangerShow,
+            isSale: v.isSale,
             comment: v.comment ?? "",
           }));
           setVisits(loaded);
@@ -425,6 +442,7 @@ export default function ReportForm({
           isFashionShow: false,
           fashionShowSales: 0,
           isHangerShow: false,
+          isSale: false,
           comment: "",
         },
       ];
@@ -476,6 +494,7 @@ export default function ReportForm({
       Number(saved.fashionShowSales) === Number(v.fashionShowSales) &&
       saved.isFashionShow === v.isFashionShow &&
       saved.isHangerShow === v.isHangerShow &&
+      saved.isSale === v.isSale &&
       (saved.comment ?? "") === (v.comment ?? "");
     return same ? "saved" : "changed";
   }

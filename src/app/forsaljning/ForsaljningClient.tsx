@@ -20,6 +20,7 @@ export interface SalesRow {
   sales: number;            // ink. moms (sales + ev. fashionShowSales)
   isFashionShow: boolean;
   isHangerShow: boolean;
+  isSale: boolean;
   // Avgifterna skickas bara till admin — saknas helt i FT:s data.
   ftFee?: number;
   mfFee?: number;
@@ -64,6 +65,9 @@ export default function ForsaljningClient({ rows, isAdmin, defaultYear, defaultS
   const [district, setDistrict] = useState<string>("all");
   const [type, setType] = useState<string>("all");
   const [status, setStatus] = useState<string>("all");
+  // Rea kontra ordinarie. Standard är "alla" — snittkvittot ska visa allt
+  // sammantaget, och den som vill jämföra väljer sida här.
+  const [sale, setSale] = useState<"all" | "sale" | "regular">("all");
   const [sortKey, setSortKey] = useState<SortKey>("week");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [copied, setCopied] = useState(false);
@@ -87,6 +91,7 @@ export default function ForsaljningClient({ rows, isAdmin, defaultYear, defaultS
       (!isAdmin || district === "all" || r.districtId === district) &&
       (type === "all" || r.customerType === type) &&
       (status === "all" || r.status === status) &&
+      (sale === "all" || (sale === "sale" ? r.isSale : !r.isSale)) &&
       (q === "" ||
         r.customerName.toLowerCase().includes(q) ||
         (customerTypeLabels[r.customerType] ?? "").toLowerCase().includes(q) ||
@@ -109,7 +114,7 @@ export default function ForsaljningClient({ rows, isAdmin, defaultYear, defaultS
       return cmp * dir;
     });
     return result;
-  }, [rows, search, year, season, district, type, status, sortKey, sortDir, isAdmin]);
+  }, [rows, search, year, season, district, type, status, sale, sortKey, sortDir, isAdmin]);
 
   const sums = useMemo(() => filtered.reduce(
     (acc, r) => {
@@ -139,6 +144,7 @@ export default function ForsaljningClient({ rows, isAdmin, defaultYear, defaultS
     if (isAdmin && district !== "all") p.set("district", district);
     if (type !== "all") p.set("type", type);
     if (status !== "all") p.set("status", status);
+    if (sale !== "all") p.set("sale", sale);
     if (search.trim()) p.set("q", search.trim());
     return p;
   }
@@ -151,6 +157,7 @@ export default function ForsaljningClient({ rows, isAdmin, defaultYear, defaultS
     if (isAdmin) parts.push(district === "all" ? "alla distrikt" : (districts.find(d => d.id === district)?.label ?? district));
     if (type !== "all") parts.push(customerTypeLabels[type] ?? type);
     if (status !== "all") parts.push(statusLabels[status] ?? status);
+    if (sale !== "all") parts.push(sale === "sale" ? "endast rea" : "endast ordinarie");
     if (search.trim()) parts.push(`sök: "${search.trim()}"`);
     return parts.join(" · ");
   }
@@ -158,7 +165,7 @@ export default function ForsaljningClient({ rows, isAdmin, defaultYear, defaultS
   async function copySummary() {
     const text =
       `${summaryCaption}\n` +
-      `Försäljning ${formatSEK(sums.sales)} · Antal ${sums.numberOfCustomers}` +
+      `Försäljning ${formatSEK(sums.sales)} · Antal ${sums.numberOfCustomers} · Snittkvitto ${avgLabel(sums)}` +
       `${isAdmin ? ` · FT-avgift ${formatSEK(sums.ftFee)} · MF-avgift ${formatSEK(sums.mfFee)}` : ""} · ` +
       `Att betala ${formatSEK(sums.totalToPay)}`;
     try {
@@ -207,6 +214,11 @@ export default function ForsaljningClient({ rows, isAdmin, defaultYear, defaultS
         <select value={type} onChange={e => setType(e.target.value)} className={selectClass} aria-label="Filtrera kundtyp">
           <option value="all">Alla typer</option>
           {customerTypeOptions.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+        </select>
+        <select value={sale} onChange={e => setSale(e.target.value as "all" | "sale" | "regular")} className={selectClass} aria-label="Filtrera rea">
+          <option value="all">Rea och ordinarie</option>
+          <option value="sale">Endast rea</option>
+          <option value="regular">Endast ordinarie</option>
         </select>
         <select value={status} onChange={e => setStatus(e.target.value)} className={selectClass} aria-label="Filtrera status">
           <option value="all">Alla statusar</option>
@@ -270,6 +282,7 @@ export default function ForsaljningClient({ rows, isAdmin, defaultYear, defaultS
                     {r.isFashionShow && r.isHangerShow && " · "}
                     {r.isHangerShow && <span className="text-teal-600">Galge</span>}
                     {!r.isFashionShow && !r.isHangerShow && "–"}
+                    {r.isSale && <span className="ml-2 px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 text-xs font-medium">REA</span>}
                   </td>
                   {isAdmin && <td className="px-3 py-2.5 text-right text-slate-500">{formatSEK(r.ftFee ?? 0)}</td>}
                   {isAdmin && <td className="px-3 py-2.5 text-right text-slate-500">{formatSEK(r.mfFee ?? 0)}</td>}
@@ -297,6 +310,11 @@ export default function ForsaljningClient({ rows, isAdmin, defaultYear, defaultS
 
 type Sums = { numberOfCustomers: number; sales: number; ftFee: number; mfFee: number; totalToPay: number };
 
+/** Snittkvitto = försäljning per kund. Utan kunder finns inget snitt att visa. */
+function avgLabel(sums: Sums): string {
+  return sums.numberOfCustomers > 0 ? formatSEK(sums.sales / sums.numberOfCustomers) : "–";
+}
+
 function SummaryBand({ caption, sums, isAdmin }: { caption: string; sums: Sums; isAdmin: boolean }) {
   return (
     <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
@@ -304,6 +322,10 @@ function SummaryBand({ caption, sums, isAdmin }: { caption: string; sums: Sums; 
       <div className="flex flex-wrap items-center gap-x-6 gap-y-1">
         <span className="text-sm text-blue-800">Försäljning <strong>{formatSEK(sums.sales)}</strong></span>
         <span className="text-sm text-blue-800">Antal <strong>{sums.numberOfCustomers}</strong></span>
+        {/* Samma definition som på kundkortet: försäljning per kund. Följer
+            filtret ovan, så "endast rea" ger reasnittet och "endast ordinarie"
+            det ordinarie. */}
+        <span className="text-sm text-blue-800">Snittkvitto <strong>{avgLabel(sums)}</strong></span>
         {isAdmin && <span className="text-sm text-blue-800">FT-avgift <strong>{formatSEK(sums.ftFee)}</strong></span>}
         {isAdmin && <span className="text-sm text-blue-800">MF-avgift <strong>{formatSEK(sums.mfFee)}</strong></span>}
         <span className="text-sm text-blue-800">Att betala <strong>{formatSEK(sums.totalToPay)}</strong></span>
