@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useId } from "react";
 import PasswordInput from "@/components/ui/PasswordInput";
 
 export default function ProfilClient() {
+  const uid = useId();
   const [form, setForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -42,8 +43,9 @@ export default function ProfilClient() {
         <h2 className="font-semibold text-slate-700 mb-4">Byt lösenord</h2>
         <form onSubmit={e => { e.preventDefault(); handleSave(); }} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">Nuvarande lösenord</label>
+            <label htmlFor={`${uid}-nuvarande`} className="block text-xs font-medium text-slate-600 mb-1">Nuvarande lösenord</label>
             <PasswordInput
+                id={`${uid}-nuvarande`}
               value={form.currentPassword}
               onChange={v => setForm(f => ({ ...f, currentPassword: v }))}
               autoComplete="current-password"
@@ -51,8 +53,9 @@ export default function ProfilClient() {
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">Nytt lösenord</label>
+            <label htmlFor={`${uid}-nytt`} className="block text-xs font-medium text-slate-600 mb-1">Nytt lösenord</label>
             <PasswordInput
+                id={`${uid}-nytt`}
               value={form.newPassword}
               onChange={v => setForm(f => ({ ...f, newPassword: v }))}
               placeholder="Minst 6 tecken"
@@ -61,8 +64,9 @@ export default function ProfilClient() {
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">Bekräfta nytt lösenord</label>
+            <label htmlFor={`${uid}-bekrafta`} className="block text-xs font-medium text-slate-600 mb-1">Bekräfta nytt lösenord</label>
             <PasswordInput
+                id={`${uid}-bekrafta`}
               value={form.confirmPassword}
               onChange={v => setForm(f => ({ ...f, confirmPassword: v }))}
               autoComplete="new-password"

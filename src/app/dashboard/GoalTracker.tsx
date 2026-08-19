@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useId } from "react";
 import { formatSEK } from "@/lib/fees";
 import { goalPercent, salesPace, type Actuals, type Goal } from "@/lib/goals";
 
@@ -179,10 +179,11 @@ function MetricCard({ label, target, actual, money, remainLabel, variance, hint 
 }
 
 function GoalInput({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (v: string) => void; placeholder: string }) {
+  const uid = useId();
   return (
     <div>
-      <label className="block text-xs font-medium text-slate-600 mb-1">{label}</label>
-      <input
+      <label className="block text-xs font-medium text-slate-600 mb-1" htmlFor={`${uid}-falt`}>{label}</label>
+      <input id={`${uid}-falt`}
         type="number"
         min={0}
         value={value}
