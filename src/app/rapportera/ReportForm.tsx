@@ -301,18 +301,24 @@ export default function ReportForm({
   const [selectedSeasonId] = useState(
     initialSeasonId ?? currentSeason?.id ?? ""
   );
-  const [selectedWeek, setSelectedWeek] = useState<number>(() => {
+  const startWeek = (() => {
     const season = seasons.find(s => s.id === (initialSeasonId ?? currentSeason?.id)) ?? currentSeason;
     const week = initialWeek ?? getISOWeek();
     if (!season) return week;
     return Math.min(Math.max(week, season.weekStart), season.weekEnd);
-  });
+  })();
+  const [selectedWeek, setSelectedWeek] = useState<number>(startWeek);
   const [reports, setReports] = useState(existingReports);
   const [visits, setVisits] = useState<VisitRow[]>([]);
   // Ögonblicksbild av vad som ligger sparat i databasen för den valda veckan.
   // Jämförs mot formulärets rader för att visa Sparad/Ändrad/Ny.
   const [savedVisits, setSavedVisits] = useState<VisitRow[]>([]);
-  const [loadingVisits, setLoadingVisits] = useState(false);
+  // Laddningen börjar direkt vid montering om veckan har en sparad rapport.
+  // Flaggan sätts av det som ORSAKAR laddningen — montering respektive
+  // veckobyte — inte inne i effekten som utför den.
+  const [loadingVisits, setLoadingVisits] = useState(
+    () => existingReports.some(r => r.week === startWeek)
+  );
   const [loadError, setLoadError] = useState("");
   const [saving, setSaving] = useState(false);
   const [locking, setLocking] = useState(false);
@@ -343,15 +349,17 @@ export default function ReportForm({
       .catch(() => {});
   }, [selectedSeasonId, selectedWeek, districtId]);
 
-  // Ladda befintliga besök när man byter till en redan rapporterad vecka
+  // Hämtar besöken för en redan rapporterad vecka. Effekten synkroniserar bara
+  // mot servern; tömning av formuläret och laddningsflaggan sköts där bytet
+  // sker (applyWeekChange), så att inget state sätts synkront här.
   useEffect(() => {
-    const isReported = weekStatusMap.has(selectedWeek);
-    if (!isReported) { setVisits([]); setSavedVisits([]); setLoadError(""); setIsDirty(false); return; }
-    setLoadingVisits(true);
-    setLoadError("");
+    if (!weekStatusMap.has(selectedWeek)) return;
+    let aktuell = true;
     fetch(`/api/reports?districtId=${districtId}&seasonId=${selectedSeasonId}`)
       .then(r => r.json())
       .then((fetched: { week: number; visits: (VisitRow & { id: string })[] }[]) => {
+        // Hann man byta vecka igen medan svaret var på väg är det inaktuellt.
+        if (!aktuell) return;
         const report = fetched.find(r => r.week === selectedWeek);
         if (report) {
           const loaded = report.visits.map(v => ({
@@ -370,8 +378,9 @@ export default function ReportForm({
           setIsDirty(false);
         }
       })
-      .catch(() => { setLoadError("Kunde inte ladda rapporten. Försök igen."); })
-      .finally(() => setLoadingVisits(false));
+      .catch(() => { if (aktuell) setLoadError("Kunde inte ladda rapporten. Försök igen."); })
+      .finally(() => { if (aktuell) setLoadingVisits(false); });
+    return () => { aktuell = false; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedWeek, selectedSeasonId, districtId]);
 
@@ -420,10 +429,16 @@ export default function ReportForm({
   }
 
   function applyWeekChange(newWeek: number) {
+    const rapporterad = weekStatusMap.has(newWeek);
     setSelectedWeek(newWeek);
     setSavedReportId(null);
     setIsDirty(false);
     setPendingWeek(null);
+    setLoadError("");
+    // Har veckan en sparad rapport hämtar effekten den härnäst — visa "laddar"
+    // så länge. Annars är veckan tom, och formuläret nollställs direkt.
+    setLoadingVisits(rapporterad);
+    if (!rapporterad) { setVisits([]); setSavedVisits([]); }
   }
 
   function addVisit() {
