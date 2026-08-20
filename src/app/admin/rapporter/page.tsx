@@ -11,7 +11,7 @@ export default async function AdminRapporterPage({
   searchParams: Promise<{ season?: string }>;
 }) {
   const session = await auth();
-  if (session?.user.role !== "ADMIN") redirect("/dashboard");
+  if (session?.user?.role !== "ADMIN") redirect("/dashboard");
 
   const { season: seasonParam } = await searchParams;
 

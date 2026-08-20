@@ -40,7 +40,7 @@ export default async function DashboardPage({
   searchParams: Promise<{ season?: string; district?: string }>;
 }) {
   const session = await auth();
-  const isAdmin = session?.user.role === "ADMIN";
+  const isAdmin = session?.user?.role === "ADMIN";
   const { season: seasonParam, district: districtParam } = await searchParams;
 
   const allSeasons = await prisma.season.findMany({
@@ -57,7 +57,7 @@ export default async function DashboardPage({
     : [];
   const selectedDistrictId = isAdmin
     ? (districtParam ?? null)
-    : (session?.user.districtId ?? null);
+    : (session?.user?.districtId ?? null);
 
   type ReportRow = {
     id: string; week: number; status: string;

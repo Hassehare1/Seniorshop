@@ -23,7 +23,7 @@ interface ParsedVisit {
 
 export async function POST(req: NextRequest) {
   const session = await auth();
-  if (session?.user.role !== "ADMIN" || !session.user.id) return err("Forbidden", 403);
+  if (session?.user?.role !== "ADMIN" || !session.user.id) return err("Forbidden", 403);
 
   const form = await req.formData();
   const file = form.get("file");

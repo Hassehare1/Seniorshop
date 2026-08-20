@@ -64,8 +64,15 @@ export default auth((req) => {
   // Inloggningssidan — alltid tillåten
   if (pathname === "/login") return fortsatt();
 
-  // Allt annat kräver inloggning
-  if (!session) {
+  // Allt annat kräver inloggning.
+  //
+  // Grinden frågar efter user, inte bara efter att sessionen finns. Vid
+  // konfigurationsfel returnerar auth() ett FELOBJEKT i stället för null
+  // (Auth.js GHSA-8fpg-xm3f-6cx3), och ett objekt är sanningsvärde-sant —
+  // en `!session`-kontroll släpper då igenom alla. `user` finns bara på en
+  // riktig session, så den här formen håller även om biblioteket gör om
+  // misstaget.
+  if (!session?.user) {
     const loginUrl = new URL("/login", req.url);
     loginUrl.searchParams.set("callbackUrl", pathname);
     return medCsp(NextResponse.redirect(loginUrl));

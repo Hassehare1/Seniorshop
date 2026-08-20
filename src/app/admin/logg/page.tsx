@@ -6,7 +6,7 @@ import { GALLRING_DAGAR, GALLRING_DAGAR_LOGIN_FAILED } from "@/lib/audit-gallrin
 
 export default async function LoggPage() {
   const session = await auth();
-  if (session?.user.role !== "ADMIN") redirect("/dashboard");
+  if (session?.user?.role !== "ADMIN") redirect("/dashboard");
 
   const logs = await prisma.auditLog.findMany({
     orderBy: { createdAt: "desc" },

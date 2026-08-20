@@ -5,7 +5,7 @@ import KunderClient, { type VisitMap } from "./KunderClient";
 
 export default async function KunderPage() {
   const session = await auth();
-  if (!session?.user.districtId) redirect("/dashboard");
+  if (!session?.user?.districtId) redirect("/dashboard");
   const districtId = session.user.districtId;
 
   const [customers, reports, seasons, district] = await Promise.all([

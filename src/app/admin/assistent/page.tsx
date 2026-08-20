@@ -4,7 +4,7 @@ import AssistentClient from "./AssistentClient";
 
 export default async function AssistentPage() {
   const session = await auth();
-  if (session?.user.role !== "ADMIN") redirect("/dashboard");
+  if (session?.user?.role !== "ADMIN") redirect("/dashboard");
 
   const harNyckel = !!process.env.ANTHROPIC_API_KEY;
 

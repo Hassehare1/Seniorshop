@@ -5,7 +5,7 @@ import * as XLSX from "xlsx";
 // Genererar en tom Excel-mall att fylla i och ladda upp
 export async function GET() {
   const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const headers = [
     "Namn", "Typ", "Kontaktperson", "Kontaktroll",

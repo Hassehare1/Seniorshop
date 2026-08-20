@@ -5,7 +5,7 @@ import bcrypt from "bcryptjs";
 
 export async function PATCH(req: NextRequest) {
   const session = await auth();
-  if (!session?.user.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { currentPassword, newPassword } = await req.json();
   if (!currentPassword || !newPassword) return NextResponse.json({ error: "Saknade fält" }, { status: 400 });

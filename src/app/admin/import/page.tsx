@@ -6,7 +6,7 @@ import ResetReports from "./ResetReports";
 
 export default async function ImportPage() {
   const session = await auth();
-  if (session?.user.role !== "ADMIN") redirect("/dashboard");
+  if (session?.user?.role !== "ADMIN") redirect("/dashboard");
 
   const districts = await prisma.district.findMany({
     orderBy: { number: "asc" },

@@ -9,7 +9,7 @@ import ContactCard from "./ContactCard";
 
 export default async function CustomerCardPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
-  if (!session) redirect("/login");
+  if (!session?.user) redirect("/login");
 
   const { id: rawId } = await params;
   // Tål specialtecken i id (ä/ö/å): avkoda URL + testa båda Unicode-formerna (NFC/NFD)

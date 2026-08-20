@@ -14,7 +14,7 @@ const statusLabels: Record<string, string> = {
 
 export async function GET(req: NextRequest) {
   const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const isAdmin = session.user.role === "ADMIN";
   if (!isAdmin && !session.user.districtId) {

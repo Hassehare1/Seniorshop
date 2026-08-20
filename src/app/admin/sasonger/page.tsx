@@ -5,7 +5,7 @@ import SasongerClient from "./SasongerClient";
 
 export default async function AdminSasongerPage() {
   const session = await auth();
-  if (session?.user.role !== "ADMIN") redirect("/dashboard");
+  if (session?.user?.role !== "ADMIN") redirect("/dashboard");
 
   const seasons = await prisma.season.findMany({
     orderBy: [{ year: "desc" }, { type: "desc" }],

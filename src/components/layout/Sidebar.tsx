@@ -135,7 +135,7 @@ function SidebarFooter({
 export default function Sidebar() {
   const pathname = usePathname();
   const { data: session } = useSession();
-  const isAdmin = session?.user.role === "ADMIN";
+  const isAdmin = session?.user?.role === "ADMIN";
   const nav = isAdmin ? adminNav : franchiseeNav;
   // Drawern hör till den sida den öppnades på. Genom att spara sökvägen i
   // stället för en boolean stängs den av sig själv vid navigering — även bakåt
@@ -211,7 +211,7 @@ export default function Sidebar() {
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-700">
               <div>
                 <span className="text-white font-bold text-lg">SeniorShop</span>
-                {session?.user.districtNumber && (
+                {session?.user?.districtNumber && (
                   <p className="text-slate-400 text-xs mt-0.5">Distrikt {session.user.districtNumber}</p>
                 )}
                 {isAdmin && <p className="text-blue-400 text-xs font-medium mt-0.5">Admin</p>}
@@ -227,8 +227,8 @@ export default function Sidebar() {
             </nav>
             <SidebarFooter
               pathname={pathname}
-              name={session?.user.name}
-              email={session?.user.email}
+              name={session?.user?.name}
+              email={session?.user?.email}
               confirmLogout={confirmLogout}
               setConfirmLogout={setConfirmLogout}
               onNav={() => setOpen(false)}
@@ -241,7 +241,7 @@ export default function Sidebar() {
       <aside className="hidden md:flex w-56 min-h-screen bg-slate-900 flex-col shrink-0 print:hidden">
         <div className="px-6 py-5 border-b border-slate-700">
           <span className="text-white font-bold text-lg">SeniorShop</span>
-          {session?.user.districtNumber && (
+          {session?.user?.districtNumber && (
             <p className="text-slate-400 text-xs mt-0.5">Distrikt {session.user.districtNumber}</p>
           )}
           {isAdmin && <p className="text-blue-400 text-xs mt-0.5 font-medium">Admin</p>}
@@ -251,8 +251,8 @@ export default function Sidebar() {
         </nav>
         <SidebarFooter
           pathname={pathname}
-          name={session?.user.name}
-          email={session?.user.email}
+          name={session?.user?.name}
+          email={session?.user?.email}
           confirmLogout={confirmLogout}
           setConfirmLogout={setConfirmLogout}
         />

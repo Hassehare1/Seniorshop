@@ -71,7 +71,7 @@ type Uppslag = { verktyg: string; urval?: string; sasong?: string };
 
 export async function POST(req: NextRequest) {
   const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const isAdmin = session.user.role === "ADMIN";
   if (ADMIN_ONLY && !isAdmin) {
