@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { formatPostalCode, postalCodeDigits, validatePostalCode } from "@/lib/postalCode";
-import { materialSummary, parseAntal } from "@/lib/salesMaterial";
+import { materialSummary, parseAntal, validateVenue, VENUE_MAX_LENGTH } from "@/lib/salesMaterial";
 
 type Values = {
   name: string;
@@ -14,6 +14,7 @@ type Values = {
   address: string;
   postalCode: string;
   city: string;
+  venue: string;
   notes: string;
   postersA3: string;
   postersA4: string;
@@ -53,6 +54,12 @@ export default function ContactCard({
     // (Kundnumret består oavsett, men en namnlös rad går inte att hitta.)
     if (!form.name.trim()) {
       setError("Namnet kan inte vara tomt.");
+      return;
+    }
+
+    const venueError = validateVenue(form.venue);
+    if (venueError) {
+      setError(venueError);
       return;
     }
 
@@ -163,8 +170,10 @@ export default function ContactCard({
             />
           </EditField>
           <div className="sm:col-span-2">
-            <EditField label="Kommentar">
-              <textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={2} className={input} placeholder="Noteringar, öppettider, m.m." />
+            <EditField label="Möteslokal">
+              <input type="text" value={form.venue} maxLength={VENUE_MAX_LENGTH}
+                onChange={e => setForm(f => ({ ...f, venue: e.target.value }))}
+                className={input} placeholder="T.ex. Kuben — om besöket är någon annanstans än på adressen" />
             </EditField>
           </div>
 
@@ -193,6 +202,14 @@ export default function ContactCard({
             )}
             <p className="text-xs text-slate-400 mt-2">Tomt antal betyder att inget skickas.</p>
           </div>
+
+          <div className="sm:col-span-2">
+            <EditField label="Kommentar">
+              <textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={2} className={input} placeholder="Noteringar, öppettider, m.m." />
+            </EditField>
+          </div>
+
+
         </div>
       ) : (
         <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
@@ -207,14 +224,15 @@ export default function ContactCard({
             {mailHref ? <a href={mailHref} className="text-blue-600 hover:text-blue-800 font-medium break-all">{values.email}</a> : "–"}
           </Field>
           <Field label="Adress">{values.address || "–"}</Field>
+          <Field label="Postnummer">{formatPostalCode(values.postalCode, region) || "–"}</Field>
+          <Field label="Postort">{values.city || "–"}</Field>
+          <Field label="Möteslokal">{values.venue || "–"}</Field>
           <Field label="Säljmaterial">{materialSummary({
             postersA3: parseAntal(values.postersA3),
             postersA4: parseAntal(values.postersA4),
             digitalMaterial: values.digitalMaterial,
             digitalMaterialNote: values.digitalMaterialNote,
           }) || "–"}</Field>
-          <Field label="Postnummer">{formatPostalCode(values.postalCode, region) || "–"}</Field>
-          <Field label="Postort">{values.city || "–"}</Field>
           <div className="sm:col-span-2">
             <Field label="Kommentar">{values.notes || "–"}</Field>
           </div>

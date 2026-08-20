@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { CustomerType } from "@prisma/client";
 import { normalizePostalCode, validatePostalCode } from "@/lib/postalCode";
-import { parseAntal } from "@/lib/salesMaterial";
+import { parseAntal, validateVenue } from "@/lib/salesMaterial";
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json();
   const { name, type, contactPerson, contactRole, email, phone, address, postalCode, city, notes, districtId,
-    postersA3, postersA4, digitalMaterial, digitalMaterialNote } = body;
+    postersA3, postersA4, digitalMaterial, digitalMaterialNote, venue } = body;
 
   const targetDistrictId =
     session.user.role === "ADMIN" ? districtId : session.user.districtId;
@@ -40,6 +40,9 @@ export async function POST(req: NextRequest) {
   if (!Object.values(CustomerType).includes(type)) {
     return NextResponse.json({ error: "Ogiltig kundtyp." }, { status: 400 });
   }
+
+  const venueError = validateVenue(String(venue ?? ""));
+  if (venueError) return NextResponse.json({ error: venueError }, { status: 400 });
 
   // Distriktet hämtas före skapandet — regionen avgör hur många siffror
   // postnumret ska ha, och samma uppslag återanvänds i audit-loggen.
@@ -60,6 +63,7 @@ export async function POST(req: NextRequest) {
   const customer = await prisma.customer.create({
     data: {
       name, type, contactPerson, contactRole, email, phone, address, notes,
+      venue: String(venue ?? "").trim() || null,
       postersA3: parseAntal(postersA3),
       postersA4: parseAntal(postersA4),
       digitalMaterial: !!digitalMaterial,
