@@ -58,16 +58,3 @@ export function parseAntal(värde: unknown): number {
   const n = Math.floor(Number(värde));
   return Number.isFinite(n) && n > 0 ? n : 0;
 }
-
-/**
- * Möteslokalen ryms på en rad i kundkortet och i kommande utskick — därav
- * taket. Gränsen bor här så att formulär, API och tester läser samma siffra.
- */
-export const VENUE_MAX_LENGTH = 50;
-
-/** Returnerar ett felmeddelande om lokalen är för lång, annars null. */
-export function validateVenue(värde: string): string | null {
-  return värde.trim().length > VENUE_MAX_LENGTH
-    ? `Möteslokalen får vara högst ${VENUE_MAX_LENGTH} tecken.`
-    : null;
-}

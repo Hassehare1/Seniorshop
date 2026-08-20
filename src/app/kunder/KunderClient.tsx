@@ -5,9 +5,10 @@ import Link from "next/link";
 import { customerTypeLabels, customerTypeColors, customerTypeOptions } from "@/lib/customerTypes";
 import { formatPostalCode, postalCodeDigits, validatePostalCode } from "@/lib/postalCode";
 import {
-  materialFilterOptions, materialSummary, matchesMaterialFilter, validateVenue, VENUE_MAX_LENGTH,
+  materialFilterOptions, materialSummary, matchesMaterialFilter,
   type MaterialFilter,
 } from "@/lib/salesMaterial";
+import { validateVenue, VENUE_MAX_LENGTH } from "@/lib/venue";
 import type { Customer } from "@prisma/client";
 import ImportKunder from "./ImportKunder";
 
