@@ -7,7 +7,7 @@ import { money, toNumber } from "@/lib/fees";
 
 export default async function ForsaljningPage() {
   const session = await auth();
-  if (!session) redirect("/login");
+  if (!session?.user) redirect("/login");
   const isAdmin = session.user.role === "ADMIN";
   if (!isAdmin && !session.user.districtId) redirect("/dashboard");
 

@@ -21,7 +21,7 @@ const cell = (row: Record<string, unknown>, key: string) => String(row[key] ?? "
 
 export async function POST(req: NextRequest) {
   const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   // Import är FT:ns ansvar — kräver eget distrikt
   const districtId = session.user.districtId;

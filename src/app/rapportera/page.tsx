@@ -12,7 +12,7 @@ export default async function RapporteraPage({
   searchParams: Promise<{ week?: string; season?: string }>;
 }) {
   const session = await auth();
-  if (!session?.user.districtId) redirect("/dashboard");
+  if (!session?.user?.districtId) redirect("/dashboard");
 
   const { week: weekParam, season: seasonParam } = await searchParams;
 

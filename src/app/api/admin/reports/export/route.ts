@@ -7,7 +7,7 @@ import { money, type MoneyInput } from "@/lib/fees";
 
 export async function GET(req: NextRequest) {
   const session = await auth();
-  if (session?.user.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (session?.user?.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { searchParams } = new URL(req.url);
   const seasonId = searchParams.get("seasonId");

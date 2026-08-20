@@ -4,7 +4,7 @@ import SpelClient from "./SpelClient";
 
 export default async function SpelPage() {
   const session = await auth();
-  if (session?.user.role !== "ADMIN") redirect("/dashboard");
+  if (session?.user?.role !== "ADMIN") redirect("/dashboard");
 
   return (
     <div>

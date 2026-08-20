@@ -5,7 +5,7 @@ import AnvandareClient from "./AnvandareClient";
 
 export default async function AdminAnvandare() {
   const session = await auth();
-  if (session?.user.role !== "ADMIN") redirect("/dashboard");
+  if (session?.user?.role !== "ADMIN") redirect("/dashboard");
 
   const [users, districts] = await Promise.all([
     prisma.user.findMany({

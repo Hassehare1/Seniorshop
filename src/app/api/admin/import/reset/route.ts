@@ -18,7 +18,7 @@ type Scope = keyof typeof ORD;
 
 export async function POST(req: NextRequest) {
   const session = await auth();
-  if (session?.user.role !== "ADMIN" || !session.user.id) {
+  if (session?.user?.role !== "ADMIN" || !session.user.id) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

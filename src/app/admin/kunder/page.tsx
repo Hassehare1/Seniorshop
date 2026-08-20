@@ -5,7 +5,7 @@ import AdminKunderClient, { type VisitMap } from "./AdminKunderClient";
 
 export default async function AdminKunder() {
   const session = await auth();
-  if (session?.user.role !== "ADMIN") redirect("/dashboard");
+  if (session?.user?.role !== "ADMIN") redirect("/dashboard");
 
   const [customers, reports, seasons] = await Promise.all([
     prisma.customer.findMany({

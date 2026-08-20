@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 // Godkänn alla SUBMITTED-rapporter (optionellt filtrerat på säsong)
 export async function POST(req: NextRequest) {
   const session = await auth();
-  if (session?.user.role !== "ADMIN") {
+  if (session?.user?.role !== "ADMIN") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

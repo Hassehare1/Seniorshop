@@ -5,7 +5,7 @@ import { STANDARD_FEE_CONFIG } from "@/lib/fees";
 
 export async function POST(req: NextRequest) {
   const session = await auth();
-  if (session?.user.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (session?.user?.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { number, name, region } = await req.json();
   if (!number || !name) return NextResponse.json({ error: "Saknade fält" }, { status: 400 });
