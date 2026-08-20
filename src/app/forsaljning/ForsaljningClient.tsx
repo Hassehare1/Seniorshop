@@ -187,6 +187,10 @@ export default function ForsaljningClient({ rows, isAdmin, defaultYear, defaultS
 
   function exportExcel() {
     const p = filterParams();
+    // Målet är en filnedladdning, inte en sida: routen svarar med
+    // Content-Disposition: attachment, så webbläsaren laddar ner och stannar
+    // kvar på vyn. router.push() hör till sidnavigering och fungerar inte här.
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
     window.location.href = `/api/forsaljning/export?${p.toString()}`;
   }
 
