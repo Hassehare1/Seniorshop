@@ -8,6 +8,10 @@ import {
   customerTypeOptions,
 } from "@/lib/customerTypes";
 import { formatPostalCode } from "@/lib/postalCode";
+import {
+  materialFilterOptions, materialSummary, matchesMaterialFilter,
+  type MaterialFilter,
+} from "@/lib/salesMaterial";
 
 interface Customer {
   id: string;
@@ -22,6 +26,10 @@ interface Customer {
   postalCode: string | null;
   city: string | null;
   notes: string | null;
+  postersA3: number;
+  postersA4: number;
+  digitalMaterial: boolean;
+  digitalMaterialNote: string | null;
   active: boolean;
   approved: boolean;
   district: { number: number; name: string; region: string };
@@ -51,6 +59,7 @@ export default function AdminKunderClient({ customers: initial, seasons, visitMa
   const [typeEdit, setTypeEdit] = useState<{ customer: Customer; valdTyp: string } | null>(null);
   const [visitFilter, setVisitFilter] = useState("all");
   const [postalFilter, setPostalFilter] = useState("ALL");
+  const [materialFilter, setMaterialFilter] = useState<MaterialFilter>("all");
   const [exporting, setExporting] = useState(false);
 
   const visitCount = (id: string) => visitMap[id]?.[season]?.count ?? 0;
@@ -88,7 +97,8 @@ export default function AdminKunderClient({ customers: initial, seasons, visitMa
       postalFilter === "ALL" ||
       (postalFilter === "missing" && !c.postalCode) ||
       (postalFilter === "has" && !!c.postalCode);
-    return matchSearch && matchType && matchStatus && matchReview && matchVisit && matchPostal;
+    const matchMaterial = matchesMaterialFilter(c, materialFilter);
+    return matchSearch && matchType && matchStatus && matchReview && matchVisit && matchPostal && matchMaterial;
   });
 
   // Räknas på det filtrerade urvalet, så att en sökning på t.ex. "D6" ger
@@ -127,6 +137,9 @@ export default function AdminKunderClient({ customers: initial, seasons, visitMa
         Postnummer: formatPostalCode(c.postalCode, c.district.region) || "SAKNAS",
       Postort: c.city ?? "",
         Kommentar: c.notes ?? "",
+        "Affischer A3": c.postersA3 || "",
+        "Affischer A4": c.postersA4 || "",
+        Digitalt: c.digitalMaterial ? (c.digitalMaterialNote?.trim() || "Ja") : "",
         [`Besök ${label}`]: visitCount(c.id),
         "Senaste vecka": lastWeek(c.id) || "",
         Status: c.active ? "Aktiv" : "Inaktiv",
@@ -307,6 +320,14 @@ export default function AdminKunderClient({ customers: initial, seasons, visitMa
           <option value="missing">Saknar postnummer</option>
           <option value="has">Har postnummer</option>
         </select>
+        <select
+          value={materialFilter}
+          onChange={e => setMaterialFilter(e.target.value as MaterialFilter)}
+          aria-label="Filtrera säljmaterial"
+          className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+        >
+          {materialFilterOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
         {seasons.length > 0 && (
           <>
             <select value={season} onChange={e => setSeason(e.target.value)} aria-label="Säsong" className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
@@ -364,6 +385,7 @@ export default function AdminKunderClient({ customers: initial, seasons, visitMa
                 {seasons.length > 0 && <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Besök</th>}
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Kontakt</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Telefon</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Material</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Postnr</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Ort</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Status</th>
@@ -398,6 +420,11 @@ export default function AdminKunderClient({ customers: initial, seasons, visitMa
                     {c.contactRole && <span className="text-slate-400"> · {c.contactRole}</span>}
                   </td>
                   <td className="px-4 py-3 text-slate-600">{c.phone ?? "–"}</td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    {materialSummary(c)
+                      ? <span className="text-slate-600">{materialSummary(c)}</span>
+                      : <span className="text-amber-600" title="Inget säljmaterial inlagt">saknas</span>}
+                  </td>
                   <td className="px-4 py-3 whitespace-nowrap">
                     {c.postalCode ? (
                       <span className="text-slate-600 tabular-nums">
