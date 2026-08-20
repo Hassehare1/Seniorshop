@@ -96,6 +96,10 @@ export default async function CustomerCardPage({ params }: { params: Promise<{ i
           postalCode: customer.postalCode ?? "",
           city: customer.city ?? "",
           notes: customer.notes ?? "",
+          postersA3: customer.postersA3 ? String(customer.postersA3) : "",
+          postersA4: customer.postersA4 ? String(customer.postersA4) : "",
+          digitalMaterial: customer.digitalMaterial,
+          digitalMaterialNote: customer.digitalMaterialNote ?? "",
         }}
         region={customer.district.region}
       />

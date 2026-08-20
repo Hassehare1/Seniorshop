@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { CustomerType } from "@prisma/client";
 import { normalizePostalCode, validatePostalCode } from "@/lib/postalCode";
+import { parseAntal } from "@/lib/salesMaterial";
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -10,7 +11,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const { id: rawId } = await params;
   const body = await req.json();
-  const { name, type, contactPerson, contactRole, email, phone, address, postalCode, city, notes, active } = body;
+  const { name, type, contactPerson, contactRole, email, phone, address, postalCode, city, notes, active,
+    postersA3, postersA4, digitalMaterial, digitalMaterialNote } = body;
 
   // Tål id med svenska tecken (URL-kodning + NFC/NFD)
   let decoded = rawId;
@@ -61,6 +63,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         postalCode: normalizePostalCode(String(postalCode ?? "")) || null,
       }),
       ...(notes !== undefined && { notes }),
+      ...(postersA3 !== undefined && { postersA3: parseAntal(postersA3) }),
+      ...(postersA4 !== undefined && { postersA4: parseAntal(postersA4) }),
+      ...(digitalMaterial !== undefined && { digitalMaterial: !!digitalMaterial }),
+      ...(digitalMaterialNote !== undefined && {
+        digitalMaterialNote: String(digitalMaterialNote ?? "").trim() || null,
+      }),
       ...(active !== undefined && { active }),
     },
   });

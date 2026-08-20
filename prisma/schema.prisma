@@ -113,6 +113,17 @@ model Customer {
   // alltid tillsammans med det.
   city          String?
   notes         String?
+  // Säljmaterial som skickas till kunden inför besöket. Antal i stället för
+  // kryssruta + antal: noll betyder att formatet inte skickas, och "har fått
+  // A3" blir därmed entydigt (> 0) i stället för två fält som kan säga emot
+  // varandra. Digitalt har inget antal men däremot ett vad — därav noteringen.
+  //
+  // Fälten beskriver vad som SKA skickas, inte vad som skickades vid ett visst
+  // besök. Ändras valet gäller det nya även bakåt i analysen.
+  postersA3     Int          @default(0)
+  postersA4     Int          @default(0)
+  digitalMaterial     Boolean @default(false)
+  digitalMaterialNote String?
   active        Boolean      @default(true)
   approved      Boolean      @default(false)
   districtId    String

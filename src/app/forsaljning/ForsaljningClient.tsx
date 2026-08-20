@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { formatSEK } from "@/lib/fees";
 import { customerTypeLabels, customerTypeOptions } from "@/lib/customerTypes";
+import { materialFilterOptions, matchesMaterialFilter, type MaterialFilter } from "@/lib/salesMaterial";
 
 // En rad = ett besök (en kund en vecka). Plattas ihop server-sidan i page.tsx.
 export interface SalesRow {
@@ -16,6 +17,9 @@ export interface SalesRow {
   districtNumber: number;
   customerName: string;
   customerType: string;
+  postersA3: number;
+  postersA4: number;
+  digitalMaterial: boolean;
   numberOfCustomers: number;
   sales: number;            // ink. moms (sales + ev. fashionShowSales)
   isFashionShow: boolean;
@@ -68,6 +72,9 @@ export default function ForsaljningClient({ rows, isAdmin, defaultYear, defaultS
   // Rea kontra ordinarie. Standard är "alla" — snittkvittot ska visa allt
   // sammantaget, och den som vill jämföra väljer sida här.
   const [sale, setSale] = useState<"all" | "sale" | "regular">("all");
+  // Kundens säljmaterial. Beskriver vad som skickas i dag, inte vad som
+  // skickades inför ett enskilt besök — ändras valet gäller det även bakåt.
+  const [material, setMaterial] = useState<MaterialFilter>("all");
   const [sortKey, setSortKey] = useState<SortKey>("week");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [copied, setCopied] = useState(false);
@@ -92,6 +99,7 @@ export default function ForsaljningClient({ rows, isAdmin, defaultYear, defaultS
       (type === "all" || r.customerType === type) &&
       (status === "all" || r.status === status) &&
       (sale === "all" || (sale === "sale" ? r.isSale : !r.isSale)) &&
+      matchesMaterialFilter(r, material) &&
       (q === "" ||
         r.customerName.toLowerCase().includes(q) ||
         (customerTypeLabels[r.customerType] ?? "").toLowerCase().includes(q) ||
@@ -114,7 +122,7 @@ export default function ForsaljningClient({ rows, isAdmin, defaultYear, defaultS
       return cmp * dir;
     });
     return result;
-  }, [rows, search, year, season, district, type, status, sale, sortKey, sortDir, isAdmin]);
+  }, [rows, search, year, season, district, type, status, sale, material, sortKey, sortDir, isAdmin]);
 
   const sums = useMemo(() => filtered.reduce(
     (acc, r) => {
@@ -145,6 +153,7 @@ export default function ForsaljningClient({ rows, isAdmin, defaultYear, defaultS
     if (type !== "all") p.set("type", type);
     if (status !== "all") p.set("status", status);
     if (sale !== "all") p.set("sale", sale);
+    if (material !== "all") p.set("material", material);
     if (search.trim()) p.set("q", search.trim());
     return p;
   }
@@ -158,6 +167,7 @@ export default function ForsaljningClient({ rows, isAdmin, defaultYear, defaultS
     if (type !== "all") parts.push(customerTypeLabels[type] ?? type);
     if (status !== "all") parts.push(statusLabels[status] ?? status);
     if (sale !== "all") parts.push(sale === "sale" ? "endast rea" : "endast ordinarie");
+    if (material !== "all") parts.push(materialFilterOptions.find(o => o.value === material)?.label.toLowerCase() ?? material);
     if (search.trim()) parts.push(`sök: "${search.trim()}"`);
     return parts.join(" · ");
   }
@@ -219,6 +229,9 @@ export default function ForsaljningClient({ rows, isAdmin, defaultYear, defaultS
           <option value="all">Rea och ordinarie</option>
           <option value="sale">Endast rea</option>
           <option value="regular">Endast ordinarie</option>
+        </select>
+        <select value={material} onChange={e => setMaterial(e.target.value as MaterialFilter)} className={selectClass} aria-label="Filtrera säljmaterial">
+          {materialFilterOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
         <select value={status} onChange={e => setStatus(e.target.value)} className={selectClass} aria-label="Filtrera status">
           <option value="all">Alla statusar</option>

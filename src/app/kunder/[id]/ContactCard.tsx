@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { formatPostalCode, postalCodeDigits, validatePostalCode } from "@/lib/postalCode";
+import { materialSummary, parseAntal } from "@/lib/salesMaterial";
 
 type Values = {
   name: string;
@@ -14,6 +15,10 @@ type Values = {
   postalCode: string;
   city: string;
   notes: string;
+  postersA3: string;
+  postersA4: string;
+  digitalMaterial: boolean;
+  digitalMaterialNote: string;
 };
 
 export default function ContactCard({
@@ -162,6 +167,32 @@ export default function ContactCard({
               <textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={2} className={input} placeholder="Noteringar, öppettider, m.m." />
             </EditField>
           </div>
+
+          {/* Säljmaterial — antal styr; noll betyder att formatet inte skickas. */}
+          <div className="sm:col-span-2 border-t border-slate-200 pt-4">
+            <p className="text-sm font-semibold text-slate-700 mb-3">Säljmaterial</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <EditField label="Affischer A3">
+                <input type="number" min={0} inputMode="numeric" value={form.postersA3}
+                  onChange={e => setForm(f => ({ ...f, postersA3: e.target.value }))} className={input} placeholder="0" />
+              </EditField>
+              <EditField label="Affischer A4">
+                <input type="number" min={0} inputMode="numeric" value={form.postersA4}
+                  onChange={e => setForm(f => ({ ...f, postersA4: e.target.value }))} className={input} placeholder="0" />
+              </EditField>
+            </div>
+            <label className="flex items-center gap-2 text-sm text-slate-700 mt-4 cursor-pointer w-fit">
+              <input type="checkbox" checked={form.digitalMaterial}
+                onChange={e => setForm(f => ({ ...f, digitalMaterial: e.target.checked }))} className="rounded" />
+              Digitalt material
+            </label>
+            {form.digitalMaterial && (
+              <input type="text" value={form.digitalMaterialNote}
+                onChange={e => setForm(f => ({ ...f, digitalMaterialNote: e.target.value }))}
+                className={`${input} mt-2`} placeholder="Vad skickas digitalt? T.ex. PDF prislista" />
+            )}
+            <p className="text-xs text-slate-400 mt-2">Tomt antal betyder att inget skickas.</p>
+          </div>
         </div>
       ) : (
         <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
@@ -176,6 +207,12 @@ export default function ContactCard({
             {mailHref ? <a href={mailHref} className="text-blue-600 hover:text-blue-800 font-medium break-all">{values.email}</a> : "–"}
           </Field>
           <Field label="Adress">{values.address || "–"}</Field>
+          <Field label="Säljmaterial">{materialSummary({
+            postersA3: parseAntal(values.postersA3),
+            postersA4: parseAntal(values.postersA4),
+            digitalMaterial: values.digitalMaterial,
+            digitalMaterialNote: values.digitalMaterialNote,
+          }) || "–"}</Field>
           <Field label="Postnummer">{formatPostalCode(values.postalCode, region) || "–"}</Field>
           <Field label="Postort">{values.city || "–"}</Field>
           <div className="sm:col-span-2">
