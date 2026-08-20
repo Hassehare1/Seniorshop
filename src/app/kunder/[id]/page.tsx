@@ -95,6 +95,7 @@ export default async function CustomerCardPage({ params }: { params: Promise<{ i
           address: customer.address ?? "",
           postalCode: customer.postalCode ?? "",
           city: customer.city ?? "",
+          venue: customer.venue ?? "",
           notes: customer.notes ?? "",
           postersA3: customer.postersA3 ? String(customer.postersA3) : "",
           postersA4: customer.postersA4 ? String(customer.postersA4) : "",

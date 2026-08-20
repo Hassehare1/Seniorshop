@@ -5,7 +5,7 @@ import Link from "next/link";
 import { customerTypeLabels, customerTypeColors, customerTypeOptions } from "@/lib/customerTypes";
 import { formatPostalCode, postalCodeDigits, validatePostalCode } from "@/lib/postalCode";
 import {
-  materialFilterOptions, materialSummary, matchesMaterialFilter,
+  materialFilterOptions, materialSummary, matchesMaterialFilter, validateVenue, VENUE_MAX_LENGTH,
   type MaterialFilter,
 } from "@/lib/salesMaterial";
 import type { Customer } from "@prisma/client";
@@ -13,7 +13,7 @@ import ImportKunder from "./ImportKunder";
 
 const emptyForm = {
   name: "", type: "TRAFFPUNKTER", contactPerson: "", contactRole: "", email: "",
-  phone: "", address: "", postalCode: "", city: "", notes: "", active: true,
+  phone: "", address: "", postalCode: "", city: "", venue: "", notes: "", active: true,
   postersA3: "", postersA4: "", digitalMaterial: false, digitalMaterialNote: "",
 };
 
@@ -97,6 +97,7 @@ export default function KunderClient({ customers: initial, districtId, districtN
         Adress: c.address ?? "",
         Postnummer: formatPostalCode(c.postalCode, region),
         Postort: c.city ?? "",
+        Möteslokal: c.venue ?? "",
         Kommentar: c.notes ?? "",
         "Affischer A3": c.postersA3 || "",
         "Affischer A4": c.postersA4 || "",
@@ -130,6 +131,7 @@ export default function KunderClient({ customers: initial, districtId, districtN
       address: c.address ?? "",
       postalCode: c.postalCode ?? "",
       city: c.city ?? "",
+      venue: c.venue ?? "",
       notes: c.notes ?? "",
       postersA3: c.postersA3 ? String(c.postersA3) : "",
       postersA4: c.postersA4 ? String(c.postersA4) : "",
@@ -147,6 +149,12 @@ export default function KunderClient({ customers: initial, districtId, districtN
 
   async function handleSave() {
     if (!form.name || !form.type) return;
+
+    const venueError = validateVenue(form.venue);
+    if (venueError) {
+      setSaveError(venueError);
+      return;
+    }
 
     // Fånga fel format innan anropet — samma regel gäller på servern.
     const postalCodeError = validatePostalCode(form.postalCode, region);
@@ -356,15 +364,17 @@ export default function KunderClient({ customers: initial, districtId, districtN
               />
             </div>
             <div className="col-span-2">
-              <label className="block text-xs font-medium text-slate-600 mb-1" htmlFor={`${uid}-kommentar`}>Kommentar</label>
-              <textarea id={`${uid}-kommentar`}
-                value={form.notes}
-                onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
-                rows={2}
+              <label className="block text-xs font-medium text-slate-600 mb-1" htmlFor={`${uid}-moteslokal`}>Möteslokal</label>
+              <input id={`${uid}-moteslokal`}
+                type="text"
+                value={form.venue}
+                maxLength={VENUE_MAX_LENGTH}
+                onChange={e => setForm(f => ({ ...f, venue: e.target.value }))}
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Noteringar, öppettider, m.m."
+                placeholder="T.ex. Kuben — om besöket är någon annanstans än på adressen"
               />
             </div>
+
             {/* Säljmaterial — antal styr, noll betyder att formatet inte skickas */}
             <div className="col-span-2 border-t border-slate-200 pt-4 mt-1">
               <p className="text-xs font-semibold text-slate-600 mb-2">Säljmaterial</p>
@@ -401,6 +411,18 @@ export default function KunderClient({ customers: initial, districtId, districtN
                 />
               )}
             </div>
+
+            <div className="col-span-2">
+              <label className="block text-xs font-medium text-slate-600 mb-1" htmlFor={`${uid}-kommentar`}>Kommentar</label>
+              <textarea id={`${uid}-kommentar`}
+                value={form.notes}
+                onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
+                rows={2}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Noteringar, öppettider, m.m."
+              />
+            </div>
+
             {editingId && (
               <div className="col-span-2">
                 <button

@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { CustomerType } from "@prisma/client";
 import { normalizePostalCode, validatePostalCode } from "@/lib/postalCode";
-import { parseAntal } from "@/lib/salesMaterial";
+import { parseAntal, validateVenue } from "@/lib/salesMaterial";
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -12,7 +12,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const { id: rawId } = await params;
   const body = await req.json();
   const { name, type, contactPerson, contactRole, email, phone, address, postalCode, city, notes, active,
-    postersA3, postersA4, digitalMaterial, digitalMaterialNote } = body;
+    postersA3, postersA4, digitalMaterial, digitalMaterialNote, venue } = body;
 
   // Tål id med svenska tecken (URL-kodning + NFC/NFD)
   let decoded = rawId;
@@ -30,6 +30,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   // tomma namn, men servern är sista ordet.
   if (name !== undefined && !String(name ?? "").trim()) {
     return NextResponse.json({ error: "Namnet kan inte vara tomt." }, { status: 400 });
+  }
+
+  if (venue !== undefined) {
+    const venueError = validateVenue(String(venue ?? ""));
+    if (venueError) return NextResponse.json({ error: venueError }, { status: 400 });
   }
 
   if (type !== undefined && !Object.values(CustomerType).includes(type)) {
@@ -63,6 +68,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         postalCode: normalizePostalCode(String(postalCode ?? "")) || null,
       }),
       ...(notes !== undefined && { notes }),
+      ...(venue !== undefined && { venue: String(venue ?? "").trim() || null }),
       ...(postersA3 !== undefined && { postersA3: parseAntal(postersA3) }),
       ...(postersA4 !== undefined && { postersA4: parseAntal(postersA4) }),
       ...(digitalMaterial !== undefined && { digitalMaterial: !!digitalMaterial }),

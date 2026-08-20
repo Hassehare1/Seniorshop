@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { hasMaterial, matchesMaterialFilter, materialSummary, parseAntal } from "./salesMaterial.ts";
+import { hasMaterial, matchesMaterialFilter, materialSummary, parseAntal, validateVenue } from "./salesMaterial.ts";
 
 const tom = { postersA3: 0, postersA4: 0, digitalMaterial: false, digitalMaterialNote: null };
 const a3 = { ...tom, postersA3: 2 };
@@ -29,4 +29,12 @@ test("antal tolkas defensivt", () => {
   assert.equal(parseAntal(-4), 0);
   assert.equal(parseAntal("abc"), 0);
   assert.equal(parseAntal(2.7), 2);
+});
+
+test("möteslokalen har ett tak på 50 tecken", () => {
+  assert.equal(validateVenue("Kuben"), null);
+  assert.equal(validateVenue(""), null);
+  assert.equal(validateVenue("K".repeat(50)), null);
+  assert.equal(validateVenue("  " + "K".repeat(50) + "  "), null);
+  assert.ok(validateVenue("K".repeat(51))?.includes("50 tecken"));
 });

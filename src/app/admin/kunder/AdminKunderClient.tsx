@@ -26,6 +26,7 @@ interface Customer {
   postalCode: string | null;
   city: string | null;
   notes: string | null;
+  venue: string | null;
   postersA3: number;
   postersA4: number;
   digitalMaterial: boolean;
@@ -136,6 +137,7 @@ export default function AdminKunderClient({ customers: initial, seasons, visitMa
         Adress: c.address ?? "",
         Postnummer: formatPostalCode(c.postalCode, c.district.region) || "SAKNAS",
       Postort: c.city ?? "",
+        Möteslokal: c.venue ?? "",
         Kommentar: c.notes ?? "",
         "Affischer A3": c.postersA3 || "",
         "Affischer A4": c.postersA4 || "",

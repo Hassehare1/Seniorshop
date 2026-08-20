@@ -113,6 +113,11 @@ model Customer {
   // alltid tillsammans med det.
   city          String?
   notes         String?
+  // Möteslokalen — var besöket faktiskt äger rum. Föreningar utan egen lokal
+  // hyr in sig, och platsen stämmer då inte med adressen ovan. FT fyller i
+  // den vid bokningen. Kort fritext (VENUE_MAX_LENGTH i salesMaterial.ts),
+  // eftersom den ska rymmas på en rad i kundkortet och i utskick.
+  venue         String?
   // Säljmaterial som skickas till kunden inför besöket. Antal i stället för
   // kryssruta + antal: noll betyder att formatet inte skickas, och "har fått
   // A3" blir därmed entydigt (> 0) i stället för två fält som kan säga emot
