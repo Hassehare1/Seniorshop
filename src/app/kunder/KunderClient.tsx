@@ -4,12 +4,17 @@ import { useState, useId } from "react";
 import Link from "next/link";
 import { customerTypeLabels, customerTypeColors, customerTypeOptions } from "@/lib/customerTypes";
 import { formatPostalCode, postalCodeDigits, validatePostalCode } from "@/lib/postalCode";
+import {
+  materialFilterOptions, materialSummary, matchesMaterialFilter,
+  type MaterialFilter,
+} from "@/lib/salesMaterial";
 import type { Customer } from "@prisma/client";
 import ImportKunder from "./ImportKunder";
 
 const emptyForm = {
   name: "", type: "TRAFFPUNKTER", contactPerson: "", contactRole: "", email: "",
   phone: "", address: "", postalCode: "", city: "", notes: "", active: true,
+  postersA3: "", postersA4: "", digitalMaterial: false, digitalMaterialNote: "",
 };
 
 export type VisitMap = Record<string, Record<string, { count: number; lastWeek: number }>>;
@@ -36,6 +41,7 @@ export default function KunderClient({ customers: initial, districtId, districtN
   const [form, setForm] = useState(emptyForm);
   const [season, setSeason] = useState(defaultSeasonId);
   const [visitFilter, setVisitFilter] = useState("all");
+  const [materialFilter, setMaterialFilter] = useState<MaterialFilter>("all");
   const [exporting, setExporting] = useState(false);
 
   const visitCount = (id: string) => visitMap[id]?.[season]?.count ?? 0;
@@ -57,7 +63,8 @@ export default function KunderClient({ customers: initial, districtId, districtN
       (visitFilter === "none" && n === 0) ||
       (visitFilter === "one" && n === 1) ||
       (visitFilter === "multi" && n >= 2);
-    return matchSearch && matchVisit;
+    const matchMaterial = matchesMaterialFilter(c, materialFilter);
+    return matchSearch && matchVisit && matchMaterial;
   });
 
   const seasonStats = season
@@ -91,6 +98,9 @@ export default function KunderClient({ customers: initial, districtId, districtN
         Postnummer: formatPostalCode(c.postalCode, region),
         Postort: c.city ?? "",
         Kommentar: c.notes ?? "",
+        "Affischer A3": c.postersA3 || "",
+        "Affischer A4": c.postersA4 || "",
+        Digitalt: c.digitalMaterial ? (c.digitalMaterialNote?.trim() || "Ja") : "",
         [`Besök ${label}`]: visitCount(c.id),
         "Senaste vecka": lastWeek(c.id) || "",
         Status: c.active ? "Aktiv" : "Inaktiv",
@@ -121,6 +131,10 @@ export default function KunderClient({ customers: initial, districtId, districtN
       postalCode: c.postalCode ?? "",
       city: c.city ?? "",
       notes: c.notes ?? "",
+      postersA3: c.postersA3 ? String(c.postersA3) : "",
+      postersA4: c.postersA4 ? String(c.postersA4) : "",
+      digitalMaterial: c.digitalMaterial,
+      digitalMaterialNote: c.digitalMaterialNote ?? "",
       active: c.active,
     });
     setShowForm(false);
@@ -201,6 +215,14 @@ export default function KunderClient({ customers: initial, districtId, districtN
               <option value="none">Ej besökta</option>
               <option value="one">1 besök</option>
               <option value="multi">Återbesök (≥2)</option>
+            </select>
+            <select
+              value={materialFilter}
+              onChange={e => setMaterialFilter(e.target.value as MaterialFilter)}
+              aria-label="Filtrera säljmaterial"
+              className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            >
+              {materialFilterOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
             <button onClick={exportXlsx} disabled={exporting} className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium px-4 py-2 rounded-lg">
               {exporting ? "Exporterar…" : "Excel"}
@@ -343,6 +365,42 @@ export default function KunderClient({ customers: initial, districtId, districtN
                 placeholder="Noteringar, öppettider, m.m."
               />
             </div>
+            {/* Säljmaterial — antal styr, noll betyder att formatet inte skickas */}
+            <div className="col-span-2 border-t border-slate-200 pt-4 mt-1">
+              <p className="text-xs font-semibold text-slate-600 mb-2">Säljmaterial</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1" htmlFor={`${uid}-a3`}>Affischer A3</label>
+                  <input id={`${uid}-a3`} type="number" min={0} inputMode="numeric"
+                    value={form.postersA3}
+                    onChange={e => setForm(f => ({ ...f, postersA3: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="0"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1" htmlFor={`${uid}-a4`}>Affischer A4</label>
+                  <input id={`${uid}-a4`} type="number" min={0} inputMode="numeric"
+                    value={form.postersA4}
+                    onChange={e => setForm(f => ({ ...f, postersA4: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="0"
+                  />
+                </div>
+              </div>
+              <label className="flex items-center gap-2 text-sm text-slate-700 mt-3 cursor-pointer w-fit">
+                <input type="checkbox" checked={form.digitalMaterial}
+                  onChange={e => setForm(f => ({ ...f, digitalMaterial: e.target.checked }))} className="rounded" />
+                Digitalt material
+              </label>
+              {form.digitalMaterial && (
+                <input type="text" value={form.digitalMaterialNote}
+                  onChange={e => setForm(f => ({ ...f, digitalMaterialNote: e.target.value }))}
+                  className="w-full mt-2 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Vad skickas digitalt? T.ex. PDF prislista"
+                />
+              )}
+            </div>
             {editingId && (
               <div className="col-span-2">
                 <button
@@ -397,6 +455,7 @@ export default function KunderClient({ customers: initial, districtId, districtN
               {seasons.length > 0 && <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Besök</th>}
               <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Kontakt</th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Telefon</th>
+              <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Material</th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Kommentar</th>
               <th className="px-4 py-3"></th>
             </tr>
@@ -426,6 +485,11 @@ export default function KunderClient({ customers: initial, districtId, districtN
                   {c.contactRole && <span className="text-slate-400"> · {c.contactRole}</span>}
                 </td>
                 <td className="px-4 py-3 text-slate-600">{c.phone ?? "–"}</td>
+                <td className="px-4 py-3 whitespace-nowrap">
+                  {materialSummary(c)
+                    ? <span className="text-slate-600">{materialSummary(c)}</span>
+                    : <span className="text-amber-600" title="Inget säljmaterial inlagt">saknas</span>}
+                </td>
                 <td className="px-4 py-3 text-slate-500 max-w-xs truncate">{c.notes ?? "–"}</td>
                 <td className="px-4 py-3 text-right">
                   <button

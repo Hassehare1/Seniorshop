@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { CustomerType } from "@prisma/client";
 import { normalizePostalCode, validatePostalCode } from "@/lib/postalCode";
+import { parseAntal } from "@/lib/salesMaterial";
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -27,7 +28,8 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
-  const { name, type, contactPerson, contactRole, email, phone, address, postalCode, city, notes, districtId } = body;
+  const { name, type, contactPerson, contactRole, email, phone, address, postalCode, city, notes, districtId,
+    postersA3, postersA4, digitalMaterial, digitalMaterialNote } = body;
 
   const targetDistrictId =
     session.user.role === "ADMIN" ? districtId : session.user.districtId;
@@ -58,6 +60,10 @@ export async function POST(req: NextRequest) {
   const customer = await prisma.customer.create({
     data: {
       name, type, contactPerson, contactRole, email, phone, address, notes,
+      postersA3: parseAntal(postersA3),
+      postersA4: parseAntal(postersA4),
+      digitalMaterial: !!digitalMaterial,
+      digitalMaterialNote: String(digitalMaterialNote ?? "").trim() || null,
       postalCode: normalizePostalCode(String(postalCode ?? "")) || null,
       city: String(city ?? "").trim() || null,
       districtId: targetDistrictId,

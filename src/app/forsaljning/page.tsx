@@ -20,7 +20,7 @@ export default async function ForsaljningPage() {
       include: {
         district: { select: { number: true, name: true } },
         season: { select: { year: true, type: true } },
-        visits: { include: { customer: { select: { name: true, type: true } } } },
+        visits: { include: { customer: { select: { name: true, type: true, postersA3: true, postersA4: true, digitalMaterial: true } } } },
       },
       orderBy: { week: "asc" },
     }),
@@ -39,6 +39,10 @@ export default async function ForsaljningPage() {
       districtNumber: r.district.number,
       customerName: v.customer.name,
       customerType: v.customer.type,
+      // Materialet hör till kunden, inte besöket — se salesMaterial.ts
+      postersA3: v.customer.postersA3,
+      postersA4: v.customer.postersA4,
+      digitalMaterial: v.customer.digitalMaterial,
       numberOfCustomers: v.numberOfCustomers,
       sales: toNumber(money(v.sales).plus(v.fashionShowSales)),
       isFashionShow: v.isFashionShow,

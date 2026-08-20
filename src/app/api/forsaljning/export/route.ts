@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { matchesMaterialFilter, materialFilterOptions, materialSummary, type MaterialFilter } from "@/lib/salesMaterial";
 import { prisma } from "@/lib/prisma";
 import { customerTypeLabels as typeLabels } from "@/lib/customerTypes";
 import * as XLSX from "xlsx";
@@ -28,6 +29,7 @@ export async function GET(req: NextRequest) {
   const fStatus = searchParams.get("status") ?? "";
   // "sale" | "regular" | tomt (båda) — samma val som i vyn.
   const fSale = searchParams.get("sale") ?? "";
+  const fMaterial = (searchParams.get("material") ?? "") as MaterialFilter | "";
   const q = (searchParams.get("q") ?? "").trim().toLowerCase();
 
   // FT scopas hårt till eget distrikt; admin kan välja distrikt (annars alla)
@@ -40,7 +42,7 @@ export async function GET(req: NextRequest) {
     include: {
       district: { select: { number: true, name: true } },
       season: { select: { year: true, type: true } },
-      visits: { include: { customer: { select: { name: true, type: true } } } },
+      visits: { include: { customer: { select: { name: true, type: true, postersA3: true, postersA4: true, digitalMaterial: true, digitalMaterialNote: true } } } },
     },
     orderBy: { week: "asc" },
   });
@@ -51,6 +53,7 @@ export async function GET(req: NextRequest) {
     customerName: string; customerType: string;
     numberOfCustomers: number; sales: MoneyInput;
     isFashionShow: boolean; isHangerShow: boolean; isSale: boolean;
+    postersA3: number; postersA4: number; digitalMaterial: boolean; digitalMaterialNote: string | null;
     ftFee: MoneyInput; mfFee: MoneyInput; totalToPay: MoneyInput;
     status: string; comment: string | null;
   };
@@ -69,6 +72,10 @@ export async function GET(req: NextRequest) {
       isFashionShow: v.isFashionShow,
       isHangerShow: v.isHangerShow,
       isSale: v.isSale,
+      postersA3: v.customer.postersA3,
+      postersA4: v.customer.postersA4,
+      digitalMaterial: v.customer.digitalMaterial,
+      digitalMaterialNote: v.customer.digitalMaterialNote,
       ftFee: v.ftFee,
       mfFee: v.mfFee,
       totalToPay: v.totalToPay,
@@ -84,6 +91,7 @@ export async function GET(req: NextRequest) {
     (!fType || r.customerType === fType) &&
     (!fStatus || r.status === fStatus) &&
     (!fSale || (fSale === "sale" ? r.isSale : !r.isSale)) &&
+    (!fMaterial || matchesMaterialFilter(r, fMaterial)) &&
     (!q ||
       r.customerName.toLowerCase().includes(q) ||
       (typeLabels[r.customerType] ?? "").toLowerCase().includes(q) ||
@@ -116,6 +124,7 @@ export async function GET(req: NextRequest) {
     `Kundtyp: ${fType ? (typeLabels[fType] ?? fType) : "Alla"}`,
     `Status: ${fStatus ? (statusLabels[fStatus] ?? fStatus) : "Alla"}`,
     `Rea: ${fSale === "sale" ? "Endast rea" : fSale === "regular" ? "Endast ordinarie" : "Rea och ordinarie"}`,
+    `Säljmaterial: ${materialFilterOptions.find(o => o.value === (fMaterial || "all"))?.label ?? "Allt säljmaterial"}`,
     ...(q ? [`Sök: "${searchParams.get("q")}"`] : []),
   ];
 
@@ -124,7 +133,7 @@ export async function GET(req: NextRequest) {
     "Vecka",
     ...(isAdmin ? ["Distrikt"] : []),
     "Kund", "Typ", "Antal kunder", "Försäljning ink. moms",
-    "Modevisning", "Visning på galge", "REA",
+    "Modevisning", "Visning på galge", "REA", "Säljmaterial",
     ...(isAdmin ? ["FT-avgift ex moms", "MF-avgift ex moms"] : []), "Att betala", "Status", "Kommentar",
   ];
 
@@ -139,6 +148,7 @@ export async function GET(req: NextRequest) {
     r.isFashionShow ? "Ja" : "Nej",
     r.isHangerShow ? "Ja" : "Nej",
     r.isSale ? "Ja" : "Nej",
+    materialSummary(r),
     ...(isAdmin ? [fmt(r.ftFee), fmt(r.mfFee)] : []),
     fmt(r.totalToPay),
     statusLabels[r.status] ?? r.status,
@@ -156,7 +166,7 @@ export async function GET(req: NextRequest) {
     "",                                                 // Typ
     rows.reduce((s, r) => s + r.numberOfCustomers, 0),  // Antal kunder
     fmt(sumMoney(rows.map((r) => r.sales))),            // Försäljning
-    "", "", "",                                         // Modevisning, Galge, REA
+    "", "", "", "",                                     // Modevisning, Galge, REA, Säljmaterial
     ...(isAdmin ? [fmt(sumMoney(rows.map((r) => r.ftFee))), fmt(sumMoney(rows.map((r) => r.mfFee)))] : []),
     fmt(sumMoney(rows.map((r) => r.totalToPay))),       // Att betala
     "", "",                                             // Status, Kommentar
