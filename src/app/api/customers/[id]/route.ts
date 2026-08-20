@@ -3,7 +3,8 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { CustomerType } from "@prisma/client";
 import { normalizePostalCode, validatePostalCode } from "@/lib/postalCode";
-import { parseAntal, validateVenue } from "@/lib/salesMaterial";
+import { parseAntal } from "@/lib/salesMaterial";
+import { validateVenue } from "@/lib/venue";
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();

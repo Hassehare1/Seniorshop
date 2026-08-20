@@ -3,7 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { formatPostalCode, postalCodeDigits, validatePostalCode } from "@/lib/postalCode";
-import { materialSummary, parseAntal, validateVenue, VENUE_MAX_LENGTH } from "@/lib/salesMaterial";
+import { materialSummary, parseAntal } from "@/lib/salesMaterial";
+import { validateVenue, VENUE_MAX_LENGTH } from "@/lib/venue";
 
 type Values = {
   name: string;

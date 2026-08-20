@@ -8,7 +8,7 @@
     "build": "prisma generate && node scripts/migrate-prod-only.mjs && next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --test src/lib/fees.test.ts src/lib/postalCode.test.ts src/lib/goals.test.ts src/lib/season.test.ts src/lib/insights/aggregate.test.ts src/lib/insights/messages.test.ts src/lib/insights/compare.test.ts src/lib/importLayout.test.ts src/lib/salesMaterial.test.ts",
+    "test": "node --test \"src/**/*.test.ts\"",
     "db:migrate": "prisma migrate dev",
     "db:seed": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' prisma/seed.ts",
     "db:reset": "prisma migrate reset --force"
