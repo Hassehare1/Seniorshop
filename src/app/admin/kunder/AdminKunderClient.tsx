@@ -654,6 +654,20 @@ export default function AdminKunderClient({ customers: initial, seasons, visitMa
                   );
                 })}
 
+                {/* Namnbytet är retroaktivt och lätt att missa — samma sorts
+                    konsekvens som vid byte av kundtyp, och förklaras likadant. */}
+                {merge.preview.visitsToMove > 0 && (
+                  <div className="mt-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                    <p className="font-semibold mb-1">Namnet skrivs om bakåt i tiden</p>
+                    <p>
+                      {merge.preview.remove.name}s besök visas efteråt under namnet{" "}
+                      <strong>{merge.preview.keep.name}</strong> — även i tidigare säsonger. Det syns i
+                      Översikt, Försäljning, år-mot-år och exporter. Välj alltså det namn du vill känna
+                      igen kunden på framåt.
+                    </p>
+                  </div>
+                )}
+
                 {merge.preview.typeDiffers && (
                   <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 px-3 py-2 rounded-lg mt-3">
                     Kunderna har olika kundtyp. Den behållna kundens typ gäller efteråt, vilket flyttar
