@@ -130,7 +130,7 @@ function VisitRow({ index, visit, customers, feeRow, status, takenCustomerIds, o
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="lg:col-span-2 relative" ref={ref}>
+        <div className="col-span-2 lg:col-span-2 relative" ref={ref}>
           <label className="block text-xs font-medium text-slate-600 mb-1" htmlFor={`${uid}-kund`}>Kund</label>
           <input id={`${uid}-kund`}
             type="text"
@@ -156,7 +156,7 @@ function VisitRow({ index, visit, customers, feeRow, status, takenCustomerIds, o
                     disabled={taken}
                     title={taken ? "Redan rapporterad denna vecka — redigera den befintliga raden" : undefined}
                     onMouseDown={() => { if (!taken) selectCustomer(c.id, c.name); }}
-                    className={`w-full text-left px-3 py-2 text-sm flex justify-between items-center ${
+                    className={`w-full text-left px-3 py-2 text-sm flex justify-between items-center gap-2 ${
                       taken
                         ? "bg-amber-50 text-slate-400 cursor-not-allowed"
                         : c.id === visit.customerId
@@ -164,13 +164,13 @@ function VisitRow({ index, visit, customers, feeRow, status, takenCustomerIds, o
                           : "text-slate-700 hover:bg-blue-50"
                     }`}
                   >
-                    <span>{c.name}</span>
+                    <span className="truncate min-w-0">{c.name}</span>
                     {taken ? (
-                      <span className="text-xs text-amber-700 bg-amber-100 rounded-full px-2 py-0.5 ml-2 whitespace-nowrap">
+                      <span className="text-xs text-amber-700 bg-amber-100 rounded-full px-2 py-0.5 shrink-0 whitespace-nowrap">
                         Redan rapporterad
                       </span>
                     ) : (
-                      <span className="text-xs text-slate-400 ml-2">{customerTypeLabels[c.type]}</span>
+                      <span className="text-xs text-slate-400 shrink-0 whitespace-nowrap">{customerTypeLabels[c.type]}</span>
                     )}
                   </button>
                 );
