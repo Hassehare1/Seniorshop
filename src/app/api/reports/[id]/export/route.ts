@@ -17,7 +17,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       season: true,
       visits: {
         include: { customer: true },
-        orderBy: { createdAt: "asc" },
+        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
       },
     },
   });

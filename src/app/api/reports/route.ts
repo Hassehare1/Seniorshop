@@ -15,7 +15,7 @@ async function recomputeLaterWeeks(
   const { districtId, seasonId, week, config } = args;
   const laterReports = await tx.weeklyReport.findMany({
     where: { districtId, seasonId, week: { gt: week } },
-    include: { visits: { orderBy: { createdAt: "asc" } } },
+    include: { visits: { orderBy: [{ createdAt: "asc" }, { id: "asc" }] } },
     orderBy: { week: "asc" },
   });
   let mf = args.startingMf;

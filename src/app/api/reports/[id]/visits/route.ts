@@ -18,7 +18,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       districtId: true,
       visits: {
         include: { customer: { select: { name: true, type: true } } },
-        orderBy: { createdAt: "asc" },
+        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
       },
     },
   });
