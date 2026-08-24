@@ -734,7 +734,16 @@ export default function ReportForm({
           </div>
         )}
 
-        {!loadingVisits && visits.length === 0 && (
+        {!loadingVisits && visits.length === 0 && customers.length === 0 && (
+          <div className="p-12 text-center text-sm">
+            <p className="text-slate-500">Inga kunder registrerade i ditt distrikt än.</p>
+            <a href="/kunder" className="inline-block mt-2 text-blue-600 hover:text-blue-700 font-medium">
+              Lägg till din första kund →
+            </a>
+          </div>
+        )}
+
+        {!loadingVisits && visits.length === 0 && customers.length > 0 && (
           <div className="p-12 text-center text-slate-400 text-sm">
             Klicka &quot;Lägg till besök&quot; för att börja rapportera.
           </div>
@@ -756,7 +765,7 @@ export default function ReportForm({
           ))}
         </div>
 
-        {!isLocked && (
+        {!isLocked && customers.length > 0 && (
           <div className="p-6 border-t border-slate-100">
             <button
               type="button"
