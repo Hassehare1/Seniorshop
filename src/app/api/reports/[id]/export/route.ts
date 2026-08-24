@@ -41,9 +41,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     Kund: v.customer.name,
     Typ: v.customer.type,
     "Antal kunder": v.numberOfCustomers,
-    "Försäljning ink. moms": fmt(money(v.sales).plus(v.fashionShowSales)),
+    "Försäljning ink. moms": fmt(v.sales),
     Modevisning: v.isFashionShow ? "Ja" : "Nej",
-    "Modevisning försäljning": v.isFashionShow ? fmt(v.fashionShowSales) : "",
     "Visning på galge": v.isHangerShow ? "Ja" : "Nej",
     ...(showMf && { "FT-avgift ex moms": fmt(v.ftFee) }),
     ...(showMf && { "MF-avgift ex moms": fmt(v.mfFee) }),
@@ -55,9 +54,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     Kund: "SUMMA",
     Typ: "",
     "Antal kunder": report.visits.reduce((s, v) => s + v.numberOfCustomers, 0),
-    "Försäljning ink. moms": fmt(sumMoney(report.visits.flatMap((v) => [v.sales, v.fashionShowSales]))),
+    "Försäljning ink. moms": fmt(sumMoney(report.visits.map((v) => v.sales))),
     Modevisning: "",
-    "Modevisning försäljning": "",
     "Visning på galge": "",
     ...(showMf && { "FT-avgift ex moms": fmt(sumMoney(report.visits.map((v) => v.ftFee))) }),
     ...(showMf && { "MF-avgift ex moms": fmt(sumMoney(report.visits.map((v) => v.mfFee))) }),
@@ -70,7 +68,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   ws["!cols"] = [
     { wch: 30 }, { wch: 14 }, { wch: 14 }, { wch: 24 },
-    { wch: 12 }, { wch: 24 }, { wch: 16 }, { wch: 20 },
+    { wch: 12 }, { wch: 16 }, { wch: 20 },
     ...(showMf ? [{ wch: 20 }] : []), { wch: 20 }, { wch: 30 },
   ];
 

@@ -68,7 +68,7 @@ export async function GET(req: NextRequest) {
       customerName: v.customer.name,
       customerType: v.customer.type,
       numberOfCustomers: v.numberOfCustomers,
-      sales: money(v.sales).plus(v.fashionShowSales),
+      sales: money(v.sales),
       isFashionShow: v.isFashionShow,
       isHangerShow: v.isHangerShow,
       isSale: v.isSale,

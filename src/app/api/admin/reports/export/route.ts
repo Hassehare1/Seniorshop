@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
         visit.customer.name,
         typeLabels[visit.customer.type] ?? visit.customer.type,
         visit.numberOfCustomers,
-        fmtSEK(money(visit.sales).plus(visit.fashionShowSales)),
+        fmtSEK(visit.sales),
         fmtSEK(visit.ftFee),
         fmtSEK(visit.mfFee),
         fmtSEK(visit.totalToPay),

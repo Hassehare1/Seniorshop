@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { money, toNumber, type MoneyInput } from "@/lib/fees";
+import { toNumber, type MoneyInput } from "@/lib/fees";
 import type { ReportInput } from "./aggregate";
 
 /**
@@ -40,7 +40,6 @@ export function loadSeasonReports(scope: SeasonScope) {
 type RawVisit = {
   customer: { type: string };
   sales: MoneyInput;
-  fashionShowSales: MoneyInput;
   ftFee: MoneyInput;
   mfFee: MoneyInput;
   numberOfCustomers: number;
@@ -55,11 +54,8 @@ type RawReport = {
 };
 
 /**
- * Databasrader → aggregeringens indata.
- *
- * Beloppen görs om från Decimal till tal här, ett besök i taget. Modevisnings-
- * försäljningen läggs till den vanliga; fältet är i praktiken alltid noll men
- * summeras för säkerhets skull, precis som förut.
+ * Databasrader → aggregeringens indata. Beloppen görs om från Decimal till
+ * tal här, ett besök i taget.
  */
 export function toAggregateInput(reports: RawReport[]): ReportInput[] {
   return reports.map(r => ({
@@ -69,7 +65,7 @@ export function toAggregateInput(reports: RawReport[]): ReportInput[] {
     districtName: r.district.name,
     visits: r.visits.map(v => ({
       customerType: v.customer.type,
-      sales: toNumber(money(v.sales).plus(v.fashionShowSales)),
+      sales: toNumber(v.sales),
       ftFee: toNumber(v.ftFee),
       mfFee: toNumber(v.mfFee),
       numberOfCustomers: v.numberOfCustomers,

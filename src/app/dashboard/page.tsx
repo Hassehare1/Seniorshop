@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { customerTypeLabels, customerTypeChartColors } from "@/lib/customerTypes";
-import { money, sumMoney, toNumber } from "@/lib/fees";
+import { sumMoney, toNumber } from "@/lib/fees";
 import WeeklyReportList from "./WeeklyReportList";
 import ReportNudge from "./ReportNudge";
 import GoalTracker from "./GoalTracker";
@@ -97,7 +97,7 @@ export default async function DashboardPage({
       status: r.status,
       districtNumber: r.district.number,
       districtName: r.district.name,
-      totalSales: toNumber(sumMoney(r.visits.flatMap(v => [v.sales, v.fashionShowSales]))),
+      totalSales: toNumber(sumMoney(r.visits.map(v => v.sales))),
       totalToPay: toNumber(sumMoney(r.visits.map(v => v.totalToPay))),
       totalCustomers: r.visits.reduce((s, v) => s + v.numberOfCustomers, 0),
       visitCount: r.visits.length,
@@ -109,7 +109,7 @@ export default async function DashboardPage({
           customerName: v.customer.name,
           customerType: v.customer.type,
           numberOfCustomers: v.numberOfCustomers,
-          sales: toNumber(money(v.sales).plus(v.fashionShowSales)),
+          sales: toNumber(v.sales),
           isFashionShow: v.isFashionShow,
           isHangerShow: v.isHangerShow,
           ...(isAdmin && { ftFee: toNumber(v.ftFee), mfFee: toNumber(v.mfFee) }),
@@ -193,12 +193,12 @@ export default async function DashboardPage({
   if (prevSeasonRec) {
     const prevReports = await prisma.weeklyReport.findMany({
       where: { seasonId: prevSeasonRec.id, ...(selectedDistrictId ? { districtId: selectedDistrictId } : {}) },
-      include: { visits: { select: { sales: true, fashionShowSales: true } } },
+      include: { visits: { select: { sales: true } } },
     });
     if (prevReports.length > 0) {
       const byWeek = new Map<number, number>();
       for (const r of prevReports) {
-        const s = toNumber(sumMoney(r.visits.flatMap(v => [v.sales, v.fashionShowSales])));
+        const s = toNumber(sumMoney(r.visits.map(v => v.sales)));
         byWeek.set(r.week, (byWeek.get(r.week) ?? 0) + s);
       }
       prevSeason = {
@@ -228,7 +228,7 @@ export default async function DashboardPage({
     if (relevantIds.length > 0) {
       const fyReports = await prisma.weeklyReport.findMany({
         where: { seasonId: { in: relevantIds }, ...(selectedDistrictId ? { districtId: selectedDistrictId } : {}) },
-        include: { visits: { select: { sales: true, fashionShowSales: true, customerId: true, customer: { select: { active: true } } } } },
+        include: { visits: { select: { sales: true, customerId: true, customer: { select: { active: true } } } } },
       });
       // Aktiva kunder i urvalet — nämnare för "X av Y besökta". Approval-state
       // används inte: en oapprovad kund ska inte kunna dölja täckningsgraden.
@@ -245,7 +245,7 @@ export default async function DashboardPage({
         if (!meta) continue;
         const slot = meta.type === "VAR" ? 0 : 1;
         for (const v of r.visits) {
-          const sale = toNumber(money(v.sales).plus(v.fashionShowSales));
+          const sale = toNumber(v.sales);
           if (meta.year === fyYear) {
             thisYear[slot].set(v.customerId, (thisYear[slot].get(v.customerId) ?? 0) + sale);
           } else {

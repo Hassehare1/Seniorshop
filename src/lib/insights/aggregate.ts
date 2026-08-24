@@ -11,7 +11,7 @@
 /** Ett besök, tillplattat till det aggregeringen behöver. */
 export type VisitInput = {
   customerType: string;
-  /** Försäljning ink. moms — sales + fashionShowSales, redan hopslaget. */
+  /** Försäljning ink. moms. */
   sales: number;
   ftFee: number;
   mfFee: number;

@@ -21,7 +21,7 @@ async function recomputeLaterWeeks(
   let mf = args.startingMf;
   for (const r of laterReports) {
     for (const v of r.visits) {
-      const fees = calculateFees(money(v.sales).plus(v.fashionShowSales), mf, config);
+      const fees = calculateFees(money(v.sales), mf, config);
       mf = fees.mfFeeAccumulated;
       // Exakt jämförelse på Decimal — med flyttal gav minsta öresdrift
       // falska missmatchningar och en onödig skrivning per besök.
@@ -144,8 +144,7 @@ export async function POST(req: NextRequest) {
     }
     const num = Number(v.numberOfCustomers);
     const sales = Number(v.sales);
-    const fashion = Number(v.fashionShowSales ?? 0);
-    if (!Number.isFinite(num) || num < 0 || !Number.isFinite(sales) || sales < 0 || !Number.isFinite(fashion) || fashion < 0) {
+    if (!Number.isFinite(num) || num < 0 || !Number.isFinite(sales) || sales < 0) {
       return NextResponse.json({ error: "Ogiltiga värden i ett besök." }, { status: 400 });
     }
   }
@@ -185,8 +184,7 @@ export async function POST(req: NextRequest) {
       // Beloppen är redan validerade ovan; money() bevarar dem exakt hela vägen
       // till lagringen (Decimal), utan flyttalssteg.
       const sales = money(String(v.sales));
-      const fashionShowSales = money(String(v.fashionShowSales ?? 0));
-      const fees = calculateFees(sales.plus(fashionShowSales), runningMf, config);
+      const fees = calculateFees(sales, runningMf, config);
       runningMf = fees.mfFeeAccumulated;
       // Antingen-eller: ett besök kan inte vara både modevisning och galge.
       // UI:t spärrar det, men vi håller invarianten även här (modevisning vinner)
@@ -198,7 +196,6 @@ export async function POST(req: NextRequest) {
         numberOfCustomers: Number(v.numberOfCustomers),
         sales,
         isFashionShow,
-        fashionShowSales,
         isHangerShow,
         // REA är ortogonal mot visningstypen — inget ömsesidigt uteslutande här.
         isSale: !!v.isSale,

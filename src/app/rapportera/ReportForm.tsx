@@ -20,7 +20,6 @@ interface VisitRow {
   numberOfCustomers: number;
   sales: number;
   isFashionShow: boolean;
-  fashionShowSales: number;
   isHangerShow: boolean;
   isSale: boolean;
   comment: string;
@@ -368,7 +367,6 @@ export default function ReportForm({
             numberOfCustomers: v.numberOfCustomers,
             sales: v.sales,
             isFashionShow: v.isFashionShow,
-            fashionShowSales: v.fashionShowSales,
             isHangerShow: v.isHangerShow,
             isSale: v.isSale,
             comment: v.comment ?? "",
@@ -455,7 +453,6 @@ export default function ReportForm({
           numberOfCustomers: 0,
           sales: 0,
           isFashionShow: false,
-          fashionShowSales: 0,
           isHangerShow: false,
           isSale: false,
           comment: "",
@@ -492,7 +489,7 @@ export default function ReportForm({
   // så förhandsvisningen visar exakt det som sedan lagras.
   let runningMf = money(mfAccumulated);
   const feeRows = visits.map((v) => {
-    const fees = calculateFees(money(v.sales).plus(v.fashionShowSales), runningMf, feeConfig as FeeConfig);
+    const fees = calculateFees(money(v.sales), runningMf, feeConfig as FeeConfig);
     runningMf = fees.mfFeeAccumulated;
     return fees;
   });
@@ -506,7 +503,6 @@ export default function ReportForm({
     const same =
       saved.numberOfCustomers === v.numberOfCustomers &&
       Number(saved.sales) === Number(v.sales) &&
-      Number(saved.fashionShowSales) === Number(v.fashionShowSales) &&
       saved.isFashionShow === v.isFashionShow &&
       saved.isHangerShow === v.isHangerShow &&
       saved.isSale === v.isSale &&
@@ -514,10 +510,10 @@ export default function ReportForm({
     return same ? "saved" : "changed";
   }
 
-  const savedTotal = sumMoney(savedVisits.flatMap(v => [v.sales, v.fashionShowSales]));
+  const savedTotal = sumMoney(savedVisits.map(v => v.sales));
 
   const totals = {
-    sales: sumMoney(visits.flatMap((v) => [v.sales, v.fashionShowSales])),
+    sales: sumMoney(visits.map((v) => v.sales)),
     ftFee: sumMoney(feeRows.map((f) => f.ftFee)),
     mfFee: sumMoney(feeRows.map((f) => f.mfFee)),
     totalToPay: sumMoney(feeRows.map((f) => f.totalToPay)),

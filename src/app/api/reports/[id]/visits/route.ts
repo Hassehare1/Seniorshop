@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { money, toNumber } from "@/lib/fees";
+import { toNumber } from "@/lib/fees";
 
 // Besöksraderna för EN veckorapport. Översikten hämtar dem först när en rad
 // fälls ut, så att admins "alla distrikt"-vy slipper skicka varenda besök i
@@ -35,7 +35,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     customerName: v.customer.name,
     customerType: v.customer.type,
     numberOfCustomers: v.numberOfCustomers,
-    sales: toNumber(money(v.sales).plus(v.fashionShowSales)),
+    sales: toNumber(v.sales),
     isFashionShow: v.isFashionShow,
     isHangerShow: v.isHangerShow,
     ...(isAdmin && { ftFee: toNumber(v.ftFee), mfFee: toNumber(v.mfFee) }),

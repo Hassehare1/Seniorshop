@@ -238,7 +238,6 @@ export async function POST(req: NextRequest) {
             numberOfCustomers: p.numberOfCustomers,
             sales: p.sales,
             isFashionShow: p.isFashionShow,
-            fashionShowSales: 0,
             isHangerShow: false,
             ftFee: fees.ftFee,
             mfFee: fees.mfFee,

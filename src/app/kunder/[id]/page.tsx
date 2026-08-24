@@ -35,13 +35,13 @@ export default async function CustomerCardPage({ params }: { params: Promise<{ i
   if (!isAdmin && session.user.districtId !== customer.districtId) redirect("/kunder");
 
   const visits = customer.visits;
-  const totalSales = toNumber(sumMoney(visits.flatMap(v => [v.sales, v.fashionShowSales])));
+  const totalSales = toNumber(sumMoney(visits.map(v => v.sales)));
   const totalCustomers = visits.reduce((s, v) => s + v.numberOfCustomers, 0);
   const besok = visits.length;
   const snittkvitto = totalCustomers > 0 ? totalSales / totalCustomers : null;
 
   const latest = visits[0] ?? null;
-  const latestSale = latest ? toNumber(money(latest.sales).plus(latest.fashionShowSales)) : null;
+  const latestSale = latest ? toNumber(latest.sales) : null;
   const latestLabel = latest
     ? `${latest.report.season.type === "VAR" ? "Vår" : "Höst"} ${latest.report.season.year} · v${latest.report.week}`
     : null;

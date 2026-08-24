@@ -198,7 +198,6 @@ model Visit {
   // Belopp i kronor med öresprecision — aldrig Float (se src/lib/fees.ts).
   sales             Decimal      @default(0) @db.Decimal(12, 2)
   isFashionShow     Boolean      @default(false)
-  fashionShowSales  Decimal      @default(0) @db.Decimal(12, 2)
   isHangerShow      Boolean      @default(false)
   // REA-besök. Fristående från visningstypen ovan — ett reabesök kan vara
   // antingen modevisning eller galge. FT återvänder till sina bästa ställen

@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { getCurrentWeekAndYear } from "@/lib/week";
 import ForsaljningClient, { type SalesRow } from "./ForsaljningClient";
-import { money, toNumber } from "@/lib/fees";
+import { toNumber } from "@/lib/fees";
 
 export default async function ForsaljningPage() {
   const session = await auth();
@@ -44,7 +44,7 @@ export default async function ForsaljningPage() {
       postersA4: v.customer.postersA4,
       digitalMaterial: v.customer.digitalMaterial,
       numberOfCustomers: v.numberOfCustomers,
-      sales: toNumber(money(v.sales).plus(v.fashionShowSales)),
+      sales: toNumber(v.sales),
       isFashionShow: v.isFashionShow,
       isHangerShow: v.isHangerShow,
       isSale: v.isSale,

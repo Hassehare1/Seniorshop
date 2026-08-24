@@ -21,7 +21,7 @@ export interface SalesRow {
   postersA4: number;
   digitalMaterial: boolean;
   numberOfCustomers: number;
-  sales: number;            // ink. moms (sales + ev. fashionShowSales)
+  sales: number;            // ink. moms
   isFashionShow: boolean;
   isHangerShow: boolean;
   isSale: boolean;
