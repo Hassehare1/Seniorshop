@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatSEK as fmt } from "@/lib/fees";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 interface Report {
   id: string;
@@ -48,14 +49,9 @@ export default function AdminRapporterClient({
   const [working, setWorking] = useState<string | null>(null);
   const [bulkWorking, setBulkWorking] = useState(false);
   const [message, setMessage] = useState("");
+  const [confirmState, setConfirmState] = useState<{ message: string; onConfirm: () => void } | null>(null);
 
-  async function setStatus(reportId: string, status: string, currentStatus?: string) {
-    // Bekräfta innan en redan godkänd rapport låses upp (FT kan då ändra den)
-    if (status === "DRAFT" && currentStatus === "APPROVED") {
-      if (!confirm("Låsa upp en redan GODKÄND rapport? Franchisetagaren kan då ändra den igen.")) {
-        return;
-      }
-    }
+  async function applyStatus(reportId: string, status: string) {
     setWorking(reportId);
     setMessage("");
     const res = await fetch(`/api/reports/${reportId}/status`, {
@@ -72,10 +68,19 @@ export default function AdminRapporterClient({
     setWorking(null);
   }
 
-  async function bulkApprove() {
-    const count = districts.flatMap(d => d.reports).filter(r => r.status === "SUBMITTED").length;
-    if (!count) { setMessage("Inga inlämnade rapporter att godkänna."); return; }
-    if (!confirm(`Godkänn alla ${count} inlämnade rapporter för ${seasonLabel}?`)) return;
+  function setStatus(reportId: string, status: string, currentStatus?: string) {
+    // Bekräfta innan en redan godkänd rapport låses upp (FT kan då ändra den)
+    if (status === "DRAFT" && currentStatus === "APPROVED") {
+      setConfirmState({
+        message: "Låsa upp en redan GODKÄND rapport? Franchisetagaren kan då ändra den igen.",
+        onConfirm: () => { setConfirmState(null); applyStatus(reportId, status); },
+      });
+      return;
+    }
+    applyStatus(reportId, status);
+  }
+
+  async function applyBulkApprove() {
     setBulkWorking(true);
     setMessage("");
     const res = await fetch("/api/admin/reports/bulk-approve", {
@@ -92,6 +97,15 @@ export default function AdminRapporterClient({
       setMessage(`✓ ${approved} rapporter godkändes.`);
     }
     setBulkWorking(false);
+  }
+
+  function bulkApprove() {
+    const count = districts.flatMap(d => d.reports).filter(r => r.status === "SUBMITTED").length;
+    if (!count) { setMessage("Inga inlämnade rapporter att godkänna."); return; }
+    setConfirmState({
+      message: `Godkänn alla ${count} inlämnade rapporter för ${seasonLabel}?`,
+      onConfirm: () => { setConfirmState(null); applyBulkApprove(); },
+    });
   }
 
   const submittedCount = districts.flatMap(d => d.reports).filter(r => r.status === "SUBMITTED").length;
@@ -234,6 +248,13 @@ export default function AdminRapporterClient({
         <span className="flex items-center gap-1.5"><span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 text-xs">Utkast</span> Ej låst av FT</span>
         <span className="flex items-center gap-1.5"><span className="inline-flex w-4 h-4 rounded-full bg-red-100 text-red-500 text-xs items-center justify-center">✗</span> Ej rapporterad (passerad vecka)</span>
       </div>
+
+      <ConfirmDialog
+        open={!!confirmState}
+        message={confirmState?.message ?? ""}
+        onConfirm={() => confirmState?.onConfirm()}
+        onCancel={() => setConfirmState(null)}
+      />
     </div>
   );
 }
