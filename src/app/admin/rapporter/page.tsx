@@ -63,6 +63,12 @@ export default async function AdminRapporterPage({
 
   return (
     <AdminRapporterClient
+      // Klienten lägger districts i useState, som bara läser propen vid
+      // montering. Säsongsbytet är en mjuk navigering (router.push), så utan
+      // key behåller rutnätet förra säsongens rapporter medan rubrik och
+      // veckokolumner byts — veckor med data såg ut att sakna rapport helt.
+      // Samma lösning som ReportForm, se rapportera/page.tsx.
+      key={currentSeason.id}
       districts={districtsForClient}
       weeks={weeks}
       currentWeek={currentWeek}
