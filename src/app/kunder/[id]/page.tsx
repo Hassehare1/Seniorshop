@@ -2,7 +2,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
-import { formatSEK, money, sumMoney, toNumber } from "@/lib/fees";
+import { formatSEK, sumMoney, toNumber } from "@/lib/fees";
 import { customerTypeLabels, customerTypeColors } from "@/lib/customerTypes";
 import PrintButton from "./PrintButton";
 import ContactCard from "./ContactCard";
