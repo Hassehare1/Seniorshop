@@ -30,6 +30,12 @@ export default function DistriktClient({ districts: initial }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [feeForm, setFeeForm] = useState<FeeConfig>({ ...STANDARD_FEE_CONFIG });
   const [saving, setSaving] = useState(false);
+  // Namnredigering är fristående från avgiftsformuläret — ett enda fält,
+  // direkt i tabellraden, i stället för ett eget formulärpanel.
+  const [editingNameId, setEditingNameId] = useState<string | null>(null);
+  const [nameForm, setNameForm] = useState("");
+  const [nameSaving, setNameSaving] = useState(false);
+  const [nameError, setNameError] = useState("");
   const [showNewForm, setShowNewForm] = useState(false);
   const [newForm, setNewForm] = useState({ number: "", name: "", region: "SE" });
   const [newError, setNewError] = useState("");
@@ -56,6 +62,34 @@ export default function DistriktClient({ districts: initial }: Props) {
       setEditingId(null);
     }
     setSaving(false);
+  }
+
+  function startEditName(d: District) {
+    setEditingNameId(d.id);
+    setNameForm(d.name);
+    setNameError("");
+  }
+
+  async function saveName() {
+    if (!editingNameId) return;
+    const trimmed = nameForm.trim();
+    if (!trimmed) { setNameError("Namn krävs."); return; }
+    setNameSaving(true);
+    setNameError("");
+    const res = await fetch(`/api/admin/districts/${editingNameId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: trimmed }),
+    });
+    if (res.ok) {
+      const updated = await res.json();
+      setDistricts(prev => prev.map(d => (d.id === editingNameId ? { ...d, name: updated.name } : d)));
+      setEditingNameId(null);
+    } else {
+      const { error } = await res.json().catch(() => ({ error: "Kunde inte spara namnet." }));
+      setNameError(error);
+    }
+    setNameSaving(false);
   }
 
   async function saveNewDistrict() {
@@ -237,7 +271,51 @@ export default function DistriktClient({ districts: initial }: Props) {
             {districts.map(d => (
               <tr key={d.id} className="hover:bg-slate-50">
                 <td className="px-4 py-3 font-medium text-slate-800">{d.number}</td>
-                <td className="px-4 py-3 text-slate-700">{d.name}</td>
+                <td className="px-4 py-3 text-slate-700">
+                  {editingNameId === d.id ? (
+                    <form
+                      onSubmit={e => { e.preventDefault(); saveName(); }}
+                      className="flex items-center gap-1.5"
+                    >
+                      <input
+                        type="text"
+                        value={nameForm}
+                        onChange={e => setNameForm(e.target.value)}
+                        autoFocus
+                        className="w-36 px-2 py-1 border border-blue-400 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      <button
+                        type="submit"
+                        disabled={nameSaving}
+                        title="Spara"
+                        className="text-green-600 hover:text-green-800 disabled:text-slate-300 p-1"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditingNameId(null)}
+                        title="Avbryt"
+                        className="text-slate-400 hover:text-slate-600 p-1"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                      {nameError && <span className="text-xs text-red-600">{nameError}</span>}
+                    </form>
+                  ) : (
+                    <button
+                      onClick={() => startEditName(d)}
+                      title="Ändra namn"
+                      className="hover:text-blue-700 hover:underline decoration-dotted underline-offset-2 text-left"
+                    >
+                      {d.name}
+                    </button>
+                  )}
+                </td>
                 <td className="px-4 py-3">
                   <span className="inline-block px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-xs">{d.region}</span>
                 </td>
