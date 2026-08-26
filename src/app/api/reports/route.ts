@@ -3,7 +3,7 @@ import type { Prisma } from "@prisma/client";
 import type Decimal from "decimal.js";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { calculateFees, money, sumMoney, STANDARD_FEE_CONFIG, type FeeConfig } from "@/lib/fees";
+import { calculateFees, money, sumMoney, toNumber, STANDARD_FEE_CONFIG, type FeeConfig } from "@/lib/fees";
 
 // MF-taket ackumuleras över säsongens veckor, så veckor EFTER den ändrade
 // måste räknas om — både när en vecka sparas och när den tas bort.
@@ -244,19 +244,58 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url);
   const seasonId = searchParams.get("seasonId");
-  const districtId =
-    session.user.role === "ADMIN"
-      ? searchParams.get("districtId") || undefined
-      : session.user.districtId ?? undefined;
+  const isAdmin = session.user.role === "ADMIN";
+  const districtId = isAdmin
+    ? searchParams.get("districtId") || undefined
+    : session.user.districtId ?? undefined;
 
   const reports = await prisma.weeklyReport.findMany({
     where: {
       ...(seasonId ? { seasonId } : {}),
       ...(districtId ? { districtId } : {}),
     },
-    include: { visits: { include: { customer: true } }, district: true },
+    select: {
+      id: true,
+      week: true,
+      status: true,
+      districtId: true,
+      district: { select: { number: true, name: true } },
+      visits: {
+        select: {
+          id: true,
+          customerId: true,
+          numberOfCustomers: true,
+          sales: true,
+          isFashionShow: true,
+          isHangerShow: true,
+          isSale: true,
+          comment: true,
+          totalToPay: true,
+          ftFee: true,
+          mfFee: true,
+        },
+      },
+    },
     orderBy: { week: "asc" },
   });
 
-  return NextResponse.json(reports);
+  // FT- och MF-avgift utelämnas för FT, samma regel som exportrouten och
+  // reports/[id]/visits följer — FT ska aldrig se sin egen avgift.
+  return NextResponse.json(
+    reports.map(r => ({
+      ...r,
+      visits: r.visits.map(v => ({
+        id: v.id,
+        customerId: v.customerId,
+        numberOfCustomers: v.numberOfCustomers,
+        sales: toNumber(v.sales),
+        isFashionShow: v.isFashionShow,
+        isHangerShow: v.isHangerShow,
+        isSale: v.isSale,
+        comment: v.comment,
+        totalToPay: toNumber(v.totalToPay),
+        ...(isAdmin && { ftFee: toNumber(v.ftFee), mfFee: toNumber(v.mfFee) }),
+      })),
+    })),
+  );
 }
