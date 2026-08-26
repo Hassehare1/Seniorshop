@@ -28,6 +28,7 @@ const adminNav = [
   { href: "/admin/logg", label: "Händelselogg" },
   // Försök som ännu inte nått FT
   { href: "/admin/assistent", label: "Fråga portalen", section: "Labb" },
+  { href: "/admin/labb/kunder-utan-besok", label: "Kunder utan besök" },
   { href: "/spel", label: "Modevisningsbingo" },
 ];
 
