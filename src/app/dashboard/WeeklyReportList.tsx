@@ -14,6 +14,9 @@ type Visit = {
 
 type ReportRow = {
   id: string; week: number; status: string;
+  // Egen säsong per rad, inte sidans — ett helår blandar Vår- och Höst-veckor,
+  // och redigeringslänken måste peka på den riktiga säsongen veckan hör till.
+  seasonId: string;
   districtNumber: number; districtName: string;
   totalSales: number; totalToPay: number; totalCustomers: number;
   visitCount: number;
@@ -28,13 +31,12 @@ type Hamtning =
 
 interface Props {
   reports: ReportRow[];
-  seasonId: string;
   showEditLink?: boolean;
   showDistrict?: boolean;
   showMf?: boolean; // MF-avgiften visas bara för admin
 }
 
-export default function WeeklyReportList({ reports, seasonId, showEditLink, showDistrict, showMf = false }: Props) {
+export default function WeeklyReportList({ reports, showEditLink, showDistrict, showMf = false }: Props) {
   const [open, setOpen] = useState<Set<string>>(new Set());
   const [hamtade, setHamtade] = useState<Record<string, Hamtning>>({});
 
@@ -91,7 +93,7 @@ export default function WeeklyReportList({ reports, seasonId, showEditLink, show
       <div className="divide-y divide-slate-100">
         {reports.map(r => {
           const isOpen = open.has(r.id);
-          const editHref = `/rapportera?week=${r.week}&season=${seasonId}`;
+          const editHref = `/rapportera?week=${r.week}&season=${r.seasonId}`;
           // Besöken kommer antingen med sidan eller hämtas vid expand.
           const hamtning: Hamtning | undefined = r.visits
             ? { status: "klar", visits: r.visits }

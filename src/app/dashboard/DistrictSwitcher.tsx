@@ -12,6 +12,9 @@ export default function DistrictSwitcher({ districts, currentId, seasonId }: Pro
   const router = useRouter();
 
   function navigate(districtId: string) {
+    // Kom ihåg valet till nästa besök — bara på den här enheten, ingen server inblandad.
+    // Tomt värde (Alla distrikt) sparas också, annars vore "Alla" omöjligt att komma ihåg.
+    document.cookie = `seniorshop_district=${districtId}; path=/; max-age=31536000; SameSite=Lax`;
     const params = new URLSearchParams();
     if (seasonId) params.set("season", seasonId);
     if (districtId) params.set("district", districtId);

@@ -7,7 +7,8 @@ import type { ReportInput } from "./aggregate";
  * Utan distrikt omfattas alla — det är admins vy över hela landet.
  */
 export type SeasonScope = {
-  seasonId: string;
+  /** En säsong, eller flera för att slå ihop dem (t.ex. Vår+Höst till ett helår). */
+  seasonId: string | string[];
   /** Utelämnas eller null = alla distrikt. */
   districtId?: string | null;
 };
@@ -25,7 +26,7 @@ export type SeasonScope = {
 export function loadSeasonReports(scope: SeasonScope) {
   return prisma.weeklyReport.findMany({
     where: {
-      seasonId: scope.seasonId,
+      seasonId: Array.isArray(scope.seasonId) ? { in: scope.seasonId } : scope.seasonId,
       ...(scope.districtId ? { districtId: scope.districtId } : {}),
     },
     include: {

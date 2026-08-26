@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { cookies } from "next/headers";
 import { customerTypeLabels, customerTypeChartColors } from "@/lib/customerTypes";
 import { sumMoney, toNumber } from "@/lib/fees";
 import WeeklyReportList from "./WeeklyReportList";
@@ -11,6 +12,7 @@ import ShowTypeAnalytics, { type ShowTypeItem } from "./ShowTypeAnalytics";
 import SeasonSwitcher from "./SeasonSwitcher";
 import DistrictSwitcher from "./DistrictSwitcher";
 import ForecastCard, { type ForecastData, type ForecastSeason, type SeasonStatus } from "./ForecastCard";
+import { resolveOverviewPeriod, type SeasonRow } from "@/lib/season";
 import {
   TYPE_KEYS,
   aggregateByDistrict,
@@ -33,6 +35,20 @@ function isoWeekMonday(year: number, week: number): Date {
   return monday;
 }
 
+// Fjolårets motsvarighet till den valda perioden — samma säsongstyp ett år
+// tidigare, eller (för helår) båda det årets säsonger. Egen funktion eftersom
+// den används både för år-mot-år-kurvan här och skulle annars upprepas.
+function findPrevSeasonIds(
+  period: ReturnType<typeof resolveOverviewPeriod>,
+  allSeasons: SeasonRow[],
+): string[] {
+  if (!period) return [];
+  if (period.kind === "season") {
+    const prev = allSeasons.find(s => s.type === period.type && s.year === period.year - 1);
+    return prev ? [prev.id] : [];
+  }
+  return allSeasons.filter(s => s.year === period.year - 1).map(s => s.id);
+}
 
 export default async function DashboardPage({
   searchParams,
@@ -42,25 +58,33 @@ export default async function DashboardPage({
   const session = await auth();
   const isAdmin = session?.user?.role === "ADMIN";
   const { season: seasonParam, district: districtParam } = await searchParams;
+  const cookieStore = await cookies();
 
   const allSeasons = await prisma.season.findMany({
     orderBy: [{ year: "desc" }, { type: "desc" }],
   });
 
-  const currentSeason = seasonParam
-    ? allSeasons.find(s => s.id === seasonParam) ?? allSeasons[0]
-    : allSeasons[0];
+  // Uttrycklig period i URL:en väger tyngst, därefter det ihågkomna valet
+  // (kakan väljaren satte senast), annars nyaste säsongen. "Helår" (helar:2026)
+  // är inget som lagras — det slår ihop Vår och Höst av samma år, se lib/season.
+  const period = resolveOverviewPeriod(allSeasons, seasonParam, cookieStore.get("seniorshop_season")?.value);
+  const seasonLabel = period?.label ?? "–";
+  const periodValue = period ? (period.kind === "season" ? period.id : `helar:${period.year}`) : "";
 
   // Admin kan filtrera per distrikt
   const allDistricts = isAdmin
     ? await prisma.district.findMany({ orderBy: { number: "asc" }, select: { id: true, number: true, name: true } })
     : [];
   const selectedDistrictId = isAdmin
-    ? (districtParam ?? null)
+    ? (districtParam ?? cookieStore.get("seniorshop_district")?.value ?? null)
     : (session?.user?.districtId ?? null);
 
   type ReportRow = {
     id: string; week: number; status: string;
+    // Vilken riktig säsong veckan hör till — ett helår blandar Vår och Höst,
+    // så redigeringslänken (i WeeklyReportList) kan inte utgå från en enda
+    // säsong för hela listan.
+    seasonId: string;
     districtNumber: number; districtName: string;
     totalSales: number; totalToPay: number; totalCustomers: number;
     visitCount: number;
@@ -82,19 +106,21 @@ export default async function DashboardPage({
   // Admin utan valt distrikt → bryt ned per distrikt i stället för kundtyp
   const showDistrictBreakdown = isAdmin && !selectedDistrictId;
 
-  if (currentSeason) {
+  if (period) {
     const reports = await loadSeasonReports({
-      seasonId: currentSeason.id,
+      seasonId: period.seasonIds,
       districtId: selectedDistrictId,
     });
 
     // Unika veckor — flera distrikt kan rapportera samma vecka (en rapport per
-    // distrikt × vecka); utan dedup dubbleras x-axeln och staplarna splittras
+    // distrikt × vecka); utan dedup dubbleras x-axeln och staplarna splittras.
+    // Ett helår krockar aldrig här: Vår och Höst har separata veckospann.
     stats.weeks = uniqueWeeks(reports);
     stats.reports = reports.map(r => ({
       id: r.id,
       week: r.week,
       status: r.status,
+      seasonId: r.seasonId,
       districtNumber: r.district.number,
       districtName: r.district.name,
       totalSales: toNumber(sumMoney(r.visits.map(v => v.sales))),
@@ -140,22 +166,21 @@ export default async function DashboardPage({
     }
   }
 
-  const seasonLabel = currentSeason
-    ? `${currentSeason.type === "VAR" ? "Vår" : "Höst"} ${currentSeason.year}`
-    : "–";
-
   // Mål och uppföljning per FT (valt distrikt × säsong). Visas för FT alltid,
-  // för admin bara när ett specifikt distrikt är valt (mål sätts per FT).
-  const showGoals = !!(selectedDistrictId && currentSeason);
-  const seasonGoal = showGoals
+  // för admin bara när ett specifikt distrikt är valt. Mål är satta per
+  // säsong i grunden (SeasonGoal), inte per helår — att summera Vår- och
+  // Höst-mål vore en gissning om vad "helårsmål" ska betyda. Enklare och
+  // ärligare att bara visa dem i Vår/Höst-läge och säga det rakt ut annars.
+  const showGoals = !!(selectedDistrictId && period && period.kind === "season");
+  const seasonGoal = showGoals && period && period.kind === "season"
     ? await prisma.seasonGoal.findUnique({
-        where: { districtId_seasonId: { districtId: selectedDistrictId!, seasonId: currentSeason!.id } },
+        where: { districtId_seasonId: { districtId: selectedDistrictId!, seasonId: period.id } },
       })
     : null;
   const goalActuals = goalActualsFrom(stats.byType);
 
   // Samlad mål-översikt för admin i alla-distrikt-vyn: alla FT:ers mål vs utfall.
-  const showGoalOverview = isAdmin && !selectedDistrictId && !!currentSeason;
+  const showGoalOverview = isAdmin && !selectedDistrictId && !!period && period.kind === "season";
   let goalOverview: {
     districtId: string;
     label: string;
@@ -163,9 +188,9 @@ export default async function DashboardPage({
     goal: { salesTarget: number; visitsTarget: number; avgPerVisitTarget: number; fashionShowsTarget: number };
     actual: { sales: number; visits: number; avgPerVisit: number; fashionShows: number };
   }[] = [];
-  if (showGoalOverview) {
+  if (showGoalOverview && period && period.kind === "season") {
     const goals = await prisma.seasonGoal.findMany({
-      where: { seasonId: currentSeason!.id },
+      where: { seasonId: period.id },
       include: { district: { select: { number: true, name: true } } },
     });
     const actualByDistrict = new Map(stats.byDistrict.map(d => [d.id, d]));
@@ -185,14 +210,18 @@ export default async function DashboardPage({
       .sort((x, y) => x.number - y.number);
   }
 
-  // År-mot-år: motsvarande fjolårssäsong (samma typ, året innan) för samma urval.
-  const prevSeasonRec = currentSeason
-    ? allSeasons.find(s => s.type === currentSeason.type && s.year === currentSeason.year - 1)
-    : undefined;
+  // År-mot-år: fjolårets motsvarighet till den valda perioden (samma säsongstyp,
+  // eller för helår båda det årets säsonger) för samma urval.
+  const prevSeasonIds = findPrevSeasonIds(period, allSeasons);
+  const prevLabel = period
+    ? period.kind === "season"
+      ? `${period.type === "VAR" ? "Vår" : "Höst"} ${period.year - 1}`
+      : `Helår ${period.year - 1}`
+    : "";
   let prevSeason: { label: string; weekly: { week: number; sales: number }[] } | null = null;
-  if (prevSeasonRec) {
+  if (prevSeasonIds.length > 0) {
     const prevReports = await prisma.weeklyReport.findMany({
-      where: { seasonId: prevSeasonRec.id, ...(selectedDistrictId ? { districtId: selectedDistrictId } : {}) },
+      where: { seasonId: { in: prevSeasonIds }, ...(selectedDistrictId ? { districtId: selectedDistrictId } : {}) },
       include: { visits: { select: { sales: true } } },
     });
     if (prevReports.length > 0) {
@@ -202,7 +231,7 @@ export default async function DashboardPage({
         byWeek.set(r.week, (byWeek.get(r.week) ?? 0) + s);
       }
       prevSeason = {
-        label: `${prevSeasonRec.type === "VAR" ? "Vår" : "Höst"} ${prevSeasonRec.year}`,
+        label: prevLabel,
         weekly: [...byWeek.entries()].map(([week, sales]) => ({ week, sales })).sort((a, b) => a.week - b.week),
       };
     }
@@ -212,9 +241,11 @@ export default async function DashboardPage({
   // Höst. En kund som redan besökts i en säsong räknas på faktiskt utfall; en
   // som ännu inte besökts prognostiseras på samma kunds utfall i motsvarande
   // säsong fjolåret. Avslutad säsong prognostiserar inte (utfallet är facit).
+  // Oberoende av om Översikten just nu visar Vår, Höst eller Helår — kortet
+  // rör alltid hela kalenderåret period.year.
   let forecastData: ForecastData | null = null;
-  if (currentSeason) {
-    const fyYear = currentSeason.year;
+  if (period) {
+    const fyYear = period.year;
     const slots = [
       { type: "VAR" as const, label: "Vår" },
       { type: "HOST" as const, label: "Höst" },
@@ -363,26 +394,23 @@ export default async function DashboardPage({
             <DistrictSwitcher
               districts={allDistricts}
               currentId={selectedDistrictId}
-              seasonId={currentSeason?.id ?? ""}
+              seasonId={periodValue}
             />
           )}
           {allSeasons.length > 1 && (
             <SeasonSwitcher
-              seasons={allSeasons.map(s => ({
-                id: s.id,
-                label: `${s.type === "VAR" ? "Vår" : "Höst"} ${s.year}`,
-              }))}
-              currentId={currentSeason?.id ?? ""}
+              seasons={allSeasons.map(s => ({ id: s.id, type: s.type, year: s.year }))}
+              currentValue={periodValue}
               districtId={selectedDistrictId}
             />
           )}
         </div>
       </div>
 
-      {showGoals && selectedDistrictId && currentSeason && (
+      {showGoals && selectedDistrictId && period && period.kind === "season" && (
         <GoalTracker
           districtId={selectedDistrictId}
-          seasonId={currentSeason.id}
+          seasonId={period.id}
           seasonLabel={seasonLabel}
           initialGoal={seasonGoal ? {
             salesTarget: seasonGoal.salesTarget,
@@ -397,6 +425,12 @@ export default async function DashboardPage({
 
       {showGoalOverview && goalOverview.length > 0 && (
         <GoalOverview rows={goalOverview} seasonLabel={seasonLabel} />
+      )}
+
+      {period?.kind === "helar" && (
+        <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-500 mb-6">
+          Mål och uppföljning visas per säsong, inte för helår — växla till Vår eller Höst för att se dem.
+        </div>
       )}
 
       {!isAdmin && selectedDistrictId && <ReportNudge districtId={selectedDistrictId} />}
@@ -425,7 +459,6 @@ export default async function DashboardPage({
             <div className="mt-6">
               <WeeklyReportList
                 reports={stats.reports}
-                seasonId={currentSeason?.id ?? ""}
                 showEditLink={!isAdmin}
                 showDistrict={showDistrictBreakdown}
                 showMf={isAdmin}
