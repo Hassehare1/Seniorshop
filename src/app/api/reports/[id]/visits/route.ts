@@ -38,6 +38,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     sales: toNumber(v.sales),
     isFashionShow: v.isFashionShow,
     isHangerShow: v.isHangerShow,
+    isSale: v.isSale,
     ...(isAdmin && { ftFee: toNumber(v.ftFee), mfFee: toNumber(v.mfFee) }),
     totalToPay: toNumber(v.totalToPay),
     comment: v.comment,

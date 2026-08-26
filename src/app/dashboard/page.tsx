@@ -5,6 +5,7 @@ import Link from "next/link";
 import { customerTypeLabels, customerTypeChartColors } from "@/lib/customerTypes";
 import { sumMoney, toNumber } from "@/lib/fees";
 import WeeklyReportList from "./WeeklyReportList";
+import ReaBackfillToggle from "./ReaBackfillToggle";
 import ReportNudge from "./ReportNudge";
 import GoalTracker from "./GoalTracker";
 import GoalOverview from "./GoalOverview";
@@ -25,6 +26,7 @@ import {
   type TypeAgg,
 } from "@/lib/insights/aggregate";
 import { loadSeasonReports, toAggregateInput } from "@/lib/insights/load";
+import { isReaBackfillEnabled } from "@/lib/reaBackfill";
 
 // Måndagen i en given ISO-vecka (UTC). Används för att avgöra om en säsong är
 // avslutad, pågående eller kommande i förhållande till dagens datum — ISO-vecka
@@ -59,6 +61,7 @@ export default async function DashboardPage({
 }) {
   const session = await auth();
   const isAdmin = session?.user?.role === "ADMIN";
+  const reaBackfillEnabled = isAdmin ? await isReaBackfillEnabled() : false;
   const { season: seasonParam, district: districtParam } = await searchParams;
   const cookieStore = await cookies();
   const themeCookie = cookieStore.get(THEME_COOKIE)?.value;
@@ -96,7 +99,7 @@ export default async function DashboardPage({
     // per rad först vid expand, annars växer payloaden med varje ny FT.
     // ftFee/mfFee följer bara med för admin — FT ska inte kunna läsa avgifterna
     // ur sidans data, inte heller via utvecklarverktygen.
-    visits?: { id: string; customerName: string; customerType: string; numberOfCustomers: number; sales: number; isFashionShow: boolean; isHangerShow: boolean; ftFee?: number; mfFee?: number; totalToPay: number; comment: string | null }[];
+    visits?: { id: string; customerName: string; customerType: string; numberOfCustomers: number; sales: number; isFashionShow: boolean; isHangerShow: boolean; isSale: boolean; ftFee?: number; mfFee?: number; totalToPay: number; comment: string | null }[];
   };
 
   const stats = {
@@ -142,6 +145,7 @@ export default async function DashboardPage({
           sales: toNumber(v.sales),
           isFashionShow: v.isFashionShow,
           isHangerShow: v.isHangerShow,
+          isSale: v.isSale,
           ...(isAdmin && { ftFee: toNumber(v.ftFee), mfFee: toNumber(v.mfFee) }),
           totalToPay: toNumber(v.totalToPay),
           comment: v.comment,
@@ -461,12 +465,15 @@ export default async function DashboardPage({
             </div>
           )}
           {stats.reports.length > 0 && (
-            <div className="mt-6">
+            <div className="mt-6 space-y-3">
+              {isAdmin && <ReaBackfillToggle initialEnabled={reaBackfillEnabled} />}
               <WeeklyReportList
                 reports={stats.reports}
                 showEditLink={!isAdmin}
                 showDistrict={showDistrictBreakdown}
                 showMf={isAdmin}
+                reaEditable={isAdmin}
+                reaBackfillEnabled={reaBackfillEnabled}
               />
             </div>
           )}

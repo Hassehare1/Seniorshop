@@ -8,6 +8,7 @@ import { customerTypeLabels as typeLabels } from "@/lib/customerTypes";
 type Visit = {
   id: string; customerName: string; customerType: string;
   numberOfCustomers: number; sales: number; isFashionShow: boolean; isHangerShow: boolean;
+  isSale: boolean;
   // Avgifterna följer bara med för admin — FT ser dem inte.
   ftFee?: number; mfFee?: number; totalToPay: number; comment: string | null;
 };
@@ -34,11 +35,48 @@ interface Props {
   showEditLink?: boolean;
   showDistrict?: boolean;
   showMf?: boolean; // MF-avgiften visas bara för admin
+  // Admin-läge: REA går att kryssa oavsett rapportens status. Kryssrutan är
+  // ändå inaktiv om reaBackfillEnabled är av — brytaren styr, inte rollen
+  // ensam. Se ReaBackfillToggle.
+  reaEditable?: boolean;
+  reaBackfillEnabled?: boolean;
 }
 
-export default function WeeklyReportList({ reports, showEditLink, showDistrict, showMf = false }: Props) {
+export default function WeeklyReportList({ reports, showEditLink, showDistrict, showMf = false, reaEditable = false, reaBackfillEnabled = false }: Props) {
   const [open, setOpen] = useState<Set<string>>(new Set());
   const [hamtade, setHamtade] = useState<Record<string, Hamtning>>({});
+  // Visitens id är globalt unikt, så REA-läget kan hållas oberoende av om
+  // besöken kom inbäddade med rapporten eller hämtades separat vid expand.
+  const [reaOverrides, setReaOverrides] = useState<Record<string, boolean>>({});
+  const [reaSaving, setReaSaving] = useState<Set<string>>(new Set());
+  const [reaError, setReaError] = useState<string | null>(null);
+
+  async function toggleRea(reportId: string, visit: Visit) {
+    const current = reaOverrides[visit.id] ?? visit.isSale;
+    const next = !current;
+    setReaError(null);
+    setReaSaving(prev => new Set(prev).add(visit.id));
+    setReaOverrides(prev => ({ ...prev, [visit.id]: next }));
+    try {
+      const res = await fetch(`/api/reports/${reportId}/visits/${visit.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isSale: next }),
+      });
+      if (!res.ok) throw new Error();
+    } catch {
+      // Backa till tidigare värde — brytaren kan ha stängts av någon annan
+      // mellan sidladdning och klick.
+      setReaOverrides(prev => ({ ...prev, [visit.id]: current }));
+      setReaError("Kunde inte spara REA-märkningen. Försök igen.");
+    } finally {
+      setReaSaving(prev => {
+        const s = new Set(prev);
+        s.delete(visit.id);
+        return s;
+      });
+    }
+  }
 
   async function hamtaBesok(id: string) {
     setHamtade(prev => ({ ...prev, [id]: { status: "laddar" } }));
@@ -203,26 +241,46 @@ export default function WeeklyReportList({ reports, showEditLink, showDistrict, 
                           {showMf && <th className="text-right pb-2 font-semibold">FT-avg</th>}
                           {showMf && <th className="text-right pb-2 font-semibold">MF-avg</th>}
                           <th className="text-right pb-2 font-semibold">Att betala</th>
+                          {reaEditable && <th className="text-center pb-2 font-semibold">REA</th>}
                           <th className="text-left pb-2 font-semibold pl-4">Kommentar</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-200">
-                        {hamtning.visits.map(v => (
-                          <tr key={v.id} className="text-slate-700">
-                            <td className="py-2 font-medium">
-                              {v.customerName}
-                              {v.isFashionShow && <span className="ml-1 text-xs text-purple-600 font-normal">(modevisning)</span>}
-                              {v.isHangerShow && <span className="ml-1 text-xs text-teal-600 font-normal">(galge)</span>}
-                            </td>
-                            <td className="py-2 text-slate-500 text-xs">{typeLabels[v.customerType] ?? v.customerType}</td>
-                            <td className="py-2 text-right">{v.numberOfCustomers}</td>
-                            <td className="py-2 text-right">{fmt(v.sales)}</td>
-                            {showMf && <td className="py-2 text-right text-slate-500">{fmt(v.ftFee ?? 0)}</td>}
-                            {showMf && <td className="py-2 text-right text-slate-500">{fmt(v.mfFee ?? 0)}</td>}
-                            <td className="py-2 text-right font-medium">{fmt(v.totalToPay)}</td>
-                            <td className="py-2 pl-4 text-slate-400 text-xs">{v.comment ?? "–"}</td>
-                          </tr>
-                        ))}
+                        {hamtning.visits.map(v => {
+                          const isSale = reaOverrides[v.id] ?? v.isSale;
+                          return (
+                            <tr key={v.id} className="text-slate-700">
+                              <td className="py-2 font-medium">
+                                {v.customerName}
+                                {v.isFashionShow && <span className="ml-1 text-xs text-purple-600 font-normal">(modevisning)</span>}
+                                {v.isHangerShow && <span className="ml-1 text-xs text-teal-600 font-normal">(galge)</span>}
+                                {!reaEditable && isSale && (
+                                  <span className="ml-1.5 px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 text-xs font-medium">REA</span>
+                                )}
+                              </td>
+                              <td className="py-2 text-slate-500 text-xs">{typeLabels[v.customerType] ?? v.customerType}</td>
+                              <td className="py-2 text-right">{v.numberOfCustomers}</td>
+                              <td className="py-2 text-right">{fmt(v.sales)}</td>
+                              {showMf && <td className="py-2 text-right text-slate-500">{fmt(v.ftFee ?? 0)}</td>}
+                              {showMf && <td className="py-2 text-right text-slate-500">{fmt(v.mfFee ?? 0)}</td>}
+                              <td className="py-2 text-right font-medium">{fmt(v.totalToPay)}</td>
+                              {reaEditable && (
+                                <td className="py-2 text-center">
+                                  <input
+                                    type="checkbox"
+                                    checked={isSale}
+                                    disabled={!reaBackfillEnabled || reaSaving.has(v.id)}
+                                    onChange={() => void toggleRea(r.id, v)}
+                                    aria-label={`Märk ${v.customerName} vecka ${r.week} som REA`}
+                                    className="w-4 h-4 accent-amber-600 disabled:opacity-40 disabled:cursor-not-allowed"
+                                    title={reaBackfillEnabled ? undefined : "REA-ändring i efterhand är stängd — se brytaren ovan"}
+                                  />
+                                </td>
+                              )}
+                              <td className="py-2 pl-4 text-slate-400 text-xs">{v.comment ?? "–"}</td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                       <tfoot>
                         <tr className="border-t border-slate-300 font-semibold text-slate-800">
@@ -230,11 +288,15 @@ export default function WeeklyReportList({ reports, showEditLink, showDistrict, 
                           <td className="pt-2 text-right">{fmt(r.totalSales)}</td>
                           {showMf && <td colSpan={2} className="pt-2"></td>}
                           <td className="pt-2 text-right text-blue-700">{fmt(r.totalToPay)}</td>
+                          {reaEditable && <td></td>}
                           <td></td>
                         </tr>
                       </tfoot>
                     </table>
                   </div>
+                  {reaEditable && reaError && (
+                    <p className="text-xs text-red-600 mt-2">{reaError}</p>
+                  )}
                 </div>
               )}
             </div>

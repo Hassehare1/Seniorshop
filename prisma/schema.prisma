@@ -228,3 +228,13 @@ model AuditLog {
   // Admin-loggvyn hämtar senaste N sorterat på tid
   @@index([createdAt])
 }
+
+// Enstaka globala flaggor som inte hör hemma på någon annan modell.
+// Första användningen: reaBackfillEnabled — en tidsbegränsad brytare som
+// låter admin REA-märka besök i redan godkända veckor utan att låsa upp
+// resten av rapporten. Se PATCH /api/reports/[id]/visits/[visitId].
+model AppSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
