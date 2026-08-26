@@ -63,34 +63,67 @@ interface VisitRowProps {
 
 function VisitRow({ index, visit, customers, feeRow, status, takenCustomerIds, onUpdate, onRemove }: VisitRowProps) {
   const uid = useId();
-  const [inputValue, setInputValue] = useState(() => customers.find(c => c.id === visit.customerId)?.name ?? "");
+  // Fältets sökterm hålls separat från vad som faktiskt är valt (visit.customerId)
+  // — den betyder bara något medan open är sant. Stängt visas alltid den riktiga
+  // valda kundens namn, härlett direkt i stället för synkat via en effekt. Det
+  // löser buggen där Tab ur fältet lämnade sökrutan tom: den gamla varianten
+  // återställde bara vid musklick utanför, aldrig vid tangentbordsnavigering.
+  const [searchTerm, setSearchTerm] = useState("");
   const [open, setOpen] = useState(false);
+  const [highlighted, setHighlighted] = useState(-1);
   const [confirmRemove, setConfirmRemove] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const optionRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
-  const filtered = inputValue === ""
+  const selectedName = customers.find(c => c.id === visit.customerId)?.name ?? "";
+  const inputValue = open ? searchTerm : selectedName;
+
+  const filtered = searchTerm === ""
     ? customers
     : customers.filter(c =>
-        c.name.toLowerCase().includes(inputValue.toLowerCase()) ||
-        customerTypeLabels[c.type]?.toLowerCase().includes(inputValue.toLowerCase())
+        c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        customerTypeLabels[c.type]?.toLowerCase().includes(searchTerm.toLowerCase())
       );
 
   useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        const selected = customers.find(c => c.id === visit.customerId);
-        setInputValue(selected?.name ?? "");
-        setOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [customers, visit.customerId]);
+    if (highlighted >= 0) optionRefs.current[highlighted]?.scrollIntoView({ block: "nearest" });
+  }, [highlighted]);
 
   function selectCustomer(id: string, name: string) {
     onUpdate("customerId", id);
-    setInputValue(name);
+    setSearchTerm(name);
     setOpen(false);
+  }
+
+  // Piltangenterna hoppar över redan rapporterade kunder (taken) i stället för
+  // att låta dem gå att markera men inte välja.
+  function moveHighlight(dir: 1 | -1) {
+    if (filtered.length === 0) return;
+    let i = highlighted;
+    for (let steg = 0; steg < filtered.length; steg++) {
+      i = (i + dir + filtered.length) % filtered.length;
+      if (!takenCustomerIds.has(filtered[i].id)) { setHighlighted(i); return; }
+    }
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      if (!open) { setOpen(true); return; }
+      moveHighlight(1);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      if (!open) { setOpen(true); return; }
+      moveHighlight(-1);
+    } else if (e.key === "Enter") {
+      const valt = highlighted >= 0 ? filtered[highlighted] : undefined;
+      if (open && valt && !takenCustomerIds.has(valt.id)) {
+        e.preventDefault();
+        selectCustomer(valt.id, valt.name);
+      }
+    } else if (e.key === "Escape" && open) {
+      e.preventDefault();
+      setOpen(false);
+    }
   }
 
   return (
@@ -130,38 +163,56 @@ function VisitRow({ index, visit, customers, feeRow, status, takenCustomerIds, o
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="col-span-2 lg:col-span-2 relative" ref={ref}>
+        <div className="col-span-2 lg:col-span-2 relative">
           <label className="block text-xs font-medium text-slate-600 mb-1" htmlFor={`${uid}-kund`}>Kund</label>
           <input id={`${uid}-kund`}
             type="text"
+            role="combobox"
+            aria-expanded={open}
+            aria-controls={`${uid}-listbox`}
+            aria-autocomplete="list"
+            aria-activedescendant={open && highlighted >= 0 ? `${uid}-opt-${filtered[highlighted].id}` : undefined}
             value={inputValue}
             placeholder="Sök kund..."
-            onFocus={() => { setInputValue(""); setOpen(true); }}
-            onChange={e => { setInputValue(e.target.value); setOpen(true); }}
+            onFocus={() => { setSearchTerm(""); setOpen(true); setHighlighted(-1); }}
+            onChange={e => { setSearchTerm(e.target.value); setOpen(true); setHighlighted(-1); }}
+            onKeyDown={handleKeyDown}
+            onBlur={() => setOpen(false)}
             className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           {open && (
-            <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-52 overflow-y-auto">
+            <div id={`${uid}-listbox`} role="listbox" className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-52 overflow-y-auto">
               {filtered.length === 0 && (
                 <p className="px-3 py-2 text-sm text-slate-400">Inga kunder hittades</p>
               )}
-              {filtered.map(c => {
+              {filtered.map((c, i) => {
                 // En kund rapporteras en gång per vecka — ligger den redan på en
                 // annan rad går den inte att välja, då redigerar man den raden.
                 const taken = takenCustomerIds.has(c.id);
                 return (
                   <button
                     key={c.id}
+                    ref={el => { optionRefs.current[i] = el; }}
+                    id={`${uid}-opt-${c.id}`}
+                    role="option"
+                    aria-selected={i === highlighted}
+                    // Väljs via piltangenter + Enter på fältet ovan, inte genom att
+                    // tabba till varje rad — annars måste tangentbordsanvändare
+                    // klicka sig igenom hela kundlistan för att nå nästa fält.
+                    tabIndex={-1}
                     type="button"
                     disabled={taken}
                     title={taken ? "Redan rapporterad denna vecka — redigera den befintliga raden" : undefined}
+                    onMouseEnter={() => setHighlighted(i)}
                     onMouseDown={() => { if (!taken) selectCustomer(c.id, c.name); }}
                     className={`w-full text-left px-3 py-2 text-sm flex justify-between items-center gap-2 ${
                       taken
                         ? "bg-amber-50 text-slate-400 cursor-not-allowed"
-                        : c.id === visit.customerId
-                          ? "bg-blue-50 text-blue-700 font-medium hover:bg-blue-50"
-                          : "text-slate-700 hover:bg-blue-50"
+                        : i === highlighted
+                          ? "bg-blue-100 text-blue-700"
+                          : c.id === visit.customerId
+                            ? "bg-blue-50 text-blue-700 font-medium hover:bg-blue-50"
+                            : "text-slate-700 hover:bg-blue-50"
                     }`}
                   >
                     <span className="truncate min-w-0">{c.name}</span>
