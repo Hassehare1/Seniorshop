@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { cookies } from "next/headers";
+import Link from "next/link";
 import { customerTypeLabels, customerTypeChartColors } from "@/lib/customerTypes";
 import { sumMoney, toNumber } from "@/lib/fees";
 import WeeklyReportList from "./WeeklyReportList";
@@ -475,6 +476,14 @@ export default async function DashboardPage({
       {stats.weeks.length === 0 && (
         <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
           <p className="text-slate-400">Ingen data rapporterad ännu denna säsong.</p>
+          {/* Bara för FT — admin har ingen egen rapportering att länka till,
+              och en tom aggregerad vy över flera distrikt har ingen given
+              "första kund" att peka på. */}
+          {!isAdmin && (
+            <Link href="/rapportera" className="inline-block mt-2 text-blue-600 hover:text-blue-700 font-medium">
+              Börja rapportera →
+            </Link>
+          )}
         </div>
       )}
     </div>
