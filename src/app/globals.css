@@ -19,6 +19,34 @@
   }
 }
 
+/*
+ * Seniorshop-tema — bytbar accentfärg (src/app/profil).
+ *
+ * Tailwind v4 kompilerar bg-blue-600 m.fl. till background-color:var(--color-blue-600)
+ * i stället för en bokstavlig färg. Att skriva över de variablerna här räcker för att
+ * hela appens knappar, länkar, badges och fokusringar ska byta färg — ingen av de 33
+ * filer som använder blue-*-klasser behöver röras.
+ *
+ * Skalan är genererad ur seniorshop.se:s egen accentfärg #8B1C6D (kontrollerad direkt
+ * mot sajten 2026-08-26, där den har exakt samma roll som blue-600 har här: knappar och
+ * länkar). --color-blue-600 nedan är den exakta hex-koden, övriga steg är en HSL-skala
+ * runt den, samma princip som Tailwinds egna paletter.
+ *
+ * Diagrammen (Recharts) läser inte CSS-variabler — deras motsvarande färger ligger i
+ * src/lib/theme.ts och skickas ner som props från dashboard/page.tsx.
+ */
+[data-theme="seniorshop"] {
+  --color-blue-50: #fcf2fa;
+  --color-blue-100: #fae6f4;
+  --color-blue-200: #f4c8e8;
+  --color-blue-400: #dc56b8;
+  --color-blue-500: #be2796;
+  --color-blue-600: #8b1c6d;
+  --color-blue-700: #6e1757;
+  --color-blue-800: #551143;
+  --color-blue-900: #3b0c2f;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);

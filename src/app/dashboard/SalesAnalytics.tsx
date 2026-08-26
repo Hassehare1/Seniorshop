@@ -8,6 +8,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, LabelList,
 } from "recharts";
 import { formatSEK } from "@/lib/fees";
+import { THEME_ACCENT, THEME_ACCENT_SCALE, DEFAULT_THEME, type Theme } from "@/lib/theme";
 
 // En post i den dimension man bryter ned på (kundtyp ELLER distrikt)
 export interface BreakdownItem {
@@ -35,9 +36,8 @@ interface Props {
   hideGoalMetrics?: boolean; // dölj nyckeltal som målkorten redan visar (försäljning, besök, snitt/besök, modevisningar)
   currentLabel?: string;  // t.ex. "Vår 2026" — för legenden i säsongstrenden
   prevSeason?: { label: string; weekly: { week: number; sales: number }[] } | null; // motsvarande fjolårssäsong
+  theme?: Theme; // Johans egna kulör (src/app/profil) — påverkar bara accentfärgen här, inte kategorifärgerna
 }
-
-const BLUE = "#1d4ed8";
 
 // Axelformat på svenska: 1 500 000 → "1,5 mkr", 150 000 → "150 tkr"
 const formatAxis = (v: number) => {
@@ -64,8 +64,9 @@ function niceScale(dataMax: number): { max: number; ticks: number[] } {
 const axisWidth = (ticks: number[]) =>
   Math.ceil(Math.max(...ticks.map(t => formatAxis(t).length)) * 6.5) + 10;
 
-export default function SalesAnalytics({ weeks, breakdown, breakdownTitle, filterNoun, colorMode = "category", showMf = false, hideGoalMetrics = false, currentLabel, prevSeason }: Props) {
+export default function SalesAnalytics({ weeks, breakdown, breakdownTitle, filterNoun, colorMode = "category", showMf = false, hideGoalMetrics = false, currentLabel, prevSeason, theme = DEFAULT_THEME }: Props) {
   const [selected, setSelected] = useState<string | null>(null);
+  const BLUE = THEME_ACCENT[theme];
 
   const selectedItem = selected ? breakdown.find(b => b.key === selected) ?? null : null;
 
@@ -146,8 +147,8 @@ export default function SalesAnalytics({ weeks, breakdown, breakdownTitle, filte
   const weeklyScale = useMemo(() => niceScale(Math.max(0, ...weeklyData.map(d => d.sales))), [weeklyData]);
   const breakdownScale = useMemo(() => niceScale(Math.max(0, ...chartData.map(d => d.sales))), [chartData]);
 
-  // Färgsättning: "category" = fasta typfärger, "scale" = blå gradient efter rang
-  const scaleBlue = ["#1e3a8a", "#1d4ed8", "#2563eb", "#3b82f6", "#60a5fa", "#93c5fd"];
+  // Färgsättning: "category" = fasta typfärger, "scale" = accentgradient efter rang
+  const scaleBlue = THEME_ACCENT_SCALE[theme];
   const colorAt = (i: number) => {
     if (colorMode === "category") return chartData[i]?.color ?? BLUE;
     const n = chartData.length;

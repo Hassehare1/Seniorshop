@@ -13,6 +13,7 @@ import SeasonSwitcher from "./SeasonSwitcher";
 import DistrictSwitcher from "./DistrictSwitcher";
 import ForecastCard, { type ForecastData, type ForecastSeason, type SeasonStatus } from "./ForecastCard";
 import { resolveOverviewPeriod, type SeasonRow } from "@/lib/season";
+import { THEME_COOKIE, THEME_ACCENT, isTheme, DEFAULT_THEME } from "@/lib/theme";
 import {
   TYPE_KEYS,
   aggregateByDistrict,
@@ -59,6 +60,8 @@ export default async function DashboardPage({
   const isAdmin = session?.user?.role === "ADMIN";
   const { season: seasonParam, district: districtParam } = await searchParams;
   const cookieStore = await cookies();
+  const themeCookie = cookieStore.get(THEME_COOKIE)?.value;
+  const theme = isTheme(themeCookie) ? themeCookie : DEFAULT_THEME;
 
   const allSeasons = await prisma.season.findMany({
     orderBy: [{ year: "desc" }, { type: "desc" }],
@@ -356,7 +359,7 @@ export default async function DashboardPage({
   const districtBreakdown: BreakdownItem[] = stats.byDistrict.map(d => ({
     key: d.id,
     label: d.label,
-    color: "#1d4ed8",
+    color: THEME_ACCENT[theme],
     sales: d.sales,
     // Byggs bara för admin, men samma villkor här så mönstret är enhetligt.
     ...(isAdmin && { ftFee: d.ftFee, mfFee: d.mfFee }),
@@ -449,6 +452,7 @@ export default async function DashboardPage({
             hideGoalMetrics={showGoals && !!seasonGoal}
             currentLabel={seasonLabel}
             prevSeason={prevSeason}
+            theme={theme}
           />
           {stats.showType.length > 0 && (
             <div className="mt-6">
