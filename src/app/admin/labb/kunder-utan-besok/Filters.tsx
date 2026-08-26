@@ -21,6 +21,7 @@ export default function Filters({ seasons, districts, currentSeasonId, currentDi
   return (
     <div className="flex flex-wrap gap-2 items-center">
       <select
+        aria-label="Distrikt"
         value={currentDistrictId ?? ""}
         onChange={e => navigate(currentSeasonId, e.target.value || null)}
         className="px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
@@ -31,6 +32,7 @@ export default function Filters({ seasons, districts, currentSeasonId, currentDi
         ))}
       </select>
       <select
+        aria-label="Säsong"
         value={currentSeasonId}
         onChange={e => navigate(e.target.value, currentDistrictId)}
         className="px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"

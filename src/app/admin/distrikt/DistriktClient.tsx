@@ -288,6 +288,7 @@ export default function DistriktClient({ districts: initial }: Props) {
                         type="submit"
                         disabled={nameSaving}
                         title="Spara"
+                        aria-label="Spara"
                         className="text-green-600 hover:text-green-800 disabled:text-slate-300 p-1"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -298,6 +299,7 @@ export default function DistriktClient({ districts: initial }: Props) {
                         type="button"
                         onClick={() => setEditingNameId(null)}
                         title="Avbryt"
+                        aria-label="Avbryt"
                         className="text-slate-400 hover:text-slate-600 p-1"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

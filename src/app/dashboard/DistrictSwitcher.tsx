@@ -25,6 +25,7 @@ export default function DistrictSwitcher({ districts, currentId, seasonId }: Pro
     <div className="flex items-center gap-2">
       <span className="text-xs text-slate-400">Distrikt:</span>
       <select
+        aria-label="Distrikt"
         value={currentId ?? ""}
         onChange={e => navigate(e.target.value)}
         className="px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"

@@ -37,6 +37,7 @@ export default function SeasonSwitcher({ seasons, currentValue, districtId }: Pr
     <div className="flex items-center gap-2">
       <span className="text-xs text-slate-400">Säsong:</span>
       <select
+        aria-label="Säsong"
         value={currentValue}
         onChange={e => navigate(e.target.value)}
         className="px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
