@@ -120,3 +120,15 @@ export function formatSEK(amount: MoneyInput): string {
   }).format(money(amount).toNumber());
 }
 
+// Kompakt kr-format för diagram: 1 500 000 → "1,5 mkr", 21 000 → "21 tkr".
+// `unit: false` för axelettiketter, där flera värden står i rad och "kr" på
+// varje skulle vara brus — övriga användningar visar ett fristående tal och
+// vill ha enheten med.
+export function formatCompactSEK(v: number, opts?: { unit?: boolean }): string {
+  const unit = opts?.unit ?? true;
+  if (v >= 1_000_000) return `${(v / 1_000_000).toLocaleString("sv-SE", { maximumFractionDigits: 1 })} mkr`;
+  if (v >= 10_000) return `${Math.round(v / 1000).toLocaleString("sv-SE")} tkr`;
+  if (v >= 1000) return `${(v / 1000).toLocaleString("sv-SE", { maximumFractionDigits: 1 })} tkr`;
+  return unit ? `${Math.round(v).toLocaleString("sv-SE")} kr` : String(Math.round(v));
+}
+

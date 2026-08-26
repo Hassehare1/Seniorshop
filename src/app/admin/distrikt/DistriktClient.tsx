@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useId } from "react";
-import { STANDARD_FEE_CONFIG } from "@/lib/fees";
+import { STANDARD_FEE_CONFIG, formatSEK } from "@/lib/fees";
 
 interface FeeConfig {
   ftFeePercent: number;
@@ -324,9 +324,7 @@ export default function DistriktClient({ districts: initial }: Props) {
                 <td className="px-4 py-3 text-slate-600">{d.feeConfig ? `${(d.feeConfig.ftFeePercent * 100).toFixed(1)}%` : "–"}</td>
                 <td className="px-4 py-3 text-slate-600">{d.feeConfig ? `${(d.feeConfig.mfFeePercent * 100).toFixed(1)}%` : "–"}</td>
                 <td className="px-4 py-3 text-slate-600">
-                  {d.feeConfig
-                    ? new Intl.NumberFormat("sv-SE", { maximumFractionDigits: 0 }).format(d.feeConfig.mfFeeCap) + " kr"
-                    : "–"}
+                  {d.feeConfig ? formatSEK(d.feeConfig.mfFeeCap) : "–"}
                 </td>
                 <td className="px-4 py-3 text-slate-600">{d._count.customers}</td>
                 <td className="px-4 py-3 text-slate-600">{d.users.map(u => u.name ?? u.email).join(", ") || "–"}</td>

@@ -8,7 +8,7 @@
  * Både den nya och den gamla uppsättningen finns med — gamla filer ska
  * fortsätta gå att läsa in.
  */
-export const importHeaderToType: Record<string, string> = {
+const importHeaderToType: Record<string, string> = {
   // Nuvarande uppsättning (slutrapporten, fliken Rapport)
   "äldreboende": "ALDREBOENDE",
   "träffpunkter": "TRAFFPUNKTER",
@@ -34,12 +34,12 @@ export const importHeaderToType: Record<string, string> = {
 };
 
 /** Rubriker jämförs normaliserade: gemener, hopdragna mellanslag, utan radbrytningar. */
-export function normalizeHeader(s: string): string {
+function normalizeHeader(s: string): string {
   return s.replace(/\s+/g, " ").trim().toLowerCase();
 }
 
 /** Kundtypen för en rubriktext, eller null om rubriken inte är en kategori. */
-export function typeFromHeader(header: unknown): string | null {
+function typeFromHeader(header: unknown): string | null {
   if (typeof header !== "string") return null;
   return importHeaderToType[normalizeHeader(header)] ?? null;
 }

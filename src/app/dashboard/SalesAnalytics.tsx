@@ -7,7 +7,7 @@ import {
   BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, LabelList,
 } from "recharts";
-import { formatSEK } from "@/lib/fees";
+import { formatSEK, formatCompactSEK } from "@/lib/fees";
 import { THEME_ACCENT, THEME_ACCENT_SCALE, DEFAULT_THEME, type Theme } from "@/lib/theme";
 
 // En post i den dimension man bryter ned på (kundtyp ELLER distrikt)
@@ -39,12 +39,9 @@ interface Props {
   theme?: Theme; // Johans egna kulör (src/app/profil) — påverkar bara accentfärgen här, inte kategorifärgerna
 }
 
-// Axelformat på svenska: 1 500 000 → "1,5 mkr", 150 000 → "150 tkr"
-const formatAxis = (v: number) => {
-  if (v >= 1_000_000) return `${(v / 1_000_000).toLocaleString("sv-SE", { maximumFractionDigits: 1 })} mkr`;
-  if (v >= 1000) return `${(v / 1000).toLocaleString("sv-SE", { maximumFractionDigits: 1 })} tkr`;
-  return String(Math.round(v));
-};
+// Axelettiketter — samma kompakta format som resten av dashboarden, utan "kr"
+// på varje tick.
+const formatAxis = (v: number) => formatCompactSEK(v, { unit: false });
 
 // Snyggt axelmax (1/2/2,5/5 × 10^n) med jämna ticks — annars ger recharts
 // udda steg som "0 / 85k / 170k" direkt ur datamaxet

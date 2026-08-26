@@ -2,6 +2,7 @@
 
 import { useState, useId } from "react";
 import { customerTypeLabels } from "@/lib/customerTypes";
+import { formatSEK } from "@/lib/fees";
 
 interface Summary {
   districtNumber: number;
@@ -30,8 +31,6 @@ interface Result {
 interface Props {
   districts: { number: number; name: string }[];
 }
-
-const fmtSEK = (n: number) => new Intl.NumberFormat("sv-SE", { maximumFractionDigits: 0 }).format(n) + " kr";
 
 export default function ImportSlutrapportClient({ districts }: Props) {
   const uid = useId();
@@ -167,7 +166,7 @@ export default function ImportSlutrapportClient({ districts }: Props) {
             <Stat label="Veckor" value={preview.weekRange} sub="i filen" />
             <Stat label="Kunder" value={String(preview.customers)} sub="" />
             <Stat label="Besök" value={String(preview.visits)} sub="" />
-            <Stat label="Försäljning" value={fmtSEK(preview.totalSales)} sub="ink moms" />
+            <Stat label="Försäljning" value={formatSEK(preview.totalSales)} sub="ink moms" />
           </div>
 
           {preview.willOverwrite ? (

@@ -6,7 +6,7 @@ import {
   BarChart, Bar,
   XAxis, YAxis, Tooltip, LabelList,
 } from "recharts";
-import { formatSEK } from "@/lib/fees";
+import { formatSEK, formatCompactSEK } from "@/lib/fees";
 
 // Aggregat per kundtyp, uppdelat på visningstyp. Klienten summerar de valda
 // kundtyperna (union) — en kund har exakt en typ, så inga dubbelräkningar.
@@ -36,14 +36,6 @@ const TOTAL_COLOR = "#cbd5e1"; // slate-300
 interface Props {
   items: ShowTypeItem[];
 }
-
-// Kompakt kr-format för stapeletiketter/axel: 1 500 000 → "1,5 mkr", 21 000 → "21 tkr"
-const compactSEK = (v: number) => {
-  if (v >= 1_000_000) return `${(v / 1_000_000).toLocaleString("sv-SE", { maximumFractionDigits: 1 })} mkr`;
-  if (v >= 10_000) return `${Math.round(v / 1000).toLocaleString("sv-SE")} tkr`;
-  if (v >= 1000) return `${(v / 1000).toLocaleString("sv-SE", { maximumFractionDigits: 1 })} tkr`;
-  return `${Math.round(v).toLocaleString("sv-SE")} kr`;
-};
 
 export default function ShowTypeAnalytics({ items }: Props) {
   // Jämförelsekundtyper, i vald ordning — tomt från start. Totalt (alla
@@ -171,9 +163,9 @@ export default function ShowTypeAnalytics({ items }: Props) {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <MiniChart title="Omsättning" sub="ink. moms" data={salesData} series={selectedItems} format={compactSEK} tooltipFormat={formatSEK} />
+        <MiniChart title="Omsättning" sub="ink. moms" data={salesData} series={selectedItems} format={formatCompactSEK} tooltipFormat={formatSEK} />
         <MiniChart title="Antal besök" sub="registrerade besök" data={besokData} series={selectedItems} format={v => String(Math.round(v))} tooltipFormat={v => `${Math.round(v)} st`} />
-        <MiniChart title="Snittomsättning" sub="per besök" data={snittData} series={selectedItems} format={compactSEK} tooltipFormat={formatSEK} />
+        <MiniChart title="Snittomsättning" sub="per besök" data={snittData} series={selectedItems} format={formatCompactSEK} tooltipFormat={formatSEK} />
       </div>
     </div>
   );
