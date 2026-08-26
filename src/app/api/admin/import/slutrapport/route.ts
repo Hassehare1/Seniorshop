@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { calculateFees, money, STANDARD_FEE_CONFIG, type FeeConfig } from "@/lib/fees";
+import { calculateFees, formatSEK, money, STANDARD_FEE_CONFIG, type FeeConfig } from "@/lib/fees";
+import { customerTypeLabels } from "@/lib/customerTypes";
 import { CustomerType } from "@prisma/client";
 import { findLayout } from "@/lib/importLayout";
 import * as XLSX from "xlsx";
@@ -91,7 +92,22 @@ export async function POST(req: NextRequest) {
     }
     // typeCols är vänster till höger, så en fil som har både den nya och den
     // gamla kolumnuppsättningen läses med den nya.
-    if (ifyllda.length > 1) warnings.push(`"${name}" (v.${week}) har flera kundtyp-kolumner ifyllda — använder första.`);
+    //
+    // Beloppet som faller bort skrivs ut i klartext. Utan det syns bara att
+    // importens summa inte stämmer med filens, och man får leta rad för rad
+    // efter differensen — vilket hände med D5 höst 25 (15 718 kr på en rad).
+    if (ifyllda.length > 1) {
+      const valdType = customerTypeLabels[ifyllda[0].type] ?? ifyllda[0].type;
+      const valtBelopp = Number(r[ifyllda[0].col]) || 0;
+      const bortfall = ifyllda
+        .slice(1)
+        .reduce((s, t) => s + (Number(r[t.col]) || 0), 0);
+      warnings.push(
+        `"${name}" (v.${week}) har flera kundtyp-kolumner ifyllda — använder ` +
+          `${valdType} (${formatSEK(valtBelopp)}). ${formatSEK(bortfall)} räknas INTE med. ` +
+          `Dela raden i filen om båda beloppen ska in.`,
+      );
+    }
 
     const antal = Number(cell(r, layout.customers));
     const kommentar = cell(r, layout.comment);
