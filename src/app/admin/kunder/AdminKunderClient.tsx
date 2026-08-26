@@ -13,6 +13,7 @@ import {
   materialFilterOptions, materialSummary, matchesMaterialFilter,
   type MaterialFilter,
 } from "@/lib/salesMaterial";
+import { useFocusTrap } from "@/lib/useFocusTrap";
 
 interface Customer {
   id: string;
@@ -76,6 +77,9 @@ export default function AdminKunderClient({ customers: initial, seasons, visitMa
   // Kundtypsbyte sker via en dialog, inte direkt i tabellen — konsekvensen är
   // retroaktiv och behöver förklaras innan den sker.
   const [typeEdit, setTypeEdit] = useState<{ customer: Customer; valdTyp: string } | null>(null);
+  // Fokusfälla + Escape för de två dialogerna nedan — se lib/useFocusTrap.
+  const typeEditDialogRef = useFocusTrap<HTMLDivElement>(!!typeEdit, () => setTypeEdit(null));
+  const mergeDialogRef = useFocusTrap<HTMLDivElement>(!!merge, () => { if (!merge?.busy) setMerge(null); });
   const [visitFilter, setVisitFilter] = useState("all");
   const [postalFilter, setPostalFilter] = useState("ALL");
   const [materialFilter, setMaterialFilter] = useState<MaterialFilter>("all");
@@ -273,10 +277,15 @@ export default function AdminKunderClient({ customers: initial, seasons, visitMa
           onClick={() => setTypeEdit(null)}
         >
           <div
-            className="bg-white rounded-xl shadow-2xl max-w-lg w-full p-6"
+            ref={typeEditDialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={`${uid}-typeedit-title`}
+            tabIndex={-1}
+            className="bg-white rounded-xl shadow-2xl max-w-lg w-full p-6 outline-none"
             onClick={e => e.stopPropagation()}
           >
-            <h2 className="text-lg font-bold text-slate-800">Ändra kundtyp</h2>
+            <h2 id={`${uid}-typeedit-title`} className="text-lg font-bold text-slate-800">Ändra kundtyp</h2>
             <p className="text-sm text-slate-500 mt-0.5">{typeEdit.customer.name}</p>
 
             <div className="mt-4 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
@@ -586,10 +595,12 @@ export default function AdminKunderClient({ customers: initial, seasons, visitMa
           onClick={() => !merge.busy && setMerge(null)}
         >
           <div
+            ref={mergeDialogRef}
             role="dialog"
             aria-modal="true"
             aria-labelledby={`${uid}-merge-title`}
-            className="bg-white rounded-xl shadow-xl max-w-xl w-full p-6 max-h-[90vh] overflow-y-auto"
+            tabIndex={-1}
+            className="bg-white rounded-xl shadow-xl max-w-xl w-full p-6 max-h-[90vh] overflow-y-auto outline-none"
             onClick={e => e.stopPropagation()}
           >
             <h2 id={`${uid}-merge-title`} className="text-lg font-semibold text-slate-800 mb-1">
