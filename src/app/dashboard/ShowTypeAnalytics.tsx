@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import {
   ResponsiveContainer,
   BarChart, Bar,
-  XAxis, YAxis, Tooltip, Cell, LabelList,
+  XAxis, YAxis, Tooltip, LabelList,
 } from "recharts";
 import { formatSEK } from "@/lib/fees";
 
@@ -22,13 +22,16 @@ export interface ShowTypeItem {
 }
 
 type CatKey = "modevisning" | "galge" | "ovriga";
+type ChartRow = { name: string; total: number; [key: string]: number | string };
 
-// Fasta färger per visningstyp — samma i alla tre diagrammen.
-const CATS: { key: CatKey; label: string; color: string }[] = [
-  { key: "modevisning", label: "Modevisning", color: "#4f46e5" }, // indigo
-  { key: "galge", label: "Galge", color: "#0891b2" },            // cyan
-  { key: "ovriga", label: "Övriga", color: "#94a3b8" },          // slate
+const CATS: { key: CatKey; label: string }[] = [
+  { key: "modevisning", label: "Modevisning" },
+  { key: "galge", label: "Galge" },
+  { key: "ovriga", label: "Övriga" },
 ];
+
+// Totalt-stapelns färg — fast referens, samma i alla diagram.
+const TOTAL_COLOR = "#cbd5e1"; // slate-300
 
 interface Props {
   items: ShowTypeItem[];
@@ -43,65 +46,86 @@ const compactSEK = (v: number) => {
 };
 
 export default function ShowTypeAnalytics({ items }: Props) {
-  // Alla kundtyper valda från start; kryssrutorna filtrerar ner (union).
-  const [selected, setSelected] = useState<Set<string>>(() => new Set(items.map(i => i.key)));
-
-  const allSelected = selected.size === items.length;
+  // Jämförelsekundtyper, i vald ordning — tomt från start. Totalt (alla
+  // kundtyper, oavsett markering) visas alltid som fast referensstapel bredvid.
+  const [compare, setCompare] = useState<string[]>([]);
 
   function toggle(key: string) {
-    setSelected(prev => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
+    setCompare(prev => (prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]));
   }
 
-  // Summera valda kundtyper per visningstyp.
-  const agg = useMemo(() => {
-    const sel = items.filter(i => selected.has(i.key));
+  const byKey = useMemo(() => new Map(items.map(i => [i.key, i])), [items]);
+  const selectedItems = useMemo(
+    () => compare.map(k => byKey.get(k)).filter((i): i is ShowTypeItem => !!i),
+    [compare, byKey],
+  );
+
+  // Totalt: summan över ALLA kundtyper, oberoende av vad som är markerat.
+  const totals = useMemo(() => {
     const cat = (k: CatKey) =>
-      sel.reduce(
+      items.reduce(
         (acc, i) => ({ sales: acc.sales + i.categories[k].sales, besok: acc.besok + i.categories[k].besok }),
         { sales: 0, besok: 0 },
       );
     return { modevisning: cat("modevisning"), galge: cat("galge"), ovriga: cat("ovriga") };
-  }, [items, selected]);
+  }, [items]);
 
-  const totalSales = agg.modevisning.sales + agg.galge.sales + agg.ovriga.sales;
-  const totalBesok = agg.modevisning.besok + agg.galge.besok + agg.ovriga.besok;
+  const totalSales = totals.modevisning.sales + totals.galge.sales + totals.ovriga.sales;
+  const totalBesok = totals.modevisning.besok + totals.galge.besok + totals.ovriga.besok;
   const totalSnitt = totalBesok > 0 ? totalSales / totalBesok : 0;
 
-  // Tre dataset — ett per mått, samma kategoriordning/färg i alla.
-  const salesData = CATS.map(c => ({ name: c.label, color: c.color, value: agg[c.key].sales }));
-  const besokData = CATS.map(c => ({ name: c.label, color: c.color, value: agg[c.key].besok }));
-  const snittData = CATS.map(c => ({
-    name: c.label,
-    color: c.color,
-    value: agg[c.key].besok > 0 ? agg[c.key].sales / agg[c.key].besok : 0,
-  }));
-
-  const someSelected = selected.size > 0;
+  // Ett dataset per mått: en rad per visningstyp, ett fält per stapel (total +
+  // en per vald kundtyp). Recharts ritar en grupperad <Bar> per fält automatiskt.
+  const salesData = useMemo<ChartRow[]>(
+    () => CATS.map(c => {
+      const row: ChartRow = { name: c.label, total: totals[c.key].sales };
+      for (const i of selectedItems) row[i.key] = i.categories[c.key].sales;
+      return row;
+    }),
+    [selectedItems, totals],
+  );
+  const besokData = useMemo<ChartRow[]>(
+    () => CATS.map(c => {
+      const row: ChartRow = { name: c.label, total: totals[c.key].besok };
+      for (const i of selectedItems) row[i.key] = i.categories[c.key].besok;
+      return row;
+    }),
+    [selectedItems, totals],
+  );
+  const snittData = useMemo<ChartRow[]>(
+    () => CATS.map(c => {
+      const total = totals[c.key].besok > 0 ? totals[c.key].sales / totals[c.key].besok : 0;
+      const row: ChartRow = { name: c.label, total };
+      for (const i of selectedItems) {
+        const besok = i.categories[c.key].besok;
+        row[i.key] = besok > 0 ? i.categories[c.key].sales / besok : 0;
+      }
+      return row;
+    }),
+    [selectedItems, totals],
+  );
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 p-4 md:p-6 space-y-5">
       <div>
         <h2 className="text-sm font-semibold text-slate-700">Försäljning per visningstyp</h2>
         <p className="text-xs text-slate-400 mt-0.5">
-          Modevisning räknas för hela besöket. Modevisning + Galge + Övriga = totalen.
+          Modevisning räknas för hela besöket. Totalt rör sig aldrig — det är visningstypens
+          hela summa, oavsett vilka kundtyper som jämförs nedan.
         </p>
       </div>
 
       <p className="sr-only">
         Total omsättning {formatSEK(totalSales)} över {totalBesok} besök.
-        Per visningstyp: {CATS.map(c => `${c.label} ${formatSEK(agg[c.key].sales)} på ${agg[c.key].besok} besök`).join(", ")}.
+        Per visningstyp: {CATS.map(c => `${c.label} ${formatSEK(totals[c.key].sales)} på ${totals[c.key].besok} besök`).join(", ")}.
       </p>
 
-      {/* Kundtypsfilter */}
+      {/* Jämförelsekundtyper: tomt från start, klick lägger till en egen stapel — ingen övre gräns. */}
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs font-medium text-slate-500 mr-1">Kundtyper:</span>
+        <span className="text-xs font-medium text-slate-500 mr-1">Jämför kundtyper:</span>
         {items.map(i => {
-          const on = selected.has(i.key);
+          const idx = compare.indexOf(i.key);
+          const on = idx !== -1;
           return (
             <button
               key={i.key}
@@ -114,53 +138,54 @@ export default function ShowTypeAnalytics({ items }: Props) {
                   : "border-slate-200 bg-white text-slate-400"
               }`}
             >
-              <span
-                className="inline-block w-2.5 h-2.5 rounded-full"
-                style={{ backgroundColor: on ? i.color : "#cbd5e1" }}
-              />
+              {on ? (
+                <span
+                  className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full text-white text-[9px] font-bold"
+                  style={{ backgroundColor: i.color }}
+                >
+                  {idx + 1}
+                </span>
+              ) : (
+                <span className="inline-block w-2.5 h-2.5 rounded-full bg-slate-300" />
+              )}
               {i.label}
             </button>
           );
         })}
-        {!allSelected && (
+        {compare.length > 0 && (
           <button
             type="button"
-            onClick={() => setSelected(new Set(items.map(i => i.key)))}
+            onClick={() => setCompare([])}
             className="text-xs text-blue-600 hover:text-blue-800 font-medium ml-1"
           >
-            Visa alla
+            Rensa
           </button>
         )}
       </div>
 
-      {/* Total som nyckeltalsrad (inte en fjärde stapel) */}
+      {/* Totalt som nyckeltalsrad — samma tal som referensstapeln, rör sig aldrig. */}
       <div className="grid grid-cols-3 gap-3">
         <StatCard label="Omsättning" value={formatSEK(totalSales)} sub="ink. moms" />
         <StatCard label="Antal besök" value={String(totalBesok)} sub="registrerade" />
         <StatCard label="Snittomsättning" value={formatSEK(totalSnitt)} sub="per besök" />
       </div>
 
-      {someSelected ? (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <MiniChart title="Omsättning" sub="ink. moms" data={salesData} format={compactSEK} tooltipFormat={formatSEK} />
-          <MiniChart title="Antal besök" sub="registrerade besök" data={besokData} format={v => String(Math.round(v))} tooltipFormat={v => `${Math.round(v)} st`} />
-          <MiniChart title="Snittomsättning" sub="per besök" data={snittData} format={compactSEK} tooltipFormat={formatSEK} />
-        </div>
-      ) : (
-        <div className="border border-dashed border-slate-200 rounded-lg p-8 text-center">
-          <p className="text-sm text-slate-400">Välj minst en kundtyp för att se diagrammen.</p>
-        </div>
-      )}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <MiniChart title="Omsättning" sub="ink. moms" data={salesData} series={selectedItems} format={compactSEK} tooltipFormat={formatSEK} />
+        <MiniChart title="Antal besök" sub="registrerade besök" data={besokData} series={selectedItems} format={v => String(Math.round(v))} tooltipFormat={v => `${Math.round(v)} st`} />
+        <MiniChart title="Snittomsättning" sub="per besök" data={snittData} series={selectedItems} format={compactSEK} tooltipFormat={formatSEK} />
+      </div>
     </div>
   );
 }
 
 function MiniChart({
-  title, sub, data, format, tooltipFormat,
+  title, sub, data, series, format, tooltipFormat,
 }: {
   title: string;
   sub: string;
-  data: { name: string; color: string; value: number }[];
+  data: ChartRow[];
+  series: ShowTypeItem[];
   format: (v: number) => string;
   tooltipFormat: (v: number) => string;
 }) {
@@ -169,7 +194,7 @@ function MiniChart({
       <p className="text-xs font-semibold text-slate-600">{title}</p>
       <p className="text-[11px] text-slate-400 mb-2">{sub}</p>
       <ResponsiveContainer width="100%" height={180}>
-        <BarChart data={data} margin={{ top: 20, right: 8, left: 8, bottom: 4 }} barCategoryGap="20%">
+        <BarChart data={data} margin={{ top: 20, right: 8, left: 8, bottom: 4 }} barCategoryGap="20%" barGap={3}>
           <XAxis
             dataKey="name"
             tick={{ fontSize: 10, fill: "#94a3b8" }}
@@ -181,19 +206,16 @@ function MiniChart({
           <Tooltip
             cursor={{ fill: "#f8fafc" }}
             contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #e2e8f0" }}
-            formatter={(value) => [tooltipFormat(Number(value)), title]}
+            formatter={(value, name) => [tooltipFormat(Number(value)), name]}
           />
-          <Bar dataKey="value" radius={[4, 4, 0, 0]} maxBarSize={56}>
-            {data.map(d => (
-              <Cell key={d.name} fill={d.color} />
-            ))}
-            <LabelList
-              dataKey="value"
-              position="top"
-              formatter={(v) => format(Number(v))}
-              style={{ fontSize: 11, fill: "#475569", fontWeight: 600 }}
-            />
+          <Bar dataKey="total" name="Totalt" fill={TOTAL_COLOR} radius={[4, 4, 0, 0]} maxBarSize={40}>
+            <LabelList dataKey="total" position="top" formatter={(v) => format(Number(v))} style={{ fontSize: 10, fill: "#475569", fontWeight: 600 }} />
           </Bar>
+          {series.map(s => (
+            <Bar key={s.key} dataKey={s.key} name={s.label} fill={s.color} radius={[4, 4, 0, 0]} maxBarSize={40}>
+              <LabelList dataKey={s.key} position="top" formatter={(v) => format(Number(v))} style={{ fontSize: 10, fill: "#475569", fontWeight: 600 }} />
+            </Bar>
+          ))}
         </BarChart>
       </ResponsiveContainer>
     </div>
