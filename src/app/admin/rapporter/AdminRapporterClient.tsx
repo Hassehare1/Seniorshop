@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatSEK as fmt } from "@/lib/fees";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
@@ -50,6 +50,30 @@ export default function AdminRapporterClient({
   const [bulkWorking, setBulkWorking] = useState(false);
   const [message, setMessage] = useState("");
   const [confirmState, setConfirmState] = useState<{ message: string; onConfirm: () => void } | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const stickyHeaderRef = useRef<HTMLTableCellElement>(null);
+  const currentWeekRef = useRef<HTMLTableCellElement>(null);
+
+  // Upp till 52 veckokolumner — utan detta landar admin blint på vecka 1 och
+  // måste scrolla igenom hela säsongen för att nå den vecka som faktiskt är
+  // aktuell just nu. Körs en gång vid montering (komponenten monteras om per
+  // säsong via key i page.tsx), no-op om aktuell vecka ligger utanför säsongen
+  // eller om allt redan ryms utan scroll.
+  //
+  // scrollIntoView({inline:"center"}) räcker inte här: den centrerar mot HELA
+  // scrollytan utan att veta att den sticky Distrikt-kolumnen ligger ovanpå
+  // vänsterkanten — resultatet blev att aktuell vecka hamnade nästan helt
+  // dold bakom den. Räknar i stället ut scrollLeft manuellt, centrerat i
+  // ytan som faktiskt syns till höger om den sticky kolumnen.
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    const target = currentWeekRef.current;
+    if (!container || !target) return;
+    const stickyWidth = stickyHeaderRef.current?.offsetWidth ?? 0;
+    const visibleWidth = container.clientWidth - stickyWidth;
+    const targetCenter = target.offsetLeft + target.offsetWidth / 2;
+    container.scrollLeft = Math.max(0, targetCenter - stickyWidth - visibleWidth / 2);
+  }, []);
 
   async function applyStatus(reportId: string, status: string) {
     setWorking(reportId);
@@ -162,17 +186,21 @@ export default function AdminRapporterClient({
 
       {message && <p className="mb-4 text-sm text-green-700 bg-green-50 px-4 py-2 rounded-lg">{message}</p>}
 
-      <div className="overflow-x-auto">
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden inline-block min-w-full">
-          <table className="text-sm">
-            <thead>
+      {/* Rundning och scroll på SAMMA element — en separat overflow-hidden-
+          wrapper runt tabellen bröt position: sticky på Distrikt-kolumnen
+          (den fick då en icke-scrollande klippbehållare som sin sticky-
+          kontext i stället för den faktiskt scrollande). */}
+      <div ref={scrollContainerRef} className="overflow-x-auto bg-white rounded-xl border border-slate-200">
+        <table className="text-sm min-w-full">
+          <thead>
               <tr className="border-b border-slate-100 bg-slate-50">
-                <th className="sticky left-0 bg-slate-50 text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap">Distrikt</th>
+                <th ref={stickyHeaderRef} className="sticky left-0 bg-slate-50 text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap">Distrikt</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap">FT</th>
                 <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap">Totalt</th>
                 {weeks.map(w => (
                   <th
                     key={w}
+                    ref={w === currentWeek ? currentWeekRef : undefined}
                     className={`px-2 py-3 text-xs font-semibold uppercase tracking-wide text-center whitespace-nowrap ${w === currentWeek ? "text-blue-600" : "text-slate-400"}`}
                   >
                     v{w}
@@ -238,8 +266,7 @@ export default function AdminRapporterClient({
                 );
               })}
             </tbody>
-          </table>
-        </div>
+        </table>
       </div>
 
       <div className="mt-4 flex flex-wrap gap-4 text-xs text-slate-500">
