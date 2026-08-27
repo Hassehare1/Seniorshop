@@ -1,21 +1,21 @@
 "use client";
 
-import { useState, useId } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   customerTypeLabels as typeLabels,
   customerTypeColors as typeColors,
-  customerTypeOptions,
 } from "@/lib/customerTypes";
 import { formatPostalCode } from "@/lib/postalCode";
 import {
   materialFilterOptions, materialSummary, matchesMaterialFilter,
   type MaterialFilter,
 } from "@/lib/salesMaterial";
-import { useFocusTrap } from "@/lib/useFocusTrap";
+import TypeEditDialog from "./TypeEditDialog";
+import MergeDialog, { type MergeState } from "./MergeDialog";
 
-interface Customer {
+export interface Customer {
   id: string;
   name: string;
   customerNumber: number;
@@ -40,16 +40,6 @@ interface Customer {
 
 export type VisitMap = Record<string, Record<string, { count: number; lastWeek: number }>>;
 
-/** Granskningen som `api/admin/customers/merge` svarar med före bekräftelse. */
-type MergeSide = { id: string; name: string; label: string; type: string; visitCount: number };
-type MergePreview = {
-  keep: MergeSide;
-  remove: MergeSide;
-  visitsToMove: number;
-  typeDiffers: boolean;
-  collisions: { seasonLabel: string; week: number; keepSales: number; removeSales: number }[];
-};
-
 interface Props {
   customers: Customer[];
   seasons: { id: string; label: string }[];
@@ -58,15 +48,12 @@ interface Props {
 }
 
 export default function AdminKunderClient({ customers: initial, seasons, visitMap, defaultSeasonId }: Props) {
-  const uid = useId();
   const router = useRouter();
   const [customers, setCustomers] = useState(initial);
   // Sammanslagning av dubbletter: markera exakt två, välj vilken som behålls.
   // Uppstår vid inläsning när samma kund stavas olika i två filer.
   const [selected, setSelected] = useState<string[]>([]);
-  const [merge, setMerge] = useState<
-    { keepId: string; removeId: string; preview: MergePreview | null; busy: boolean; error: string } | null
-  >(null);
+  const [merge, setMerge] = useState<MergeState | null>(null);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState("active");
@@ -77,9 +64,6 @@ export default function AdminKunderClient({ customers: initial, seasons, visitMa
   // Kundtypsbyte sker via en dialog, inte direkt i tabellen — konsekvensen är
   // retroaktiv och behöver förklaras innan den sker.
   const [typeEdit, setTypeEdit] = useState<{ customer: Customer; valdTyp: string } | null>(null);
-  // Fokusfälla + Escape för de två dialogerna nedan — se lib/useFocusTrap.
-  const typeEditDialogRef = useFocusTrap<HTMLDivElement>(!!typeEdit, () => setTypeEdit(null));
-  const mergeDialogRef = useFocusTrap<HTMLDivElement>(!!merge, () => { if (!merge?.busy) setMerge(null); });
   const [visitFilter, setVisitFilter] = useState("all");
   const [postalFilter, setPostalFilter] = useState("ALL");
   const [materialFilter, setMaterialFilter] = useState<MaterialFilter>("all");
@@ -287,64 +271,14 @@ export default function AdminKunderClient({ customers: initial, seasons, visitMa
   return (
     <>
       {typeEdit && (
-        <div
-          className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4"
-          onClick={() => setTypeEdit(null)}
-        >
-          <div
-            ref={typeEditDialogRef}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby={`${uid}-typeedit-title`}
-            tabIndex={-1}
-            className="bg-white rounded-xl shadow-2xl max-w-lg w-full p-6 outline-none"
-            onClick={e => e.stopPropagation()}
-          >
-            <h2 id={`${uid}-typeedit-title`} className="text-lg font-bold text-slate-800">Ändra kundtyp</h2>
-            <p className="text-sm text-slate-500 mt-0.5">{typeEdit.customer.name}</p>
-
-            <div className="mt-4 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-              <p className="font-semibold mb-1">Ändringen gäller bakåt i tiden</p>
-              <p>
-                Kundtypen är inte kopplad till en tidpunkt. Byter du typ flyttas{" "}
-                <strong>alla</strong> besök hos kunden — även tidigare säsonger — till den nya
-                kategorin i statistiken. Summorna påverkas inte, bara fördelningen mellan
-                kundtyper. Det syns i Översikt, Försäljning, år-mot-år och exporter.
-              </p>
-              <p className="mt-2">
-                Har platsen två verksamheter ska den läggas upp som{" "}
-                <strong>två kunder</strong> — inte som en kund som byter typ.
-              </p>
-            </div>
-
-            <label className="block text-xs font-medium text-slate-600 mt-4 mb-1" htmlFor={`${uid}-ny-typ`}>Ny typ</label>
-            <select id={`${uid}-ny-typ`}
-              value={typeEdit.valdTyp}
-              onChange={e => setTypeEdit({ ...typeEdit, valdTyp: e.target.value })}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {customerTypeOptions.map(t => (
-                <option key={t.value} value={t.value}>{t.label}</option>
-              ))}
-            </select>
-
-            <div className="flex gap-2 mt-5">
-              <button
-                onClick={saveType}
-                disabled={working === typeEdit.customer.id || typeEdit.valdTyp === typeEdit.customer.type}
-                className="bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-              >
-                {working === typeEdit.customer.id ? "Sparar…" : "Ändra kundtyp"}
-              </button>
-              <button
-                onClick={() => setTypeEdit(null)}
-                className="text-sm text-slate-500 hover:text-slate-700 px-4 py-2"
-              >
-                Avbryt
-              </button>
-            </div>
-          </div>
-        </div>
+        <TypeEditDialog
+          customer={typeEdit.customer}
+          valdTyp={typeEdit.valdTyp}
+          working={working === typeEdit.customer.id}
+          onChangeValdTyp={v => setTypeEdit({ ...typeEdit, valdTyp: v })}
+          onSave={saveType}
+          onClose={() => setTypeEdit(null)}
+        />
       )}
 
       {/* Granskningsbanner */}
@@ -616,178 +550,12 @@ export default function AdminKunderClient({ customers: initial, seasons, visitMa
 
       {/* Sammanslagning: granskning innan något raderas */}
       {merge && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4"
-          onClick={() => !merge.busy && setMerge(null)}
-        >
-          <div
-            ref={mergeDialogRef}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby={`${uid}-merge-title`}
-            tabIndex={-1}
-            className="bg-white rounded-xl shadow-xl max-w-xl w-full p-6 max-h-[90vh] overflow-y-auto outline-none"
-            onClick={e => e.stopPropagation()}
-          >
-            <h2 id={`${uid}-merge-title`} className="text-lg font-semibold text-slate-800 mb-1">
-              Slå ihop två kunder
-            </h2>
-            <p className="text-sm text-slate-500 mb-5">
-              Välj vilken kund som ska behållas. Den andra raderas, och alla dess besök flyttas över.
-            </p>
-
-            {merge.busy && !merge.preview && (
-              <p className="text-sm text-slate-400 py-6 text-center">Hämtar granskning...</p>
-            )}
-
-            {merge.error && (
-              <p className="text-sm text-red-700 bg-red-50 border border-red-200 px-4 py-3 rounded-lg mb-4">
-                {merge.error}
-              </p>
-            )}
-
-            {merge.preview && (
-              <>
-                {/* Valet: klicka på den kund som ska behållas */}
-                {[merge.preview.keep, merge.preview.remove].map((c, i) => {
-                  const isKeep = i === 0;
-                  return (
-                    <button
-                      key={c.id}
-                      type="button"
-                      disabled={merge.busy}
-                      onClick={() => !isKeep && loadMergePreview(c.id, merge.preview!.keep.id)}
-                      className={`w-full text-left rounded-lg p-4 mb-2.5 flex items-start gap-3 transition ${
-                        isKeep
-                          ? "border-2 border-blue-600 bg-blue-50"
-                          : "border border-slate-200 hover:border-slate-300 hover:bg-slate-50"
-                      }`}
-                    >
-                      <span
-                        className={`mt-0.5 shrink-0 w-4 h-4 rounded-full border-[5px] ${
-                          isKeep ? "border-blue-600 bg-white" : "border-slate-300 bg-white border"
-                        }`}
-                      />
-                      <span className="flex-1">
-                        <span className="flex items-center gap-2 flex-wrap">
-                          <span className={`font-semibold text-sm ${isKeep ? "text-slate-800" : "text-slate-600"}`}>
-                            {c.name}
-                          </span>
-                          <span className="text-[11px] text-slate-400">{c.label}</span>
-                          <span
-                            className={`text-[11px] px-2 py-0.5 rounded-md font-medium ${
-                              isKeep ? "bg-blue-100 text-blue-800" : "bg-red-100 text-red-700"
-                            }`}
-                          >
-                            {isKeep ? "Behålls" : "Raderas"}
-                          </span>
-                        </span>
-                        <span className="block text-xs text-slate-500 mt-1">
-                          {c.visitCount === 0 ? "Inga besök" : `${c.visitCount} besök`} · {typeLabels[c.type] ?? c.type}
-                          {!isKeep && " · klicka för att behålla den här i stället"}
-                        </span>
-                      </span>
-                    </button>
-                  );
-                })}
-
-                {/* Namnbytet är retroaktivt och lätt att missa — samma sorts
-                    konsekvens som vid byte av kundtyp, och förklaras likadant. */}
-                {merge.preview.visitsToMove > 0 && (
-                  <div className="mt-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-                    <p className="font-semibold mb-1">Namnet skrivs om bakåt i tiden</p>
-                    <p>
-                      {merge.preview.remove.name}s besök visas efteråt under namnet{" "}
-                      <strong>{merge.preview.keep.name}</strong> — även i tidigare säsonger. Det syns i
-                      Översikt, Försäljning, år-mot-år och exporter. Välj alltså det namn du vill känna
-                      igen kunden på framåt.
-                    </p>
-                  </div>
-                )}
-
-                {merge.preview.typeDiffers && (
-                  <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 px-3 py-2 rounded-lg mt-3">
-                    Kunderna har olika kundtyp. Den behållna kundens typ gäller efteråt, vilket flyttar
-                    försäljningen mellan staplarna i analysen.
-                  </p>
-                )}
-
-                {merge.preview.collisions.length > 0 ? (
-                  <div className="bg-amber-50 border border-amber-300 rounded-lg p-4 my-4">
-                    <p className="text-sm font-semibold text-amber-900 mb-1">
-                      Båda kunderna har besök samma vecka
-                    </p>
-                    <p className="text-[13px] text-amber-900/90 leading-relaxed mb-3">
-                      En kund rapporteras en gång per vecka. Slås de ihop hamnar två besök på samma kund och
-                      vecka, och då kan FT inte spara om veckan.
-                    </p>
-                    <div className="bg-white border border-amber-200 rounded-md px-3 py-2">
-                      <p className="text-xs font-semibold text-amber-900 mb-1">
-                        Krockar i {merge.preview.collisions.length}{" "}
-                        {merge.preview.collisions.length === 1 ? "vecka" : "veckor"}:
-                      </p>
-                      <ul className="text-[13px] text-amber-900/90 space-y-0.5">
-                        {merge.preview.collisions.map((k, i) => (
-                          <li key={i}>
-                            {k.seasonLabel} · v{k.week} — {k.keepSales.toLocaleString("sv-SE")} kr +{" "}
-                            {k.removeSales.toLocaleString("sv-SE")} kr
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                    <p className="text-[13px] text-amber-900/90 leading-relaxed mt-3">
-                      Ta bort det ena besöket i respektive vecka först, eller slå ihop beloppen manuellt — kom
-                      sedan tillbaka hit.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 my-4">
-                    <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-2">
-                      Det här händer
-                    </p>
-                    <ul className="text-[13px] text-slate-700 space-y-1.5">
-                      <li>
-                        <strong>
-                          {merge.preview.visitsToMove === 0
-                            ? "Inga besök"
-                            : `${merge.preview.visitsToMove} besök`}
-                        </strong>{" "}
-                        flyttas till {merge.preview.keep.name}
-                      </li>
-                      <li>Inga veckokrockar — kunderna har inga besök samma vecka</li>
-                      <li>Avgifter och summor påverkas inte</li>
-                      <li>{merge.preview.remove.name} raderas permanent</li>
-                    </ul>
-                  </div>
-                )}
-
-                <p className="text-xs text-slate-400 leading-relaxed mb-4">
-                  Raderingen går inte att ångra. Händelseloggen sparar namn, kundnummer och antal flyttade
-                  besök.
-                </p>
-
-                <div className="flex justify-end gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setMerge(null)}
-                    disabled={merge.busy}
-                    className="px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100"
-                  >
-                    Avbryt
-                  </button>
-                  <button
-                    type="button"
-                    onClick={confirmMerge}
-                    disabled={merge.busy || merge.preview.collisions.length > 0}
-                    className="px-4 py-2 rounded-lg text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:bg-slate-300 disabled:text-slate-500"
-                  >
-                    {merge.busy ? "Slår ihop..." : `Slå ihop och radera ${merge.preview.remove.name}`}
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
+        <MergeDialog
+          merge={merge}
+          onSelectKeep={id => loadMergePreview(id, merge.preview!.keep.id)}
+          onConfirm={confirmMerge}
+          onClose={() => setMerge(null)}
+        />
       )}
     </>
   );
