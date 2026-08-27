@@ -1,28 +1,8 @@
 import { formatSEK } from "@/lib/fees";
-
-export type SeasonStatus = "past" | "current" | "future";
-
-export interface ForecastSeason {
-  label: string;          // "Vår 2026"
-  status: SeasonStatus;
-  note: string;           // förklarar underlaget, t.ex. "pågår · 55 av 71 kunder besökta"
-  actual: number;         // utfall (faktiska besök i år)
-  forecast: number;       // prognosdel (fjolår på ej besökta kunder)
-  total: number;          // actual + forecast
-  hasBasis: boolean;      // false = säsongen saknar både utfall och fjolårsunderlag
-}
-
-export interface ForecastData {
-  year: number;
-  total: number;          // helårsprognos
-  actualTotal: number;    // summa utfall hittills
-  forecastTotal: number;  // summa prognosdel
-  prevYearTotal: number;  // fjolårets faktiska helår (0 om saknas)
-  seasons: ForecastSeason[];
-}
+import type { ForecastData } from "@/lib/insights/forecast";
 
 // Helårsprognos: utfall i år + fjolår på ännu ej besökta kunder (per säsong).
-// Presentationell — all beräkning sker server-sidan i page.tsx.
+// Presentationell — all beräkning sker i src/lib/insights/forecast.ts.
 export default function ForecastCard({ data }: { data: ForecastData }) {
   const { year, total, actualTotal, forecastTotal, prevYearTotal } = data;
 
