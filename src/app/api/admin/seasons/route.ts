@@ -1,17 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { requireAdmin } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 
 export async function GET() {
-  const session = await auth();
-  if (session?.user?.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const session = await requireAdmin();
+  if (session instanceof NextResponse) return session;
   const seasons = await prisma.season.findMany({ orderBy: [{ year: "desc" }, { type: "desc" }] });
   return NextResponse.json(seasons);
 }
 
 export async function POST(req: NextRequest) {
-  const session = await auth();
-  if (session?.user?.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const session = await requireAdmin();
+  if (session instanceof NextResponse) return session;
 
   const { type, year, weekStart, weekEnd } = await req.json();
   if (!type || !year || !weekStart || !weekEnd) {

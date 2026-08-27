@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { requireSession } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 
 export async function PATCH(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const session = await requireSession();
+  if (session instanceof NextResponse) return session;
 
   const { currentPassword, newPassword } = await req.json();
   if (!currentPassword || !newPassword) return NextResponse.json({ error: "Saknade fält" }, { status: 400 });

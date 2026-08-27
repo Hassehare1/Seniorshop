@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { betaTool } from "@anthropic-ai/sdk/helpers/beta/json-schema";
-import { auth } from "@/lib/auth";
+import { requireSession } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { assistantTools, currentSeason, runAssistantTool, type ToolScope } from "@/lib/insights/tools";
 import { parseMeddelanden } from "@/lib/insights/messages";
@@ -70,8 +70,8 @@ type Uppslag = { verktyg: string; urval?: string; sasong?: string };
 
 
 export async function POST(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const session = await requireSession();
+  if (session instanceof NextResponse) return session;
 
   const isAdmin = session.user.role === "ADMIN";
   if (ADMIN_ONLY && !isAdmin) {

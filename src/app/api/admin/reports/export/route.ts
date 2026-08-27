@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { requireAdmin } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { customerTypeLabels as typeLabels } from "@/lib/customerTypes";
 import * as XLSX from "xlsx";
 import { money, type MoneyInput } from "@/lib/fees";
 
 export async function GET(req: NextRequest) {
-  const session = await auth();
-  if (session?.user?.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const session = await requireAdmin();
+  if (session instanceof NextResponse) return session;
 
   const { searchParams } = new URL(req.url);
   const seasonId = searchParams.get("seasonId");

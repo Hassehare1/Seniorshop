@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { requireSession } from "@/lib/authz";
 import * as XLSX from "xlsx";
 
 // Genererar en tom Excel-mall att fylla i och ladda upp
 export async function GET() {
-  const session = await auth();
-  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const session = await requireSession();
+  if (session instanceof NextResponse) return session;
 
   const headers = [
     "Namn", "Typ", "Kontaktperson", "Kontaktroll",

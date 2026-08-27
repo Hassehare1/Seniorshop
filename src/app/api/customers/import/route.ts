@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { requireSession } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { customerTypeLabels } from "@/lib/customerTypes";
 import * as XLSX from "xlsx";
@@ -20,8 +20,8 @@ function parseType(raw: unknown): string | null {
 const cell = (row: Record<string, unknown>, key: string) => String(row[key] ?? "").trim();
 
 export async function POST(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const session = await requireSession();
+  if (session instanceof NextResponse) return session;
 
   // Import är FT:ns ansvar — kräver eget distrikt
   const districtId = session.user.districtId;

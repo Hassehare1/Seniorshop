@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { requireSession } from "@/lib/authz";
 import { matchesMaterialFilter, materialFilterOptions, materialSummary, type MaterialFilter } from "@/lib/salesMaterial";
 import { prisma } from "@/lib/prisma";
 import { customerTypeLabels as typeLabels } from "@/lib/customerTypes";
@@ -13,8 +13,8 @@ const statusLabels: Record<string, string> = {
 };
 
 export async function GET(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const session = await requireSession();
+  if (session instanceof NextResponse) return session;
 
   const isAdmin = session.user.role === "ADMIN";
   if (!isAdmin && !session.user.districtId) {

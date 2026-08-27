@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { requireAdmin } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { toNumber } from "@/lib/fees";
 
@@ -36,8 +36,8 @@ const withVisits = {
 } as const;
 
 export async function POST(req: NextRequest) {
-  const session = await auth();
-  if (session?.user?.role !== "ADMIN") return err("Forbidden", 403);
+  const session = await requireAdmin();
+  if (session instanceof NextResponse) return session;
 
   const body = await req.json().catch(() => ({}));
   const keepId = typeof body.keepId === "string" ? body.keepId : "";

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { requireAdmin } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 
 // Två nivåer, med skilda bekräftelseord så att den hårdare aldrig kan utlösas
@@ -17,10 +17,8 @@ const ORD = {
 type Scope = keyof typeof ORD;
 
 export async function POST(req: NextRequest) {
-  const session = await auth();
-  if (session?.user?.role !== "ADMIN" || !session.user.id) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const session = await requireAdmin();
+  if (session instanceof NextResponse) return session;
 
   const body = await req.json().catch(() => ({}));
   const scope: Scope = body?.scope === "all" ? "all" : "numbers";

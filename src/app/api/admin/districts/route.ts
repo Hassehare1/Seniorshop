@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { requireAdmin } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { STANDARD_FEE_CONFIG } from "@/lib/fees";
 
 export async function POST(req: NextRequest) {
-  const session = await auth();
-  if (session?.user?.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const session = await requireAdmin();
+  if (session instanceof NextResponse) return session;
 
   const { number, name, region } = await req.json();
   if (!number || !name) return NextResponse.json({ error: "Saknade fält" }, { status: 400 });

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { requireAdmin } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { calculateFees, formatSEK, money, STANDARD_FEE_CONFIG, type FeeConfig } from "@/lib/fees";
 import { customerTypeLabels } from "@/lib/customerTypes";
@@ -23,8 +23,8 @@ interface ParsedVisit {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await auth();
-  if (session?.user?.role !== "ADMIN" || !session.user.id) return err("Forbidden", 403);
+  const session = await requireAdmin();
+  if (session instanceof NextResponse) return session;
 
   const form = await req.formData();
   const file = form.get("file");
