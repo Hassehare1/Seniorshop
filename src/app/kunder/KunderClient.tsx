@@ -54,6 +54,13 @@ export default function KunderClient({ customers: initial, districtId, districtN
         ? <span className="text-slate-500 text-xs">1 besök</span>
         : <span className="text-slate-300 text-xs">—</span>;
 
+  const hasActiveFilter = filter !== "" || visitFilter !== "all" || materialFilter !== "all";
+  function resetFilters() {
+    setFilter("");
+    setVisitFilter("all");
+    setMaterialFilter("all");
+  }
+
   const filtered = customers.filter(c => {
     const q = filter.toLowerCase();
     const matchSearch =
@@ -526,7 +533,28 @@ export default function KunderClient({ customers: initial, districtId, districtN
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={seasons.length > 0 ? 7 : 6} className="px-4 py-8 text-center text-slate-400">Inga kunder hittades.</td>
+                <td colSpan={seasons.length > 0 ? 7 : 6} className="px-4 py-8 text-center text-slate-400">
+                  {customers.length === 0 ? (
+                    <>
+                      Inga kunder registrerade i ditt distrikt än.{" "}
+                      <button
+                        onClick={() => { setShowForm(true); setShowImport(false); setEditingId(null); setForm(emptyForm); }}
+                        className="text-blue-600 hover:text-blue-700 font-medium"
+                      >
+                        Lägg till din första kund →
+                      </button>
+                    </>
+                  ) : hasActiveFilter ? (
+                    <>
+                      Inga kunder matchar sökningen.{" "}
+                      <button onClick={resetFilters} className="text-blue-600 hover:text-blue-700 font-medium">
+                        Rensa filter
+                      </button>
+                    </>
+                  ) : (
+                    "Inga kunder hittades."
+                  )}
+                </td>
               </tr>
             )}
           </tbody>

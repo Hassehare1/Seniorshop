@@ -172,6 +172,21 @@ export default function AdminKunderClient({ customers: initial, seasons, visitMa
     return matchSearch && matchType && matchStatus && matchReview && matchVisit && matchPostal && matchMaterial;
   });
 
+  // "active" är standardläget för statusFilter, inte "ALL" — jämförs mot det,
+  // annars ser standardvyn ut som ett aktivt filter.
+  const hasActiveFilter =
+    search !== "" || typeFilter !== "ALL" || statusFilter !== "active" ||
+    reviewFilter !== "ALL" || visitFilter !== "all" || postalFilter !== "ALL" || materialFilter !== "all";
+  function resetFilters() {
+    setSearch("");
+    setTypeFilter("ALL");
+    setStatusFilter("active");
+    setReviewFilter("ALL");
+    setVisitFilter("all");
+    setPostalFilter("ALL");
+    setMaterialFilter("all");
+  }
+
   // Räknas på det filtrerade urvalet, så att en sökning på t.ex. "D6" ger
   // täckningen för just det distriktet.
   const missingPostal = filtered.filter(c => !c.postalCode).length;
@@ -579,7 +594,18 @@ export default function AdminKunderClient({ customers: initial, seasons, visitMa
               {filtered.length === 0 && (
                 <tr>
                   <td colSpan={seasons.length > 0 ? 11 : 10} className="px-4 py-10 text-center text-slate-400">
-                    Inga kunder matchar sökningen.
+                    {customers.length === 0 ? (
+                      "Inga kunder registrerade än."
+                    ) : hasActiveFilter ? (
+                      <>
+                        Inga kunder matchar sökningen.{" "}
+                        <button onClick={resetFilters} className="text-blue-600 hover:text-blue-700 font-medium">
+                          Rensa filter
+                        </button>
+                      </>
+                    ) : (
+                      "Inga kunder matchar sökningen."
+                    )}
                   </td>
                 </tr>
               )}
