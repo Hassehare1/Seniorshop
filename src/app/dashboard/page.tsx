@@ -382,22 +382,22 @@ export default async function DashboardPage({
 
   return (
     <div>
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800">Översikt</h1>
-          <p className="text-slate-500 text-sm mt-1">
-            Säsong: {seasonLabel}
-            {isAdmin && selectedDistrictId && allDistricts.length > 0 && (
-              <span className="ml-2 text-blue-600">
-                · {allDistricts.find(d => d.id === selectedDistrictId)?.name ?? ""}
-              </span>
-            )}
-            {isAdmin && !selectedDistrictId && (
-              <span className="ml-1 text-slate-400 text-xs">(alla distrikt)</span>
-            )}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2 items-center">
+      <div className="mb-6">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-800">Översikt</h1>
+            <p className="text-slate-500 text-sm mt-1">
+              Säsong: {seasonLabel}
+              {isAdmin && selectedDistrictId && allDistricts.length > 0 && (
+                <span className="ml-2 text-blue-600">
+                  · {allDistricts.find(d => d.id === selectedDistrictId)?.name ?? ""}
+                </span>
+              )}
+              {isAdmin && !selectedDistrictId && (
+                <span className="ml-1 text-slate-400 text-xs">(alla distrikt)</span>
+              )}
+            </p>
+          </div>
           {isAdmin && allDistricts.length > 0 && (
             <DistrictSwitcher
               districts={allDistricts}
@@ -405,14 +405,16 @@ export default async function DashboardPage({
               seasonId={periodValue}
             />
           )}
-          {allSeasons.length > 1 && (
+        </div>
+        {allSeasons.length > 1 && (
+          <div className="mt-4">
             <SeasonSwitcher
-              seasons={allSeasons.map(s => ({ id: s.id, type: s.type, year: s.year }))}
+              seasons={allSeasons.map(s => ({ id: s.id, type: s.type, year: s.year, weekStart: s.weekStart, weekEnd: s.weekEnd }))}
               currentValue={periodValue}
               districtId={selectedDistrictId}
             />
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {showGoals && selectedDistrictId && period && period.kind === "season" && (
