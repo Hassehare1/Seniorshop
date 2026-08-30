@@ -86,7 +86,11 @@ export const text = (falt: string, max: number) =>
   z
     .string({ error: `${falt} måste anges.` })
     .trim()
-    .min(1, `${falt} får inte vara tomt.`)
+    // "måste fyllas i" och inte "får inte vara tomt": adjektiv böjs efter
+    // genus på svenska, och fältnamnen är blandade en- och ett-ord
+    // ("Kundnamnet" men "Adressen"). Ett böjt ord blir alltid fel för
+    // hälften av dem. Se testet som vaktar den regeln.
+    .min(1, `${falt} måste fyllas i.`)
     .max(max, `${falt} får vara högst ${max} tecken.`);
 
 /**
@@ -141,7 +145,7 @@ export const veckonummer = (falt = "Vecka") => heltal(falt, 1, 53);
 export const belopp = (falt: string) =>
   z.coerce
     .number({ error: `${falt} måste vara ett belopp.` })
-    .min(0, `${falt} kan inte vara negativt.`)
+    .min(0, `${falt} kan inte vara mindre än noll.`)
     .max(1_000_000_000, `${falt} är orimligt stort.`);
 
 /** Antal av något icke-negativt (besökare, affischer). */
@@ -155,7 +159,7 @@ export const antal = (falt: string, max = 100_000) => heltal(falt, 0, max);
 export const andel = (falt: string) =>
   z.coerce
     .number({ error: `${falt} måste vara ett tal.` })
-    .min(0, `${falt} kan inte vara negativ.`)
+    .min(0, `${falt} kan inte vara mindre än noll.`)
     .max(1, `${falt} anges som andel (0,075 = 7,5 %) och kan inte överstiga 1.`);
 
 export const boolean = (falt: string) =>
