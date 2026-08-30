@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { gallraAuditLog, GALLRING_DAGAR, GALLRING_DAGAR_LOGIN_FAILED } from "@/lib/audit-gallring";
+import { logg } from "@/lib/logg";
 
 /**
  * Schemalagd gallring av händelseloggen. Körs av Vercel Cron (se vercel.json),
@@ -21,10 +22,13 @@ export async function GET(req: NextRequest) {
 
   // Gallringen loggar inte sig själv i AuditLog — ett dagligt jobb som skriver
   // en rad per körning skulle bara fylla tabellen den är satt att tömma.
-  console.log(
-    `[gallra-logg] raderade ${resultat.raderadeLoginFailed} LOGIN_FAILED (>${GALLRING_DAGAR_LOGIN_FAILED} d) ` +
-      `och ${resultat.raderadeOvriga} övriga (>${GALLRING_DAGAR} d)`,
-  );
+  // Serverloggen är rätt plats: den gallras av sig själv och går att söka i.
+  logg.info("Händelseloggen gallrad", {
+    raderadeLoginFailed: resultat.raderadeLoginFailed,
+    raderadeOvriga: resultat.raderadeOvriga,
+    dagarLoginFailed: GALLRING_DAGAR_LOGIN_FAILED,
+    dagarOvriga: GALLRING_DAGAR,
+  });
 
   return NextResponse.json(resultat);
 }
