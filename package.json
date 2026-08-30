@@ -2,6 +2,10 @@
   "name": "seniorshopportal",
   "version": "0.1.0",
   "private": true,
+  "//engines": "Node 24 är vad produktionen kör (Vercel nodeVersion 24.x) och vad CI validerar. Låg den ospecificerad här kunde lokal utveckling, CI och drift glida isär — de gjorde det: lokalt kördes 26, CI 24, typerna beskrev 20. Se .nvmrc.",
+  "engines": {
+    "node": "24.x"
+  },
   "scripts": {
     "dev": "next dev",
     "postinstall": "prisma generate",
@@ -32,7 +36,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/bcryptjs": "^2.4.6",
-    "@types/node": "^20",
+    "@types/node": "^24.13.3",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",

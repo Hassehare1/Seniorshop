@@ -11,6 +11,9 @@ Portalen är i skarp drift med pilotdeltagare sedan hösten 2026.
 
 ## Snabbstart
 
+Kräver **Node 24** — samma version som CI och produktionen kör. Har du `nvm`
+eller `fnm` räcker `nvm use` (versionen står i `.nvmrc`).
+
 ```bash
 docker compose up -d db
 ```
@@ -40,14 +43,58 @@ NEXTAUTH_URL="http://localhost:3000"
 
 ---
 
-## Kör hela kedjan innan du pushar
+## Så tar du en ändring till produktion
 
-CI kör tre steg. Kör alla tre lokalt — lint är den som glöms och den har fällt
-bygget fem commits i rad tidigare:
+`main` är skyddad sedan 2026-08-30. Normalvägen är en pull request med grön CI:
+
+```bash
+git checkout -b fix/nagot
+```
+
+Kör kedjan lokalt först — lint är den som glöms, och den har fällt bygget fem
+commits i rad tidigare:
 
 ```bash
 npm run lint && npm test && npx next build
 ```
+
+```bash
+git push -u origin fix/nagot && gh pr create --fill
+gh pr merge --squash --delete-branch
+```
+
+CI-checken heter `build-test` och tar ungefär en minut. Mergen driftsätter till
+produktion direkt.
+
+### När det brådskar
+
+Du är `Repository admin` och står i bypass-listan för granskningsgrinden:
+
+```bash
+gh pr merge <nr> --squash --admin   # merga utan att vänta in CI
+git push origin main                # helt utan PR, nödvägen
+```
+
+Varje bypass registreras under Settings → Rules → Rule Insights.
+
+### Det går inte att forcera
+
+Regeluppsättningen `Historikskydd main` har **inga undantag** — den gäller alla:
+
+```bash
+git push --force origin main   # nekas
+git push origin :main          # nekas
+```
+
+Ska något bort ur `main` backar du framåt med `git revert`. Den felaktiga
+commiten blir kvar som spår, och tillbakarullningen syns som en egen händelse.
+
+> **Vad grinden faktiskt skyddar mot.** Krascher är du redan skyddad mot —
+> Vercel vägrar driftsätta ett bygge som inte går ihop. Det grinden löser är att
+> testerna tidigare kördes *parallellt* med driftsättningen: en bruten
+> avgiftsuträkning hade gått live medan testet blev rött. Men CI täcker bara ren
+> räknelogik. Ingen av de buggar som faktiskt drabbat portalen skarpt hade
+> fångats — se **Kända skulder** nedan.
 
 ---
 

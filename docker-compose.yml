@@ -1,3 +1,13 @@
+# Lokal utvecklingsdatabas. Appen körs INTE i Docker — den startas med
+# `npm run dev` mot den här databasen. Se README.md.
+#
+# Porten är 5433 och inte 5432, så den inte krockar med en Postgres du
+# redan kör på maskinen.
+#
+# Här fanns tidigare även en `app`-tjänst med två Dockerfiles. De togs bort
+# 2026-08-30: de kunde inte bygga (kopierade en public/-katalog och en
+# .next/standalone som aldrig funnits) och hade inte använts på månader.
+# Behövs containerisering igen skrivs den mot stacken som gäller då.
 services:
   db:
     image: postgres:16-alpine
@@ -16,32 +26,5 @@ services:
       timeout: 5s
       retries: 5
 
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile.dev
-    restart: unless-stopped
-    ports:
-      - "3000:3000"
-    environment:
-      DATABASE_URL: postgresql://postgres:postgres@db:5432/seniorshop
-      NEXTAUTH_URL: http://localhost:3000
-      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-devsecret_change_in_production}
-      NODE_ENV: development
-    volumes:
-      - ./src:/app/src
-      - ./prisma:/app/prisma
-      - ./public:/app/public
-      - ./next.config.ts:/app/next.config.ts
-      - ./tailwind.config.ts:/app/tailwind.config.ts
-      - ./tsconfig.json:/app/tsconfig.json
-      - ./postcss.config.mjs:/app/postcss.config.mjs
-      - nextjs_cache:/app/.next
-    depends_on:
-      db:
-        condition: service_healthy
-    command: sh -c "npx prisma migrate deploy && npm run dev"
-
 volumes:
   postgres_data:
-  nextjs_cache:
