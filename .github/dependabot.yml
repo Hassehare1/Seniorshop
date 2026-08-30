@@ -18,6 +18,29 @@ updates:
       time: "07:00"
       timezone: Europe/Stockholm
     open-pull-requests-limit: 5
+
+    # ── Prisma: majors tystade, INTE bevakningen ────────────────────────────
+    #
+    # Prisma 5 → 7 är ett eget projekt, inte en beroendeuppdatering. Det byter
+    # klienten, frågemotorn och anslutningspoolen — alltså precis det lager som
+    # portalen i dag saknar tester för. Dependabot öppnade PR för det varje
+    # vecka, och ett förslag man ändå inte tänker anta är bara brus.
+    #
+    # BARA major-hopp ignoreras. Patchar och minors inom 5.x släpps igenom, så
+    # en säkerhetsfix i t.ex. 5.22.1 syns fortfarande. Det är skillnaden mellan
+    # att tysta ett erbjudande och att tysta en varning.
+    #
+    # ⚠️ LYFT DEN HÄR REGELN NÄR: tester mot databasen finns på plats (punkt 8
+    # på åtgärdslistan). Då — och först då — är uppgraderingen verifierbar.
+    # Uppgraderingen är alltså inte avskriven, den är SEKVENSERAD: punkt 8
+    # först, Prisma 7 direkt efter. Grenen feat/prisma7 från augusti är
+    # inaktuell och ska inte återupplivas; gör om arbetet mot dåvarande main.
+    ignore:
+      - dependency-name: "prisma"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@prisma/client"
+        update-types: ["version-update:semver-major"]
+
     groups:
       # Samla småuppdateringar i en PR i stället för fem. Major-versioner
       # hamnar utanför gruppen och får en egen PR var — de förtjänar att läsas
