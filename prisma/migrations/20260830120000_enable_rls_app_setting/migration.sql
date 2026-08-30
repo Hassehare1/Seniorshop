@@ -1,0 +1,21 @@
+-- Säkerhet: slå på Row-Level Security för AppSetting.
+--
+-- Migrationen 20260722090000 slog på RLS för ALLA då befintliga tabeller, med
+-- motiveringen att de annars är åtkomliga via Supabases publika auto-API
+-- (PostgREST, anon-rollen) för vem som helst med projekt-URL + anon-nyckel.
+--
+-- AppSetting skapades en månad senare (20260826150000) och fick det aldrig.
+-- Den har alltså varit den enda tabellen utan skyddet. Innehållet är
+-- harmlöst — en enda flagga, reaBackfillEnabled — men luckan är i mönstret,
+-- inte i innehållet: nästa tabell som skapas hamnar i samma hål om det här
+-- inte städas.
+--
+-- VARFÖR DET ÄR OFARLIGT FÖR APPEN: appen kör via Prisma som `postgres`-rollen,
+-- som ÄGER tabellerna. En tabellägare kringgår RLS så länge FORCE inte sätts,
+-- och vi sätter inte FORCE. Det är samma resonemang som juli-migrationen, och
+-- det är empiriskt bevisat sedan dess: User, Customer och Visit har haft RLS i
+-- fem veckor och läses av appen i varje anrop.
+--
+-- Vi lägger MEDVETET inga policies — då nekas anon/authenticated (det publika
+-- API:t) helt, vilket är precis meningen.
+ALTER TABLE "AppSetting" ENABLE ROW LEVEL SECURITY;
