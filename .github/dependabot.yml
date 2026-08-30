@@ -35,10 +35,33 @@ updates:
     # Uppgraderingen är alltså inte avskriven, den är SEKVENSERAD: punkt 8
     # först, Prisma 7 direkt efter. Grenen feat/prisma7 från augusti är
     # inaktuell och ska inte återupplivas; gör om arbetet mot dåvarande main.
+    # ── ESLint 10 och TypeScript 7: blockerade UPPSTRÖMS ───────────────────
+    #
+    # Till skillnad från Prisma ovan är det här inte vårt val — verktygskedjan
+    # runt Next stödjer dem helt enkelt inte ännu. Båda prövades 2026-08-30
+    # (#55, #56) och CI föll på samma ställe: lintningen.
+    #
+    #   ESLint 10:     eslint-plugin-react, inbakad i eslint-config-next, anropar
+    #                  context.getFilename() som ESLint 10 tagit bort.
+    #                  "TypeError: contextOrFilename.getFilename is not a function"
+    #                  eslint-config-next@16.3.3 är senaste och har problemet.
+    #
+    #   TypeScript 7:  typescript-eslint vägrar rakt ut — "does not support TS 7.0".
+    #                  Senaste (8.68.0) deklarerar typescript ">=4.8.4 <6.1.0",
+    #                  alltså inget stöd för 7 alls ännu.
+    #                  Spårning: typescript-eslint#10940
+    #
+    # ⚠️ LYFT NÄR: `npm view eslint-config-next peerDependencies` visar en version
+    # med uppdaterad eslint-plugin-react, respektive `npm view typescript-eslint
+    # peerDependencies` släpper in typescript >=7. Pröva om, det är billigt.
     ignore:
       - dependency-name: "prisma"
         update-types: ["version-update:semver-major"]
       - dependency-name: "@prisma/client"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "typescript"
         update-types: ["version-update:semver-major"]
 
     groups:
