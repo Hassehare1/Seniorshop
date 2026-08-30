@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useId } from "react";
+import { getCurrentWeekAndYear } from "@/lib/week";
 
 interface Season {
   id: string;
@@ -11,12 +12,11 @@ interface Season {
   _count: { reports: number };
 }
 
-const now = new Date();
-const dayNum = now.getUTCDay() || 7;
-now.setUTCDate(now.getUTCDate() + 4 - dayNum);
-const yearStart = new Date(Date.UTC(now.getUTCFullYear(), 0, 1));
-const currentISOWeek = Math.ceil(((now.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
-const currentYear = now.getUTCFullYear();
+// Låg tidigare uträknat för hand här — en tredje kopia av veckologiken, och
+// den enda som saknade projiceringen till UTC-midnatt. Utan den raden läste
+// getUTCDay() fel dag i svensk tid under kvällen (00:30 den 1 januari blev
+// 23:30 den 31 december), och veckonumret hoppade ett steg.
+const { week: currentISOWeek, year: currentYear } = getCurrentWeekAndYear();
 
 const defaultWeeks = {
   VAR: { weekStart: 5, weekEnd: 26 },
