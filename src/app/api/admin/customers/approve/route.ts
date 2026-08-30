@@ -1,14 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
+import { las, z, id } from "@/lib/validering";
+
+// Tidigare kontrollerades bara att ids var en ARRAY, aldrig vad den innehöll —
+// elementen gick sedan in i Prismas `id: { in: ... }`. Taket på 5000 finns för
+// att en lista aldrig ska bli obegränsat stor.
+const Schema = z.object({
+  ids: z.array(id("Kund-id")).max(5000, "För många kunder i en och samma begäran.").optional(),
+});
 
 // Admin godkänner kunder: specifika (ids) eller alla väntande
 export async function POST(req: NextRequest) {
   const session = await requireAdmin();
   if (session instanceof NextResponse) return session;
 
-  const body = await req.json().catch(() => ({}));
-  const ids: string[] | undefined = Array.isArray(body.ids) ? body.ids : undefined;
+  const data = await las(req, Schema);
+  if (data instanceof Response) return data;
+  const { ids } = data;
 
   const result = await prisma.customer.updateMany({
     where: { approved: false, ...(ids ? { id: { in: ids } } : {}) },

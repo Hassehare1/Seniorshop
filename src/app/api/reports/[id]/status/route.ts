@@ -1,13 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireSession } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
+import { ReportStatus } from "@prisma/client";
+import { las, z, enumFalt } from "@/lib/validering";
+
+const Schema = z.object({ status: enumFalt(ReportStatus, "Statusen") });
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await requireSession();
   if (session instanceof NextResponse) return session;
 
   const { id } = await params;
-  const { status: newStatus } = await req.json();
+  const data = await las(req, Schema);
+  if (data instanceof Response) return data;
+  const newStatus = data.status;
   const isAdmin = session.user.role === "ADMIN";
 
   const report = await prisma.weeklyReport.findUnique({
@@ -22,8 +28,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const current = report.status;
 
+  // Admin får sätta vilken status som helst; schemat har redan avvisat allt
+  // som inte är en giltig status. FT får bara lämna in och ta tillbaka.
   const allowed = isAdmin
-    ? ["DRAFT", "SUBMITTED", "APPROVED"].includes(newStatus)
+    ? true
     : (current === "DRAFT" && newStatus === "SUBMITTED") ||
       (current === "SUBMITTED" && newStatus === "DRAFT");
 

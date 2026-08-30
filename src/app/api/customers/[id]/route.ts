@@ -1,19 +1,43 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireSession } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
-import { CustomerType } from "@prisma/client";
 import { normalizePostalCode, validatePostalCode } from "@/lib/postalCode";
-import { parseAntal } from "@/lib/salesMaterial";
-import { validateVenue } from "@/lib/venue";
+import { las, z, valfriText, boolean } from "@/lib/validering";
+import { KundFalt } from "../route";
+
+/**
+ * Delvis uppdatering: fälten återanvänds från KundFalt i ../route.ts, så att
+ * ett kundnamns längdgräns bara står på ett ställe. Allt är frivilligt —
+ * utelämnat fält lämnas orört, vilket spreadarna längre ned bygger på.
+ */
+const Schema = z.object({
+  name: KundFalt.name.optional(),
+  type: KundFalt.type.optional(),
+  contactPerson: KundFalt.contactPerson.optional(),
+  contactRole: KundFalt.contactRole.optional(),
+  email: KundFalt.email.optional(),
+  phone: KundFalt.phone.optional(),
+  address: KundFalt.address.optional(),
+  city: KundFalt.city.optional(),
+  notes: KundFalt.notes.optional(),
+  venue: KundFalt.venue.optional(),
+  postersA3: KundFalt.postersA3.optional(),
+  postersA4: KundFalt.postersA4.optional(),
+  digitalMaterial: KundFalt.digitalMaterial.optional(),
+  digitalMaterialNote: KundFalt.digitalMaterialNote.optional(),
+  postalCode: valfriText("Postnumret", 20).optional(),
+  active: boolean("Aktiv-flaggan").optional(),
+});
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await requireSession();
   if (session instanceof NextResponse) return session;
 
   const { id: rawId } = await params;
-  const body = await req.json();
+  const data = await las(req, Schema);
+  if (data instanceof Response) return data;
   const { name, type, contactPerson, contactRole, email, phone, address, postalCode, city, notes, active,
-    postersA3, postersA4, digitalMaterial, digitalMaterialNote, venue } = body;
+    postersA3, postersA4, digitalMaterial, digitalMaterialNote, venue } = data;
 
   // Tål id med svenska tecken (URL-kodning + NFC/NFD)
   let decoded = rawId;
@@ -27,55 +51,41 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  // Namnet är kundens identitet i listor och rapporter — klienten stoppar
-  // tomma namn, men servern är sista ordet.
-  if (name !== undefined && !String(name ?? "").trim()) {
-    return NextResponse.json({ error: "Namnet kan inte vara tomt." }, { status: 400 });
-  }
-
-  if (venue !== undefined) {
-    const venueError = validateVenue(String(venue ?? ""));
-    if (venueError) return NextResponse.json({ error: venueError }, { status: 400 });
-  }
-
-  if (type !== undefined && !Object.values(CustomerType).includes(type)) {
-    return NextResponse.json({ error: "Ogiltig kundtyp." }, { status: 400 });
-  }
-
-  // Antal siffror i postnumret följer distriktets region
+  // Antal siffror i postnumret följer distriktets region — den enda kontroll
+  // som kräver ett databasuppslag och därför inte kan bo i schemat.
   if (postalCode !== undefined) {
     const district = await prisma.district.findUnique({
       where: { id: customer.districtId },
       select: { region: true },
     });
-    const postalCodeError = validatePostalCode(String(postalCode ?? ""), district?.region);
+    const postalCodeError = validatePostalCode(postalCode ?? "", district?.region);
     if (postalCodeError) {
       return NextResponse.json({ error: postalCodeError }, { status: 400 });
     }
   }
 
+  // Värdena är redan trimmade och typkontrollerade av schemat. Spreadarna
+  // finns kvar eftersom de bär skillnaden mellan "utelämnat" och "satt".
   const updated = await prisma.customer.update({
     where: { id: customer.id },
     data: {
-      ...(name !== undefined && { name: String(name).trim() }),
+      ...(name !== undefined && { name }),
       ...(type !== undefined && { type }),
       ...(contactPerson !== undefined && { contactPerson }),
       ...(contactRole !== undefined && { contactRole }),
       ...(email !== undefined && { email }),
       ...(phone !== undefined && { phone }),
       ...(address !== undefined && { address }),
-      ...(city !== undefined && { city: String(city ?? "").trim() || null }),
+      ...(city !== undefined && { city }),
       ...(postalCode !== undefined && {
-        postalCode: normalizePostalCode(String(postalCode ?? "")) || null,
+        postalCode: normalizePostalCode(postalCode ?? "") || null,
       }),
       ...(notes !== undefined && { notes }),
-      ...(venue !== undefined && { venue: String(venue ?? "").trim() || null }),
-      ...(postersA3 !== undefined && { postersA3: parseAntal(postersA3) }),
-      ...(postersA4 !== undefined && { postersA4: parseAntal(postersA4) }),
-      ...(digitalMaterial !== undefined && { digitalMaterial: !!digitalMaterial }),
-      ...(digitalMaterialNote !== undefined && {
-        digitalMaterialNote: String(digitalMaterialNote ?? "").trim() || null,
-      }),
+      ...(venue !== undefined && { venue }),
+      ...(postersA3 !== undefined && { postersA3 }),
+      ...(postersA4 !== undefined && { postersA4 }),
+      ...(digitalMaterial !== undefined && { digitalMaterial }),
+      ...(digitalMaterialNote !== undefined && { digitalMaterialNote }),
       ...(active !== undefined && { active }),
     },
   });
