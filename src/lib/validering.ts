@@ -2,6 +2,7 @@ import { z } from "zod";
 // Explicit .ts-ändelse: utan den kan `node --test` inte lösa upp sökvägen, och
 // modulen blir otestbar. Samma skäl som testfilerna importerar med ändelse.
 import { VENUE_MAX_LENGTH } from "./venue.ts";
+import { LOSENORD_MIN } from "./losenordskrav.ts";
 
 /**
  * Indatavalidering för API-routerna.
@@ -109,15 +110,9 @@ export const epost = z
   .max(200, "E-postadressen är för lång.")
   .pipe(z.email("Ange en giltig e-postadress."));
 
-/**
- * Lösenordets minsta längd.
- *
- * Sex tecken är LÅGT — under vad NIST rekommenderar (åtta) — men det är den
- * gräns portalen alltid haft, och att höja den är ett produktbeslut, inte en
- * valideringsfix. Siffran ligger här i stället för hårdkodad på tre ställen,
- * så att höjningen blir en rad den dag Johan vill ta den.
- */
-export const LOSENORD_MIN = 6;
+// Kravet bor i en egen, beroendefri fil så att formulären kan läsa samma
+// siffra utan att dra in zod i webbläsarens paket. Se lib/losenordskrav.ts.
+export { LOSENORD_MIN } from "./losenordskrav.ts";
 
 export const losenord = z
   .string({ error: "Lösenord måste anges." })
