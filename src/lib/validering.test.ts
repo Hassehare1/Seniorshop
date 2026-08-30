@@ -44,6 +44,41 @@ test("las returnerar första felet i error och alla i fel", async () => {
   assert.equal(kropp.fel.length, 2);
 });
 
+test("felmeddelandena böjer inte adjektiv efter genus", () => {
+  // Svenska adjektiv böjs efter ordets genus: "Adressen är tom" men
+  // "Kundnamnet är tomt". Fältnamnen som skickas in är blandade en- och
+  // ett-ord, så ETT böjt ord i mallen blir alltid fel för hälften av dem.
+  // "Försäljningen kan inte vara negativt" gick faktiskt i produktion.
+  //
+  // Testet jämför mallen med ett en-ord mot samma mall med ett ett-ord:
+  // är resten av meningen identisk bär den ingen genusform.
+  const utanFalt = (schema: { safeParse: (v: unknown) => { success: boolean; error?: { issues: { message: string }[] } } },
+                    falt: string) =>
+    schema.safeParse(-5).error!.issues[0].message.replace(falt, "«FÄLT»");
+
+  for (const bygg of [belopp, andel]) {
+    assert.equal(
+      utanFalt(bygg("Försäljningen"), "Försäljningen"),   // en-ord
+      utanFalt(bygg("MF-taket"), "MF-taket"),             // ett-ord
+      "samma mall ska ge samma mening oavsett fältets genus",
+    );
+  }
+
+  const tomtEn = text("Adressen", 50).safeParse("").error!.issues[0].message;
+  const tomtEtt = text("Kundnamnet", 50).safeParse("").error!.issues[0].message;
+  assert.equal(tomtEn.replace("Adressen", "«FÄLT»"), tomtEtt.replace("Kundnamnet", "«FÄLT»"));
+
+  // Och konkret: de böjda formerna ska inte förekomma alls.
+  const alla = [
+    belopp("Försäljningen").safeParse(-1).error!.issues[0].message,
+    andel("FT-avgiften").safeParse(-1).error!.issues[0].message,
+    text("Adressen", 50).safeParse("").error!.issues[0].message,
+  ].join(" ");
+  for (const bojt of ["negativt", "negativ ", "vara tomt", "vara tom "]) {
+    assert.ok(!alla.includes(bojt), `böjd form "${bojt}" finns kvar i ett meddelande`);
+  }
+});
+
 test("lösenordskravet ligger på eller över NIST:s golv", () => {
   // Låser fast riktningen, inte siffran: kravet får höjas men aldrig sänkas
   // under åtta tecken (NIST SP 800-63B). Portalen låg på sex fram till
