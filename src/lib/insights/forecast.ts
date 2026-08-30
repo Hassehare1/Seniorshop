@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { toNumber } from "@/lib/fees";
+import { isoWeekMonday } from "@/lib/week";
 import type { Season } from "@prisma/client";
 
 export type SeasonStatus = "past" | "current" | "future";
@@ -23,16 +24,9 @@ export interface ForecastData {
   seasons: ForecastSeason[];
 }
 
-// Måndagen i en given ISO-vecka (UTC). Används för att avgöra om en säsong är
-// avslutad, pågående eller kommande i förhållande till dagens datum — ISO-vecka
-// 1 är veckan som innehåller 4 januari.
-function isoWeekMonday(year: number, week: number): Date {
-  const jan4 = new Date(Date.UTC(year, 0, 4));
-  const jan4Dow = (jan4.getUTCDay() + 6) % 7; // 0 = måndag
-  const monday = new Date(jan4);
-  monday.setUTCDate(jan4.getUTCDate() - jan4Dow + (week - 1) * 7);
-  return monday;
-}
+// isoWeekMonday låg tidigare privat här, otestad — trots att den avgör vilken
+// del av helårsprognosen som är utfall och vilken som är gissning. Flyttad till
+// lib/week.ts 2026-08-30, där all ISO-veckoräkning bor och har tester.
 
 /**
  * Helårsprognos (FY): per säsong, kund-mot-kund mot fjolår. Ett helår = Vår +
