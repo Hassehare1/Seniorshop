@@ -4,6 +4,11 @@ import bcrypt from "bcryptjs";
 const prisma = new PrismaClient();
 
 async function main() {
+  // OBS: "ft123" är kortare än LOSENORD_MIN (lib/losenordskrav.ts) och skulle
+  // inte gå att sätta genom formuläret. Det är avsiktligt kvar — seeden
+  // skriver hashen direkt och passerar aldrig valideringen, lösenordet är
+  // dokumenterat i README och används bara lokalt. Ändra det inte i tron att
+  // det är en miss.
   const adminHash = await bcrypt.hash("admin123", 10);
   const ftHash = await bcrypt.hash("ft123", 10);
 

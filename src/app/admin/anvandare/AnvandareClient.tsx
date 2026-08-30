@@ -2,6 +2,7 @@
 
 import { useState, useId } from "react";
 import PasswordInput from "@/components/ui/PasswordInput";
+import { LOSENORD_HINT } from "@/lib/losenordskrav";
 
 interface District {
   id: string;
@@ -145,7 +146,7 @@ export default function AnvandareClient({ users: initial, districts }: Props) {
                 id={`${uid}-losenord`}
                 value={form.password}
                 onChange={v => setForm(f => ({ ...f, password: v }))}
-                placeholder={editingId ? "Lämna tomt för oförändrat" : "Minst 6 tecken"}
+                placeholder={editingId ? "Lämna tomt för oförändrat" : LOSENORD_HINT}
                 autoComplete="new-password"
                 className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />

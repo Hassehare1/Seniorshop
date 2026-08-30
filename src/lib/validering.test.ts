@@ -44,6 +44,14 @@ test("las returnerar första felet i error och alla i fel", async () => {
   assert.equal(kropp.fel.length, 2);
 });
 
+test("lösenordskravet ligger på eller över NIST:s golv", () => {
+  // Låser fast riktningen, inte siffran: kravet får höjas men aldrig sänkas
+  // under åtta tecken (NIST SP 800-63B). Portalen låg på sex fram till
+  // 2026-08-30. Utan det här testet är gränsen bara en siffra någon kan
+  // skruva ned igen utan att något säger ifrån.
+  assert.ok(LOSENORD_MIN >= 8, `LOSENORD_MIN är ${LOSENORD_MIN}, ska vara minst 8`);
+});
+
 test("losenord avvisar ett TAL — regressionstest för .length-buggen", () => {
   // `(12345678).length` är undefined, och `undefined < 6` är falskt, så den
   // gamla kontrollen `newPassword.length < 6` släppte igenom tal rakt in i
