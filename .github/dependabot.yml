@@ -64,6 +64,20 @@ updates:
       - dependency-name: "typescript"
         update-types: ["version-update:semver-major"]
 
+      # ── @types/node: FÅR INTE följa "senaste" ──────────────────────────────
+      #
+      # Paketets major SKA spegla den Node vi faktiskt kör, inte den nyaste som
+      # finns. Vi kör 24 på tre ställen som ska hållas i takt: .nvmrc, engines i
+      # package.json och Vercels nodeVersion. Dependabot erbjöd 26 (#60) — det
+      # hade beskrivit ett runtime portalen inte använder, alltså exakt den
+      # glidning som städades bort 2026-08-30 (punkt 28 på åtgärdslistan).
+      #
+      # ⚠️ LYFT NÄR: portalen faktiskt byter Node-major. Bumpa då alla fyra
+      # samtidigt — .nvmrc, engines, Vercel-inställningen och det här paketet.
+      # Minors och patchar inom 24.x släpps igenom som vanligt.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+
     groups:
       # Samla småuppdateringar i en PR i stället för fem. Major-versioner
       # hamnar utanför gruppen och får en egen PR var — de förtjänar att läsas
