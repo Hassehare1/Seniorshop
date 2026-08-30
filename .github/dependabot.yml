@@ -1,0 +1,39 @@
+# Bevakning av beroenden. Portalen hade ingen — 16 paket låg efter senaste
+# versionen 2026-08-30, och ingen fick veta när en säkerhetsuppdatering kom.
+#
+# Veckovis och inte dagligen: en PR-flod varje morgon läses inte, och då är
+# bevakningen värdelös. Måndag morgon är lagom — då finns tid att titta.
+#
+# ⚠️ xlsx TÄCKS INTE. Det hämtas från SheetJS egen CDN-tarball
+# (https://cdn.sheetjs.com/...) eftersom de lämnat npm, och varken Dependabot
+# eller `npm audit` ser den. Portalens tyngsta filhanteringsbibliotek måste
+# alltså bevakas för hand — se punkt 21 på åtgärdslistan.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:00"
+      timezone: Europe/Stockholm
+    open-pull-requests-limit: 5
+    groups:
+      # Samla småuppdateringar i en PR i stället för fem. Major-versioner
+      # hamnar utanför gruppen och får en egen PR var — de förtjänar att läsas
+      # en och en (jfr Prisma 5 → 7, som är ett eget projekt).
+      smaskaligt:
+        update-types:
+          - minor
+          - patch
+    commit-message:
+      prefix: "chore(deps)"
+
+  # GitHub Actions-versionerna i ci.yml åldras också, och en action som
+  # arkiveras slutar fungera utan förvarning.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: "chore(ci)"
