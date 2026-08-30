@@ -1,23 +1,35 @@
 @import "tailwindcss";
 
+/*
+ * Sidans grundfärger. Syns nästan aldrig — varje layout målar sin egen
+ * bakgrund (bg-slate-50) och inloggningen sin egen gradient — men de finns
+ * som botten under allt.
+ */
 :root {
   --background: #ffffff;
   --foreground: #171717;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+/*
+ * HÄR LÅG TRE REGLER FRÅN create-next-app SOM TOGS BORT 2026-08-30:
+ *
+ * 1. Ett @theme inline-block som pekade om --font-sans och --font-mono till
+ *    --font-geist-sans/--font-geist-mono. De variablerna har aldrig
+ *    definierats i det här projektet (typsnittet är Inter, satt i
+ *    layout.tsx), så Tailwinds font-mono pekade på ingenting — och
+ *    `<code className="font-mono">` på assistent-sidan renderades i
+ *    brödtextens typsnitt i stället för monospace. Borttagningen LAGADE det.
+ * 2. --color-background/--color-foreground i samma block, som genererade
+ *    utility-klasserna bg-background och text-foreground. Ingen av dem
+ *    användes någonstans.
+ * 3. Ett @media (prefers-color-scheme: dark) som gjorde --background nästan
+ *    svart. Portalen har inget mörkt läge — all text är slate-800 och uppåt
+ *    — så regeln hade gjort sidan oläsbar om den någonsin slagit igenom.
+ *    Att den inte gjorde det berodde bara på att varje layout målar över den.
+ *
+ * Vill du någon gång ha mörkt läge på riktigt är det ett eget arbete, inte
+ * de här fyra raderna.
+ */
 
 /*
  * Seniorshop-tema — bytbar accentfärg (src/app/profil).
@@ -50,7 +62,9 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  /* Typsnittet sätts i layout.tsx via next/font (Inter), som lägger en klass
+     på body med sin egen reservkedja. En font-family här vann ändå aldrig
+     över den klassen — den låg kvar från create-next-app. */
 }
 
 /* Ta bort webbläsarens fokus-ram på klickbara diagram (recharts) */
