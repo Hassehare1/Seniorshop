@@ -186,6 +186,10 @@ model WeeklyReport {
   updatedAt  DateTime     @updatedAt
 
   @@unique([districtId, seasonId, week])
+  // Helårsprognosen hämtar rapporter för flera säsonger UTAN distriktsfilter
+  // när admin tittar på alla distrikt (insights/forecast.ts). Det sammansatta
+  // indexet ovan börjar på districtId och kan då inte användas.
+  @@index([seasonId])
 }
 
 model Visit {
@@ -211,6 +215,16 @@ model Visit {
   comment           String?
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
+
+  // Postgres indexerar INTE främmande nycklar automatiskt (till skillnad från
+  // MySQL). Visit är portalens största tabell och båda kolumnerna används:
+  //   reportId   — deleteMany vid varje sparad veckorapport (api/reports),
+  //                och FK-kontrollen när en rapport tas bort
+  //   customerId — updateMany vid kundsammanslagning, och FK-kontrollen när
+  //                en kund raderas (merge + nollställning)
+  // Utan dem gör var och en av de operationerna en full genomsökning.
+  @@index([reportId])
+  @@index([customerId])
 }
 
 model AuditLog {
