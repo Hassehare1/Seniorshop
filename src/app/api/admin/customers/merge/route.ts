@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { toNumber } from "@/lib/fees";
+import { medFelhantering } from "@/lib/felhantering";
 
 // Slå ihop två dubblettkunder: besöken flyttas till den kund som behålls, den
 // andra raderas. Uppstår när samma verkliga kund stavas olika i två importfiler
@@ -35,7 +36,7 @@ const withVisits = {
   },
 } as const;
 
-export async function POST(req: NextRequest) {
+export const POST = medFelhantering(async (req: NextRequest) => {
   const session = await requireAdmin();
   if (session instanceof NextResponse) return session;
 
@@ -135,4 +136,4 @@ export async function POST(req: NextRequest) {
     committed: true,
     result: { visitsMoved, keptName: keep.name, removedName: remove.name },
   });
-}
+});

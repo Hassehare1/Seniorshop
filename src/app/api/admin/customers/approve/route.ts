@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { las, z, id } from "@/lib/validering";
+import { medFelhantering } from "@/lib/felhantering";
 
 // Tidigare kontrollerades bara att ids var en ARRAY, aldrig vad den innehöll —
 // elementen gick sedan in i Prismas `id: { in: ... }`. Taket på 5000 finns för
@@ -11,7 +12,7 @@ const Schema = z.object({
 });
 
 // Admin godkänner kunder: specifika (ids) eller alla väntande
-export async function POST(req: NextRequest) {
+export const POST = medFelhantering(async (req: NextRequest) => {
   const session = await requireAdmin();
   if (session instanceof NextResponse) return session;
 
@@ -38,4 +39,4 @@ export async function POST(req: NextRequest) {
   }
 
   return NextResponse.json({ count: result.count });
-}
+});

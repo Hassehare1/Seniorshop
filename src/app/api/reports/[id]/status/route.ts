@@ -3,10 +3,11 @@ import { requireSession } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { ReportStatus } from "@prisma/client";
 import { las, z, enumFalt } from "@/lib/validering";
+import { medFelhantering } from "@/lib/felhantering";
 
 const Schema = z.object({ status: enumFalt(ReportStatus, "Statusen") });
 
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export const PATCH = medFelhantering(async (req: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
   const session = await requireSession();
   if (session instanceof NextResponse) return session;
 
@@ -72,4 +73,4 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   });
 
   return NextResponse.json(updated);
-}
+});

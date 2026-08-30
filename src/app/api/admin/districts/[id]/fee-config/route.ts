@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { STANDARD_FEE_CONFIG } from "@/lib/fees";
 import { las, z, andel, belopp } from "@/lib/validering";
+import { medFelhantering } from "@/lib/felhantering";
 
 /**
  * Avgiftsvillkoren avgör vad varje franchisetagare faktiskt faktureras, och
@@ -23,7 +24,7 @@ const Schema = z.object({
     .optional(),
 });
 
-export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export const PUT = medFelhantering(async (req: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
   const session = await requireAdmin();
   if (session instanceof NextResponse) return session;
 
@@ -68,4 +69,4 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   });
 
   return NextResponse.json(updated);
-}
+});

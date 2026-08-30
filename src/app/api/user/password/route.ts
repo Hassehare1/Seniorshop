@@ -3,6 +3,7 @@ import { requireSession } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { las, z, losenord } from "@/lib/validering";
+import { medFelhantering } from "@/lib/felhantering";
 
 /**
  * Kontrollen här var `newPassword.length < 6`. Skickades ett TAL blev
@@ -15,7 +16,7 @@ const Schema = z.object({
   newPassword: losenord,
 });
 
-export async function PATCH(req: NextRequest) {
+export const PATCH = medFelhantering(async (req: NextRequest) => {
   const session = await requireSession();
   if (session instanceof NextResponse) return session;
 
@@ -43,4 +44,4 @@ export async function PATCH(req: NextRequest) {
   });
 
   return NextResponse.json({ ok: true });
-}
+});

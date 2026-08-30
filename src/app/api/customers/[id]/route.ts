@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { normalizePostalCode, validatePostalCode } from "@/lib/postalCode";
 import { las, z, valfriText, boolean } from "@/lib/validering";
 import { KundFalt } from "../route";
+import { medFelhantering } from "@/lib/felhantering";
 
 /**
  * Delvis uppdatering: fälten återanvänds från KundFalt i ../route.ts, så att
@@ -29,7 +30,7 @@ const Schema = z.object({
   active: boolean("Aktiv-flaggan").optional(),
 });
 
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export const PATCH = medFelhantering(async (req: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
   const session = await requireSession();
   if (session instanceof NextResponse) return session;
 
@@ -112,4 +113,4 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   });
 
   return NextResponse.json(updated);
-}
+});

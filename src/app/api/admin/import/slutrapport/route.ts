@@ -6,6 +6,7 @@ import { customerTypeLabels } from "@/lib/customerTypes";
 import { CustomerType } from "@prisma/client";
 import { findLayout } from "@/lib/importLayout";
 import * as XLSX from "xlsx";
+import { medFelhantering } from "@/lib/felhantering";
 
 const DEFAULT_FEE_CONFIG: FeeConfig = STANDARD_FEE_CONFIG;
 
@@ -22,7 +23,7 @@ interface ParsedVisit {
   comment: string | null;
 }
 
-export async function POST(req: NextRequest) {
+export const POST = medFelhantering(async (req: NextRequest) => {
   const session = await requireAdmin();
   if (session instanceof NextResponse) return session;
 
@@ -297,4 +298,4 @@ export async function POST(req: NextRequest) {
   );
 
   return NextResponse.json({ committed: true, result, summary });
-}
+});

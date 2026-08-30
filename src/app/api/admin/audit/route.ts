@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
+import { medFelhantering } from "@/lib/felhantering";
 
-export async function GET(req: NextRequest) {
+export const GET = medFelhantering(async (req: NextRequest) => {
   const session = await requireAdmin();
   if (session instanceof NextResponse) return session;
 
@@ -15,4 +16,4 @@ export async function GET(req: NextRequest) {
   });
 
   return NextResponse.json(logs);
-}
+});

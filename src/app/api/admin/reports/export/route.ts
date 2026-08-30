@@ -4,8 +4,9 @@ import { prisma } from "@/lib/prisma";
 import { customerTypeLabels as typeLabels } from "@/lib/customerTypes";
 import * as XLSX from "xlsx";
 import { money, type MoneyInput } from "@/lib/fees";
+import { medFelhantering } from "@/lib/felhantering";
 
-export async function GET(req: NextRequest) {
+export const GET = medFelhantering(async (req: NextRequest) => {
   const session = await requireAdmin();
   if (session instanceof NextResponse) return session;
 
@@ -72,4 +73,4 @@ export async function GET(req: NextRequest) {
       "Content-Disposition": `attachment; filename="SeniorShop_${seasonLabel}.xlsx"`,
     },
   });
-}
+});

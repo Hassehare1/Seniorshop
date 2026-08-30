@@ -5,6 +5,7 @@ import { requireSession } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { calculateFees, money, sumMoney, toNumber, STANDARD_FEE_CONFIG, type FeeConfig } from "@/lib/fees";
 import { las, z, id, valfriText, veckonummer, belopp, antal, boolean } from "@/lib/validering";
+import { medFelhantering } from "@/lib/felhantering";
 
 // MF-taket ackumuleras över säsongens veckor, så veckor EFTER den ändrade
 // måste räknas om — både när en vecka sparas och när den tas bort.
@@ -75,7 +76,7 @@ const RapportSchema = z.object({
   visits: z.array(BesokSchema).max(MAX_VISITS, `Högst ${MAX_VISITS} besök per rapport.`),
 });
 
-export async function POST(req: NextRequest) {
+export const POST = medFelhantering(async (req: NextRequest) => {
   const session = await requireSession();
   if (session instanceof NextResponse) return session;
 
@@ -251,9 +252,9 @@ export async function POST(req: NextRequest) {
   }, { timeout: 15000 });
 
   return NextResponse.json({ id: reportId });
-}
+});
 
-export async function GET(req: NextRequest) {
+export const GET = medFelhantering(async (req: NextRequest) => {
   const session = await requireSession();
   if (session instanceof NextResponse) return session;
 
@@ -313,4 +314,4 @@ export async function GET(req: NextRequest) {
       })),
     })),
   );
-}
+});

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { Role } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { las, z, id as idFalt, valfriText, epost, losenord, boolean, enumFalt } from "@/lib/validering";
+import { medFelhantering } from "@/lib/felhantering";
 
 /**
  * Delvis uppdatering: varje fält är frivilligt, och ett utelämnat fält
@@ -20,7 +21,7 @@ const Schema = z.object({
   active: boolean("Spärrstatus").optional(),
 });
 
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export const PATCH = medFelhantering(async (req: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
   const session = await requireAdmin();
   if (session instanceof NextResponse) return session;
 
@@ -95,4 +96,4 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   // Returnera aldrig lösenordshash till klienten
   const { passwordHash: _ph, ...safeUser } = user;
   return NextResponse.json(safeUser);
-}
+});

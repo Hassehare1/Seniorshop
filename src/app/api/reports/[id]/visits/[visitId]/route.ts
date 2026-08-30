@@ -2,15 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { isReaBackfillEnabled } from "@/lib/reaBackfill";
+import { medFelhantering } from "@/lib/felhantering";
 
 // Smalt undantag från rapportlåsningen: bara isSale, bara admin, bara medan
 // brytaren i AppSetting är på. Försäljning, kundantal och kommentar går
 // fortfarande INTE att ändra på en godkänd rapport — se PATCH .../status
 // för den vanliga vägen. Se [[rea-besok]] i minnet för bakgrunden.
-export async function PATCH(
+export const PATCH = medFelhantering(async (
   req: NextRequest,
   { params }: { params: Promise<{ id: string; visitId: string }> },
-) {
+) => {
   const session = await requireAdmin();
   if (session instanceof NextResponse) return session;
 
@@ -61,4 +62,4 @@ export async function PATCH(
   });
 
   return NextResponse.json({ id: visit.id, isSale });
-}
+});

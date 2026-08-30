@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireSession } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { toNumber } from "@/lib/fees";
+import { medFelhantering } from "@/lib/felhantering";
 
 // Besöksraderna för EN veckorapport. Översikten hämtar dem först när en rad
 // fälls ut, så att admins "alla distrikt"-vy slipper skicka varenda besök i
 // hela säsongen till webbläsaren direkt. Se WeeklyReportList.
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export const GET = medFelhantering(async (_req: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
   const session = await requireSession();
   if (session instanceof NextResponse) return session;
 
@@ -45,4 +46,4 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   }));
 
   return NextResponse.json({ visits });
-}
+});

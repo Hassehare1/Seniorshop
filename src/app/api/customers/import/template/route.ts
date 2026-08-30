@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { requireSession } from "@/lib/authz";
 import * as XLSX from "xlsx";
+import { medFelhantering } from "@/lib/felhantering";
 
 // Genererar en tom Excel-mall att fylla i och ladda upp
-export async function GET() {
+export const GET = medFelhantering(async () => {
   const session = await requireSession();
   if (session instanceof NextResponse) return session;
 
@@ -29,4 +30,4 @@ export async function GET() {
       "Content-Disposition": `attachment; filename="SeniorShop_kundmall.xlsx"`,
     },
   });
-}
+});

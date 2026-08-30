@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { las, z, id } from "@/lib/validering";
+import { medFelhantering } from "@/lib/felhantering";
 
 // seasonId spreds tidigare orört in i Prismas `where`. Ett objekt i stället
 // för en sträng — `{ seasonId: { not: "x" } }` — blir då ett FILTER och inte
@@ -10,7 +11,7 @@ import { las, z, id } from "@/lib/validering";
 const Schema = z.object({ seasonId: id("Säsongs-id").optional() });
 
 // Godkänn alla SUBMITTED-rapporter (optionellt filtrerat på säsong)
-export async function POST(req: NextRequest) {
+export const POST = medFelhantering(async (req: NextRequest) => {
   const session = await requireAdmin();
   if (session instanceof NextResponse) return session;
 
@@ -55,4 +56,4 @@ export async function POST(req: NextRequest) {
   }
 
   return NextResponse.json({ approved: result.count });
-}
+});

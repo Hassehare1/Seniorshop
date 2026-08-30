@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { Role } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { las, z, id, valfriText, epost, losenord, enumFalt } from "@/lib/validering";
+import { medFelhantering } from "@/lib/felhantering";
 
 // epost normaliserar (trim + gemener) och kontrollerar formatet — tidigare
 // gjordes bara trim/gemener, så "anna" utan snabel-a gick igenom.
@@ -20,7 +21,7 @@ const Schema = z
     path: ["districtId"],
   });
 
-export async function POST(req: NextRequest) {
+export const POST = medFelhantering(async (req: NextRequest) => {
   const session = await requireAdmin();
   if (session instanceof NextResponse) return session;
 
@@ -63,4 +64,4 @@ export async function POST(req: NextRequest) {
   // Returnera aldrig lösenordshash till klienten
   const { passwordHash: _ph, ...safeUser } = user;
   return NextResponse.json(safeUser, { status: 201 });
-}
+});
