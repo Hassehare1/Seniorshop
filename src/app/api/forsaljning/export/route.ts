@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { customerTypeLabels as typeLabels } from "@/lib/customerTypes";
 import * as XLSX from "xlsx";
 import { money, sumMoney, type MoneyInput } from "@/lib/fees";
+import { medFelhantering } from "@/lib/felhantering";
 
 const statusLabels: Record<string, string> = {
   DRAFT: "Utkast",
@@ -12,7 +13,7 @@ const statusLabels: Record<string, string> = {
   APPROVED: "Godkänd",
 };
 
-export async function GET(req: NextRequest) {
+export const GET = medFelhantering(async (req: NextRequest) => {
   const session = await requireSession();
   if (session instanceof NextResponse) return session;
 
@@ -199,4 +200,4 @@ export async function GET(req: NextRequest) {
       "Content-Disposition": `attachment; filename="${filename}"`,
     },
   });
-}
+});

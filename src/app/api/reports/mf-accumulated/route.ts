@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireSession } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { sumMoney } from "@/lib/fees";
+import { medFelhantering } from "@/lib/felhantering";
 
-export async function GET(req: NextRequest) {
+export const GET = medFelhantering(async (req: NextRequest) => {
   const session = await requireSession();
   if (session instanceof NextResponse) return session;
 
@@ -31,4 +32,4 @@ export async function GET(req: NextRequest) {
   const accumulated = sumMoney(reports.flatMap((r) => r.visits).map((v) => v.mfFee));
 
   return NextResponse.json({ accumulated: accumulated.toFixed(2) });
-}
+});

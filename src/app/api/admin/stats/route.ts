@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
+import { medFelhantering } from "@/lib/felhantering";
 
-export async function GET() {
+export const GET = medFelhantering(async () => {
   const session = await requireAdmin();
   if (session instanceof NextResponse) return session;
 
@@ -11,4 +12,4 @@ export async function GET() {
   });
 
   return NextResponse.json({ submittedCount });
-}
+});

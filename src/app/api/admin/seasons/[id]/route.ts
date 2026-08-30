@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { las, z, veckonummer } from "@/lib/validering";
+import { medFelhantering } from "@/lib/felhantering";
 
 // Samma spann-regel som när säsongen skapas. Se SasongSchema i ../route.ts —
 // den kan inte återanvändas rakt av här, eftersom type och year inte ändras.
@@ -15,7 +16,7 @@ const Schema = z
     path: ["weekStart"],
   });
 
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export const PATCH = medFelhantering(async (req: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
   const session = await requireAdmin();
   if (session instanceof NextResponse) return session;
 
@@ -30,4 +31,4 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   });
 
   return NextResponse.json(updated);
-}
+});

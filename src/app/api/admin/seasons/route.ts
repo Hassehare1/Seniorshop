@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { SeasonType } from "@prisma/client";
 import { las, z, heltal, veckonummer, enumFalt } from "@/lib/validering";
+import { medFelhantering } from "@/lib/felhantering";
 
 /**
  * Veckospannet avgör vilka veckor som går att rapportera på — sätts det fel
@@ -22,14 +23,14 @@ export const SasongSchema = z
     path: ["weekStart"],
   });
 
-export async function GET() {
+export const GET = medFelhantering(async () => {
   const session = await requireAdmin();
   if (session instanceof NextResponse) return session;
   const seasons = await prisma.season.findMany({ orderBy: [{ year: "desc" }, { type: "desc" }] });
   return NextResponse.json(seasons);
-}
+});
 
-export async function POST(req: NextRequest) {
+export const POST = medFelhantering(async (req: NextRequest) => {
   const session = await requireAdmin();
   if (session instanceof NextResponse) return session;
 
@@ -48,4 +49,4 @@ export async function POST(req: NextRequest) {
     data: { type, year, weekStart, weekEnd },
   });
   return NextResponse.json(season, { status: 201 });
-}
+});

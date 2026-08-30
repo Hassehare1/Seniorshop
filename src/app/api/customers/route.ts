@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { CustomerType } from "@prisma/client";
 import { normalizePostalCode, validatePostalCode } from "@/lib/postalCode";
 import { las, z, id, text, valfriText, antal, boolean, moteslokal, enumFalt } from "@/lib/validering";
+import { medFelhantering } from "@/lib/felhantering";
 
 /**
  * Kundens fält. Fritexten gick tidigare rakt in i Prisma utan typkontroll
@@ -41,7 +42,7 @@ const SkapaSchema = z.object({
   digitalMaterial: KundFalt.digitalMaterial.default(false),
 });
 
-export async function GET(req: NextRequest) {
+export const GET = medFelhantering(async (req: NextRequest) => {
   const session = await requireSession();
   if (session instanceof NextResponse) return session;
 
@@ -57,9 +58,9 @@ export async function GET(req: NextRequest) {
   });
 
   return NextResponse.json(customers);
-}
+});
 
-export async function POST(req: NextRequest) {
+export const POST = medFelhantering(async (req: NextRequest) => {
   const session = await requireSession();
   if (session instanceof NextResponse) return session;
 
@@ -119,4 +120,4 @@ export async function POST(req: NextRequest) {
   });
 
   return NextResponse.json(customer, { status: 201 });
-}
+});

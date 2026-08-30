@@ -3,6 +3,7 @@ import { requireSession } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { customerTypeLabels } from "@/lib/customerTypes";
 import * as XLSX from "xlsx";
+import { medFelhantering } from "@/lib/felhantering";
 
 const MAX_ROWS = 500;
 const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5 MB — kollas FÖRE inläsning i minnet
@@ -19,7 +20,7 @@ function parseType(raw: unknown): string | null {
 
 const cell = (row: Record<string, unknown>, key: string) => String(row[key] ?? "").trim();
 
-export async function POST(req: NextRequest) {
+export const POST = medFelhantering(async (req: NextRequest) => {
   const session = await requireSession();
   if (session instanceof NextResponse) return session;
 
@@ -103,4 +104,4 @@ export async function POST(req: NextRequest) {
   }
 
   return NextResponse.json({ created, createdCount: created.length, errors });
-}
+});

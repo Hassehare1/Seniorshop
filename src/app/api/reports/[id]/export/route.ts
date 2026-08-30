@@ -3,8 +3,9 @@ import { requireSession } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import * as XLSX from "xlsx";
 import { money, sumMoney, type MoneyInput } from "@/lib/fees";
+import { medFelhantering } from "@/lib/felhantering";
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export const GET = medFelhantering(async (_req: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
   const session = await requireSession();
   if (session instanceof NextResponse) return session;
 
@@ -84,4 +85,4 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       "Content-Disposition": `attachment; filename="${filename}"`,
     },
   });
-}
+});

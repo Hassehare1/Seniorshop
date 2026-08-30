@@ -5,6 +5,7 @@ import { requireSession } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { assistantTools, currentSeason, runAssistantTool, type ToolScope } from "@/lib/insights/tools";
 import { parseMeddelanden } from "@/lib/insights/messages";
+import { medFelhantering } from "@/lib/felhantering";
 
 // Assistenten är admin-låst medan den mognar. Öppnas den för FT är det den här
 // raden som tas bort — behörigheten i verktygen är redan skriven för båda
@@ -69,7 +70,7 @@ Viktigt:
 type Uppslag = { verktyg: string; urval?: string; sasong?: string };
 
 
-export async function POST(req: NextRequest) {
+export const POST = medFelhantering(async (req: NextRequest) => {
   const session = await requireSession();
   if (session instanceof NextResponse) return session;
 
@@ -178,4 +179,4 @@ export async function POST(req: NextRequest) {
     const detalj = err instanceof Anthropic.APIError ? err.message : "Okänt fel";
     return NextResponse.json({ error: `Något gick fel: ${detalj}` }, { status: 502 });
   }
-}
+});

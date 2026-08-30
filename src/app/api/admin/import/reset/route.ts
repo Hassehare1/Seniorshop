@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
+import { medFelhantering } from "@/lib/felhantering";
 
 // Två nivåer, med skilda bekräftelseord så att den hårdare aldrig kan utlösas
 // av vana. "TÖMMA" nollställer bara siffrorna — det är den man kör återkommande.
@@ -16,7 +17,7 @@ const ORD = {
 
 type Scope = keyof typeof ORD;
 
-export async function POST(req: NextRequest) {
+export const POST = medFelhantering(async (req: NextRequest) => {
   const session = await requireAdmin();
   if (session instanceof NextResponse) return session;
 
@@ -56,4 +57,4 @@ export async function POST(req: NextRequest) {
   });
 
   return NextResponse.json({ ok: true, scope, ...result });
-}
+});

@@ -3,16 +3,17 @@ import { requireAdmin } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { isReaBackfillEnabled, setReaBackfillEnabled } from "@/lib/reaBackfill";
 import { las, z, boolean } from "@/lib/validering";
+import { medFelhantering } from "@/lib/felhantering";
 
 const Schema = z.object({ enabled: boolean("Brytaren") });
 
-export async function GET() {
+export const GET = medFelhantering(async () => {
   const session = await requireAdmin();
   if (session instanceof NextResponse) return session;
   return NextResponse.json({ enabled: await isReaBackfillEnabled() });
-}
+});
 
-export async function PATCH(req: NextRequest) {
+export const PATCH = medFelhantering(async (req: NextRequest) => {
   const session = await requireAdmin();
   if (session instanceof NextResponse) return session;
 
@@ -33,4 +34,4 @@ export async function PATCH(req: NextRequest) {
   });
 
   return NextResponse.json({ enabled });
-}
+});

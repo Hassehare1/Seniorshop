@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { gallraAuditLog, GALLRING_DAGAR, GALLRING_DAGAR_LOGIN_FAILED } from "@/lib/audit-gallring";
 import { logg } from "@/lib/logg";
+import { medFelhantering } from "@/lib/felhantering";
 
 /**
  * Schemalagd gallring av händelseloggen. Körs av Vercel Cron (se vercel.json),
@@ -9,7 +10,7 @@ import { logg } from "@/lib/logg";
  * Routen ligger utanför inloggningen — därför måste hemligheten finnas. Saknas
  * CRON_SECRET svarar vi 503 i stället för att gallra oskyddat.
  */
-export async function GET(req: NextRequest) {
+export const GET = medFelhantering(async (req: NextRequest) => {
   const hemlighet = process.env.CRON_SECRET;
   if (!hemlighet) {
     return NextResponse.json({ error: "CRON_SECRET saknas" }, { status: 503 });
@@ -31,4 +32,4 @@ export async function GET(req: NextRequest) {
   });
 
   return NextResponse.json(resultat);
-}
+});

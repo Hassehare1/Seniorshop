@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireSession } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { las, z, id, belopp, antal } from "@/lib/validering";
+import { medFelhantering } from "@/lib/felhantering";
 
 // Talkontrollen här var redan god — det som saknades var att id:na och
 // målens ÖVRE gränser aldrig kontrollerades.
@@ -15,7 +16,7 @@ const Schema = z.object({
 });
 
 // Sätt/uppdatera FT:s mål för en säsong (ett per distrikt × säsong).
-export async function POST(req: NextRequest) {
+export const POST = medFelhantering(async (req: NextRequest) => {
   const session = await requireSession();
   if (session instanceof NextResponse) return session;
 
@@ -51,4 +52,4 @@ export async function POST(req: NextRequest) {
   });
 
   return NextResponse.json(goal);
-}
+});
