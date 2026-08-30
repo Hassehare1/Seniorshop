@@ -1,6 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createHash, timingSafeEqual } from "node:crypto";
 import { gallraAuditLog, GALLRING_DAGAR, GALLRING_DAGAR_LOGIN_FAILED } from "@/lib/audit-gallring";
 import { logg } from "@/lib/logg";
+
+/**
+ * Konstanttidsjämförelse av hemligheten.
+ *
+ * `!==` avbryter vid första tecken som skiljer, så svarstiden avslöjar i
+ * teorin hur många inledande tecken en gissning har rätt. Över HTTP, mot en
+ * slumpad token på 32 byte, är det praktiskt taget omöjligt att utnyttja —
+ * men kontrollen är gratis, och det är precis den sortens rad en granskare
+ * letar efter.
+ *
+ * Hashen först: `timingSafeEqual` kräver lika långa buffertar och kastar
+ * annars, och en längdkontroll före hade läckt just den information vi vill
+ * dölja. Två SHA-256-summor är alltid 32 byte.
+ */
+function likaHemligheter(a: string, b: string): boolean {
+  return timingSafeEqual(
+    createHash("sha256").update(a).digest(),
+    createHash("sha256").update(b).digest(),
+  );
+}
 import { medFelhantering } from "@/lib/felhantering";
 
 /**
@@ -15,7 +36,7 @@ export const GET = medFelhantering(async (req: NextRequest) => {
   if (!hemlighet) {
     return NextResponse.json({ error: "CRON_SECRET saknas" }, { status: 503 });
   }
-  if (req.headers.get("authorization") !== `Bearer ${hemlighet}`) {
+  if (!likaHemligheter(req.headers.get("authorization") ?? "", `Bearer ${hemlighet}`)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
