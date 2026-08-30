@@ -4,6 +4,7 @@ import type Decimal from "decimal.js";
 import { requireSession } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { calculateFees, money, sumMoney, toNumber, STANDARD_FEE_CONFIG, type FeeConfig } from "@/lib/fees";
+import { las, z, id, valfriText, veckonummer, belopp, antal, boolean } from "@/lib/validering";
 
 // MF-taket ackumuleras över säsongens veckor, så veckor EFTER den ändrade
 // måste räknas om — både när en vecka sparas och när den tas bort.
@@ -48,6 +49,32 @@ const DEFAULT_FEE_CONFIG: FeeConfig = STANDARD_FEE_CONFIG;
 
 const MAX_VISITS = 500;
 
+/**
+ * Veckans besök. Strukturkontrollen låg tidigare utspridd som handskrivna
+ * if-satser, och kommentaren — det enda fria textfältet FT skriver i — hade
+ * ingen längdgräns alls.
+ *
+ * Två kontroller ligger KVAR i routen och kan inte bo här: att kunden hör
+ * till distriktet, och att ingen kund förekommer två gånger samma vecka.
+ * Båda kräver ett databasuppslag.
+ */
+const BesokSchema = z.object({
+  customerId: id("Kund-id"),
+  numberOfCustomers: antal("Antal besökare", 100_000),
+  sales: belopp("Försäljningen"),
+  isFashionShow: boolean("Modevisning").default(false),
+  isHangerShow: boolean("Visning på galge").default(false),
+  isSale: boolean("REA").default(false),
+  comment: valfriText("Kommentaren", 1000),
+});
+
+const RapportSchema = z.object({
+  districtId: id("Distrikt-id"),
+  seasonId: id("Säsongs-id"),
+  week: veckonummer(),
+  visits: z.array(BesokSchema).max(MAX_VISITS, `Högst ${MAX_VISITS} besök per rapport.`),
+});
+
 export async function POST(req: NextRequest) {
   const session = await requireSession();
   if (session instanceof NextResponse) return session;
@@ -55,18 +82,9 @@ export async function POST(req: NextRequest) {
   const userId = session.user.id;
   if (!userId) return NextResponse.json({ error: "Session saknar user id" }, { status: 401 });
 
-  const body = await req.json();
-  const { districtId, seasonId } = body;
-  const week = Number(body.week);
-  const visits = body.visits;
-
-  // Grundläggande struktur-validering
-  if (!districtId || !seasonId || !Number.isInteger(week) || !Array.isArray(visits)) {
-    return NextResponse.json({ error: "Ogiltig förfrågan" }, { status: 400 });
-  }
-  if (visits.length > MAX_VISITS) {
-    return NextResponse.json({ error: "För många besök i en rapport" }, { status: 400 });
-  }
+  const parsed = await las(req, RapportSchema);
+  if (parsed instanceof Response) return parsed;
+  const { districtId, seasonId, week, visits } = parsed;
 
   // FT får bara rapportera för sitt eget distrikt
   if (session.user.role !== "ADMIN" && session.user.districtId !== districtId) {
@@ -133,19 +151,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ deleted: true });
   }
 
-  // Validera varje besök: kund måste tillhöra distriktet + numeriska fält rimliga
+  // Kunden måste tillhöra distriktet. Kräver ett uppslag och kan därför inte
+  // ligga i schemat; de numeriska kontrollerna gör det numera.
   const validCustomerIds = new Set(districtCustomers.map((c) => c.id));
   for (const v of visits) {
-    if (!v.customerId || !validCustomerIds.has(v.customerId)) {
+    if (!validCustomerIds.has(v.customerId)) {
       return NextResponse.json(
         { error: "En eller flera kunder tillhör inte ditt distrikt." },
         { status: 400 }
       );
-    }
-    const num = Number(v.numberOfCustomers);
-    const sales = Number(v.sales);
-    if (!Number.isFinite(num) || num < 0 || !Number.isFinite(sales) || sales < 0) {
-      return NextResponse.json({ error: "Ogiltiga värden i ett besök." }, { status: 400 });
     }
   }
 
@@ -155,15 +169,15 @@ export async function POST(req: NextRequest) {
   // UI:t spärrar redan valet, men det här är spärren som inte kan kringgås.
   const seen = new Set<string>();
   for (const v of visits) {
-    const id = v.customerId as string;
-    if (seen.has(id)) {
-      const name = districtCustomers.find((c) => c.id === id)?.name ?? "Kunden";
+    const kundId = v.customerId;
+    if (seen.has(kundId)) {
+      const name = districtCustomers.find((c) => c.id === kundId)?.name ?? "Kunden";
       return NextResponse.json(
         { error: `${name} är rapporterad två gånger samma vecka. Redigera det befintliga besöket i stället för att lägga till ett nytt.` },
         { status: 400 }
       );
     }
-    seen.add(id);
+    seen.add(kundId);
   }
 
   // Allt skrivande sker i EN transaktion. Annars är "ta bort + återskapa besök
@@ -180,30 +194,31 @@ export async function POST(req: NextRequest) {
 
     // Räkna om avgifterna server-sidan — klientens värden ignoreras
     let runningMf = priorMf;
-    const computedVisits = visits.map((v: Record<string, unknown>) => {
-      // Beloppen är redan validerade ovan; money() bevarar dem exakt hela vägen
-      // till lagringen (Decimal), utan flyttalssteg.
+    // v är nu typad av schemat — inga cast:ar, ingen Number()/!!-tvättning.
+    const computedVisits = visits.map((v) => {
+      // money() bevarar beloppet exakt hela vägen till lagringen (Decimal),
+      // utan flyttalssteg.
       const sales = money(String(v.sales));
       const fees = calculateFees(sales, runningMf, config);
       runningMf = fees.mfFeeAccumulated;
       // Antingen-eller: ett besök kan inte vara både modevisning och galge.
       // UI:t spärrar det, men vi håller invarianten även här (modevisning vinner)
       // så att Modevisning + Galge + Övriga alltid summerar till totalen.
-      const isFashionShow = !!v.isFashionShow;
-      const isHangerShow = !isFashionShow && !!v.isHangerShow;
+      const isFashionShow = v.isFashionShow;
+      const isHangerShow = !isFashionShow && v.isHangerShow;
       return {
-        customerId: v.customerId as string,
-        numberOfCustomers: Number(v.numberOfCustomers),
+        customerId: v.customerId,
+        numberOfCustomers: v.numberOfCustomers,
         sales,
         isFashionShow,
         isHangerShow,
         // REA är ortogonal mot visningstypen — inget ömsesidigt uteslutande här.
-        isSale: !!v.isSale,
+        isSale: v.isSale,
         ftFee: fees.ftFee,
         mfFee: fees.mfFee,
         mfFeeAccumulated: fees.mfFeeAccumulated,
         totalToPay: fees.totalToPay,
-        comment: (v.comment as string) || null,
+        comment: v.comment,
       };
     });
 

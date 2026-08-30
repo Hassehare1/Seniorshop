@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { isReaBackfillEnabled, setReaBackfillEnabled } from "@/lib/reaBackfill";
+import { las, z, boolean } from "@/lib/validering";
+
+const Schema = z.object({ enabled: boolean("Brytaren") });
 
 export async function GET() {
   const session = await requireAdmin();
@@ -13,10 +16,9 @@ export async function PATCH(req: NextRequest) {
   const session = await requireAdmin();
   if (session instanceof NextResponse) return session;
 
-  const { enabled } = await req.json();
-  if (typeof enabled !== "boolean") {
-    return NextResponse.json({ error: "enabled måste vara sant eller falskt" }, { status: 400 });
-  }
+  const data = await las(req, Schema);
+  if (data instanceof Response) return data;
+  const { enabled } = data;
 
   await setReaBackfillEnabled(enabled);
 

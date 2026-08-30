@@ -3,25 +3,30 @@ import { requireAdmin } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { Role } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { las, z, id, valfriText, epost, losenord, enumFalt } from "@/lib/validering";
+
+// epost normaliserar (trim + gemener) och kontrollerar formatet — tidigare
+// gjordes bara trim/gemener, så "anna" utan snabel-a gick igenom.
+const Schema = z
+  .object({
+    name: valfriText("Namn", 120),
+    email: epost,
+    password: losenord,
+    role: enumFalt(Role, "Rollen"),
+    districtId: id("Distrikt-id").nullish(),
+  })
+  .refine((u) => u.role !== "FRANCHISEE" || !!u.districtId, {
+    error: "En franchisetagare måste kopplas till ett distrikt.",
+    path: ["districtId"],
+  });
 
 export async function POST(req: NextRequest) {
   const session = await requireAdmin();
   if (session instanceof NextResponse) return session;
 
-  const { name, email: rawEmail, password, role, districtId } = await req.json();
-  const email = typeof rawEmail === "string" ? rawEmail.trim().toLowerCase() : rawEmail;
-  if (!email || !password || !role) {
-    return NextResponse.json({ error: "Saknade fält" }, { status: 400 });
-  }
-  if (!Object.values(Role).includes(role)) {
-    return NextResponse.json({ error: "Ogiltig roll." }, { status: 400 });
-  }
-  if (password.length < 6) {
-    return NextResponse.json({ error: "Lösenordet måste vara minst 6 tecken." }, { status: 400 });
-  }
-  if (role === "FRANCHISEE" && !districtId) {
-    return NextResponse.json({ error: "En franchisetagare måste kopplas till ett distrikt." }, { status: 400 });
-  }
+  const data = await las(req, Schema);
+  if (data instanceof Response) return data;
+  const { name, email, password, role, districtId } = data;
 
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {

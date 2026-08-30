@@ -1,6 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
+import { SeasonType } from "@prisma/client";
+import { las, z, heltal, veckonummer, enumFalt } from "@/lib/validering";
+
+/**
+ * Veckospannet avgör vilka veckor som går att rapportera på — sätts det fel
+ * blockeras en hel säsong. Kontrollen `weekStart >= weekEnd` låg tidigare FÖRE
+ * Number(), så den jämförde strängar när fälten kom som text, och ett tomt
+ * veckofält gav NaN som passerade rakt igenom och kastade först i Prisma.
+ */
+export const SasongSchema = z
+  .object({
+    type: enumFalt(SeasonType, "Säsongstyp"),
+    year: heltal("År", 2000, 2100),
+    weekStart: veckonummer("Startvecka"),
+    weekEnd: veckonummer("Slutvecka"),
+  })
+  .refine((s) => s.weekStart < s.weekEnd, {
+    error: "Startveckan måste ligga före slutveckan.",
+    path: ["weekStart"],
+  });
 
 export async function GET() {
   const session = await requireAdmin();
@@ -13,23 +33,19 @@ export async function POST(req: NextRequest) {
   const session = await requireAdmin();
   if (session instanceof NextResponse) return session;
 
-  const { type, year, weekStart, weekEnd } = await req.json();
-  if (!type || !year || !weekStart || !weekEnd) {
-    return NextResponse.json({ error: "Saknade fält" }, { status: 400 });
-  }
-  if (weekStart >= weekEnd) {
-    return NextResponse.json({ error: "Startvecka måste vara före slutvecka" }, { status: 400 });
-  }
+  const data = await las(req, SasongSchema);
+  if (data instanceof Response) return data;
+  const { type, year, weekStart, weekEnd } = data;
 
   const existing = await prisma.season.findUnique({
-    where: { type_year: { type, year: Number(year) } },
+    where: { type_year: { type, year } },
   });
   if (existing) {
     return NextResponse.json({ error: "Säsongen finns redan", existingId: existing.id }, { status: 409 });
   }
 
   const season = await prisma.season.create({
-    data: { type, year: Number(year), weekStart: Number(weekStart), weekEnd: Number(weekEnd) },
+    data: { type, year, weekStart, weekEnd },
   });
   return NextResponse.json(season, { status: 201 });
 }

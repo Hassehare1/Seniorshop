@@ -1,21 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
+import { las, z, veckonummer } from "@/lib/validering";
+
+// Samma spann-regel som när säsongen skapas. Se SasongSchema i ../route.ts —
+// den kan inte återanvändas rakt av här, eftersom type och year inte ändras.
+const Schema = z
+  .object({
+    weekStart: veckonummer("Startvecka"),
+    weekEnd: veckonummer("Slutvecka"),
+  })
+  .refine((s) => s.weekStart < s.weekEnd, {
+    error: "Startveckan måste ligga före slutveckan.",
+    path: ["weekStart"],
+  });
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await requireAdmin();
   if (session instanceof NextResponse) return session;
 
   const { id } = await params;
-  const { weekStart, weekEnd } = await req.json();
-
-  if (weekStart >= weekEnd) {
-    return NextResponse.json({ error: "Startvecka måste vara före slutvecka" }, { status: 400 });
-  }
+  const data = await las(req, Schema);
+  if (data instanceof Response) return data;
 
   const updated = await prisma.season.update({
     where: { id },
-    data: { weekStart: Number(weekStart), weekEnd: Number(weekEnd) },
+    data: { weekStart: data.weekStart, weekEnd: data.weekEnd },
     include: { _count: { select: { reports: true } } },
   });
 

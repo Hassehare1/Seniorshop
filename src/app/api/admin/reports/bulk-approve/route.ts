@@ -1,13 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
+import { las, z, id } from "@/lib/validering";
+
+// seasonId spreds tidigare orört in i Prismas `where`. Ett objekt i stället
+// för en sträng — `{ seasonId: { not: "x" } }` — blir då ett FILTER och inte
+// ett id, alltså något helt annat än vad routen menar. Admin-låst, så ingen
+// behörighetslucka, men schemat gör att bara ett id kan komma in.
+const Schema = z.object({ seasonId: id("Säsongs-id").optional() });
 
 // Godkänn alla SUBMITTED-rapporter (optionellt filtrerat på säsong)
 export async function POST(req: NextRequest) {
   const session = await requireAdmin();
   if (session instanceof NextResponse) return session;
 
-  const { seasonId } = await req.json();
+  const data = await las(req, Schema);
+  if (data instanceof Response) return data;
+  const { seasonId } = data;
 
   // Hämta rapporterna som ska godkännas för audit-loggning
   const toApprove = await prisma.weeklyReport.findMany({

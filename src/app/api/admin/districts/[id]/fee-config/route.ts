@@ -2,14 +2,35 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { STANDARD_FEE_CONFIG } from "@/lib/fees";
+import { las, z, andel, belopp } from "@/lib/validering";
+
+/**
+ * Avgiftsvillkoren avgör vad varje franchisetagare faktiskt faktureras, och
+ * routen tog tidigare emot dem HELT ovaliderat: en sats på 999 eller ett
+ * negativt tak gick rakt in i databasen och räknade om alla kommande besök.
+ *
+ * Fälten är frivilliga var för sig — formuläret skickar dem det ändrat.
+ */
+const Schema = z.object({
+  ftFeePercent: andel("FT-avgiften").optional(),
+  mfFeePercent: andel("MF-avgiften").optional(),
+  mfFeeCap: belopp("MF-taket").max(1_000_000, "MF-taket är orimligt högt.").optional(),
+  // Momsfaktor: 1,25 = 25 %. Under 1 vore moms som drar av, över 2 finns inte.
+  vatMultiplier: z.coerce
+    .number({ error: "Momsfaktorn måste vara ett tal." })
+    .min(1, "Momsfaktorn kan inte vara lägre än 1 (1,25 = 25 % moms).")
+    .max(2, "Momsfaktorn kan inte vara högre än 2.")
+    .optional(),
+});
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await requireAdmin();
   if (session instanceof NextResponse) return session;
 
   const { id: districtId } = await params;
-  const body = await req.json();
-  const { ftFeePercent, mfFeePercent, mfFeeCap, vatMultiplier } = body;
+  const data = await las(req, Schema);
+  if (data instanceof Response) return data;
+  const { ftFeePercent, mfFeePercent, mfFeeCap, vatMultiplier } = data;
 
   const district = await prisma.district.findUnique({
     where: { id: districtId },

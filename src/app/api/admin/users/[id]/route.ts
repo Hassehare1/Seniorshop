@@ -3,15 +3,33 @@ import { requireAdmin } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { Role } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { las, z, id as idFalt, valfriText, epost, losenord, boolean, enumFalt } from "@/lib/validering";
+
+/**
+ * Delvis uppdatering: varje fält är frivilligt, och ett utelämnat fält
+ * lämnas orört. Skillnaden mellan "utelämnat" och "satt till null" bärs av
+ * `undefined` — JSON kan inte uttrycka undefined, så ett fält som finns i
+ * kroppen är alltid ett medvetet val från klienten.
+ */
+const Schema = z.object({
+  name: valfriText("Namn", 120).optional(),
+  email: epost.optional(),
+  password: losenord.optional(),
+  role: enumFalt(Role, "Rollen").optional(),
+  districtId: idFalt("Distrikt-id").nullish(),
+  active: boolean("Spärrstatus").optional(),
+});
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await requireAdmin();
   if (session instanceof NextResponse) return session;
 
   const { id } = await params;
-  const body = await req.json();
-  const { name, email: rawEmail, password, role, districtId, active } = body;
-  const email = typeof rawEmail === "string" ? rawEmail.trim().toLowerCase() : rawEmail;
+  const data = await las(req, Schema);
+  if (data instanceof Response) return data;
+  const { name, email, password, role, districtId, active } = data;
+  // Ersätter `"districtId" in body`: fältet finns i kroppen eller inte.
+  const districtIdSkickat = districtId !== undefined;
 
   // Hämta nuvarande tillstånd för att kunna logga vad som ändrades
   const before = await prisma.user.findUnique({
@@ -30,40 +48,34 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
   }
 
-  if (role !== undefined && !Object.values(Role).includes(role)) {
-    return NextResponse.json({ error: "Ogiltig roll." }, { status: 400 });
-  }
-  if (password && password.length < 6) {
-    return NextResponse.json({ error: "Lösenordet måste vara minst 6 tecken." }, { status: 400 });
-  }
   // Slutläget måste vara konsekvent: en franchisetagare måste ha ett distrikt
   const effectiveRole = role !== undefined ? role : before.role;
-  const effectiveDistrictId = "districtId" in body ? (districtId || null) : before.districtId;
+  const effectiveDistrictId = districtIdSkickat ? (districtId || null) : before.districtId;
   if (effectiveRole === "FRANCHISEE" && !effectiveDistrictId) {
     return NextResponse.json({ error: "En franchisetagare måste vara kopplad till ett distrikt." }, { status: 400 });
   }
 
-  const data: Record<string, unknown> = {};
-  if (name !== undefined) data.name = name || null;
-  if (email !== undefined) data.email = email;
-  if (role !== undefined) data.role = role;
-  if ("districtId" in body) data.districtId = districtId || null;
-  if (active !== undefined) data.active = !!active;
-  if (password) data.passwordHash = await bcrypt.hash(password, 12);
+  const uppdatering: Record<string, unknown> = {};
+  if (name !== undefined) uppdatering.name = name || null;
+  if (email !== undefined) uppdatering.email = email;
+  if (role !== undefined) uppdatering.role = role;
+  if (districtIdSkickat) uppdatering.districtId = districtId || null;
+  if (active !== undefined) uppdatering.active = active;
+  if (password) uppdatering.passwordHash = await bcrypt.hash(password, 12);
 
   const user = await prisma.user.update({
     where: { id },
-    data,
+    data: uppdatering,
     include: { district: { select: { number: true, name: true } } },
   });
 
   // Logga ändringar — särskilt säkerhetskänsliga (roll, distrikt, spärr, lösenord)
   const changes: Record<string, unknown> = {};
   if (role !== undefined && role !== before.role) changes.roll = `${before.role} → ${role}`;
-  if ("districtId" in body && (districtId || null) !== before.districtId) {
+  if (districtIdSkickat && (districtId || null) !== before.districtId) {
     changes.distrikt = `${before.district ? `D${before.district.number}` : "–"} → ${user.district ? `D${user.district.number} – ${user.district.name}` : "–"}`;
   }
-  if (active !== undefined && !!active !== before.active) changes.spärr = active ? "upplåst" : "SPÄRRAD";
+  if (active !== undefined && active !== before.active) changes.spärr = active ? "upplåst" : "SPÄRRAD";
   if (password) changes.lösenord = "ändrat";
   if (email !== undefined && email !== before.email) changes.email = `${before.email} → ${email}`;
 

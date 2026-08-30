@@ -1,29 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireSession } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
+import { las, z, id, belopp, antal } from "@/lib/validering";
+
+// Talkontrollen här var redan god — det som saknades var att id:na och
+// målens ÖVRE gränser aldrig kontrollerades.
+const Schema = z.object({
+  districtId: id("Distrikt-id"),
+  seasonId: id("Säsongs-id"),
+  salesTarget: belopp("Försäljningsmålet"),
+  avgPerVisitTarget: belopp("Snittmålet per besök"),
+  visitsTarget: antal("Besöksmålet", 10_000),
+  fashionShowsTarget: antal("Modevisningsmålet", 10_000),
+});
 
 // Sätt/uppdatera FT:s mål för en säsong (ett per distrikt × säsong).
 export async function POST(req: NextRequest) {
   const session = await requireSession();
   if (session instanceof NextResponse) return session;
 
-  const body = await req.json();
-  const { districtId, seasonId } = body;
-  if (!districtId || !seasonId) return NextResponse.json({ error: "Saknade fält" }, { status: 400 });
+  const parsed = await las(req, Schema);
+  if (parsed instanceof Response) return parsed;
+  const { districtId, seasonId, salesTarget, avgPerVisitTarget, visitsTarget, fashionShowsTarget } = parsed;
 
   // FT får bara sätta mål för sitt eget distrikt; admin för valfritt.
   if (session.user.role !== "ADMIN" && session.user.districtId !== districtId) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-
-  const salesTarget = Number(body.salesTarget);
-  const avgPerVisitTarget = Number(body.avgPerVisitTarget);
-  const visitsTarget = Math.round(Number(body.visitsTarget));
-  const fashionShowsTarget = Math.round(Number(body.fashionShowsTarget));
-  for (const v of [salesTarget, avgPerVisitTarget, visitsTarget, fashionShowsTarget]) {
-    if (!Number.isFinite(v) || v < 0) {
-      return NextResponse.json({ error: "Målen måste vara positiva tal." }, { status: 400 });
-    }
   }
 
   const existing = await prisma.seasonGoal.findUnique({
