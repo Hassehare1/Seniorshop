@@ -50,7 +50,7 @@ test("det borttagna redovisas separat, och totalen finns kvar", () => {
   const [d2] = veckorapportRader(reports, distrikt);
 
   assert.equal(d2.bortSales, 6_000);
-  assert.equal(d2.bortBesok, 1);
+  assert.equal(d2.bortKunder, 4, "kunderna på raden, inte antalet rader");
   assert.equal(d2.totalSales, 46_000, "portalens egen siffra ska gå att visa bredvid");
   assert.equal(d2.totalBesok, 2);
 });
@@ -89,6 +89,7 @@ test("en vecka där ALLT är mindre försäljning ger noll besök och noll snitt
   assert.equal(d2.besok, 0);
   assert.equal(d2.snitt, 0);
   assert.equal(d2.bortSales, 7_000);
+  assert.equal(d2.bortKunder, 3, "två plus en kund, inte två rader");
   assert.equal(d2.totalSales, 7_000);
 });
 

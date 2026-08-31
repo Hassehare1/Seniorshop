@@ -39,9 +39,16 @@ export type VeckoRad = {
   besok: number;
   kunder: number;
   snitt: number;
-  /** Det som räknats bort, så att raden går att granska. */
+  /**
+   * Det som räknats bort, så att raden går att granska.
+   *
+   * Kunder och inte rader: en rad mindre försäljning är en hink med flera
+   * enskilda småköp, och FT fyller i hur många i Antal kunder. "1 st" hade
+   * varit antalet rader — den enda enheten på sidan som inte betyder något
+   * för läsaren, och den som gav upphov till missförståndet.
+   */
   bortSales: number;
-  bortBesok: number;
+  bortKunder: number;
   /** Portalens totaler för samma period, till fotnoten. */
   totalSales: number;
   totalBesok: number;
@@ -57,7 +64,7 @@ function tomRad(d: VeckoDistrict): VeckoRad {
     kunder: 0,
     snitt: 0,
     bortSales: 0,
-    bortBesok: 0,
+    bortKunder: 0,
     totalSales: 0,
     totalBesok: 0,
   };
@@ -85,7 +92,7 @@ export function veckorapportRader(reports: VeckoReport[], districts: VeckoDistri
 
       if (v.customerType === MINOR_SALES_TYPE) {
         rad.bortSales += v.sales;
-        rad.bortBesok += 1;
+        rad.bortKunder += v.numberOfCustomers;
         continue;
       }
 
@@ -116,11 +123,11 @@ export function veckorapportSumma(rader: VeckoRad[]): Omit<VeckoRad, "districtId
       besok: acc.besok + r.besok,
       kunder: acc.kunder + r.kunder,
       bortSales: acc.bortSales + r.bortSales,
-      bortBesok: acc.bortBesok + r.bortBesok,
+      bortKunder: acc.bortKunder + r.bortKunder,
       totalSales: acc.totalSales + r.totalSales,
       totalBesok: acc.totalBesok + r.totalBesok,
     }),
-    { sales: 0, besok: 0, kunder: 0, bortSales: 0, bortBesok: 0, totalSales: 0, totalBesok: 0 },
+    { sales: 0, besok: 0, kunder: 0, bortSales: 0, bortKunder: 0, totalSales: 0, totalBesok: 0 },
   );
   return { ...s, snitt: s.besok > 0 ? s.sales / s.besok : 0 };
 }
