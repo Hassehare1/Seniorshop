@@ -18,6 +18,7 @@ const adminNav = [
   { href: "/dashboard", label: "Översikt" },
   { href: "/forsaljning", label: "Försäljning" },
   { href: "/admin/rapporter", label: "Rapportstatus", badge: true },
+  { href: "/admin/veckorapport", label: "Veckorapport" },
   { href: "/admin/kunder", label: "Alla kunder" },
   // Engångsinställningar (sällan, sätts upp en gång)
   { href: "/admin/distrikt", label: "Distrikt & avgifter", section: "Inställningar" },
