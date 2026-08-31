@@ -135,7 +135,9 @@ export default async function VeckorapportPage({
                     {r.besok > 0 ? kr(r.snitt) : "–"}
                   </td>
                   <td className="px-4 py-2.5 text-right text-xs tabular-nums text-slate-400 whitespace-nowrap">
-                    {r.bortBesok > 0 ? `${kr(r.bortSales)} · ${antal(r.bortBesok)} st` : "–"}
+                    {r.bortSales > 0 || r.bortKunder > 0
+                      ? `${kr(r.bortSales)} · ${antal(r.bortKunder)} kunder`
+                      : "–"}
                   </td>
                 </tr>
               ))}
@@ -148,7 +150,9 @@ export default async function VeckorapportPage({
                 <td className="px-4 py-3 text-right tabular-nums">{antal(summa.kunder)}</td>
                 <td className="px-4 py-3 text-right tabular-nums">{summa.besok > 0 ? kr(summa.snitt) : "–"}</td>
                 <td className="px-4 py-3 text-right text-xs font-normal tabular-nums text-slate-400 whitespace-nowrap">
-                  {summa.bortBesok > 0 ? `${kr(summa.bortSales)} · ${antal(summa.bortBesok)} st` : "–"}
+                  {summa.bortSales > 0 || summa.bortKunder > 0
+                    ? `${kr(summa.bortSales)} · ${antal(summa.bortKunder)} kunder`
+                    : "–"}
                 </td>
               </tr>
             </tfoot>
