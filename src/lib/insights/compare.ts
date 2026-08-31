@@ -1,3 +1,8 @@
+// .ts-ändelsen krävs: testerna körs med `node --test` direkt på källan, och
+// nodes ESM-upplösning hittar inte filen utan den. Samma mönster som i
+// felhantering.ts och validering.ts.
+import { avgPerVisitExclMinor, type MinorSales } from "./aggregate.ts";
+
 export type SeasonWindow = { year: number; weekStart: number; weekEnd: number };
 
 /** Veckospannet som ska räknas med, inklusive båda ändarna. */
@@ -69,6 +74,8 @@ export type DistrictRow = {
   besok: number;
   customers: number;
   fashionShows: number;
+  /** Mindre försäljning, som räknas bort ur snittet. Se MINOR_SALES_TYPE. */
+  minor: MinorSales;
 };
 
 /** Säljmålet för ett distrikt. Distrikt utan mål saknas i listan. */
@@ -112,7 +119,7 @@ export function rankDistricts(rows: DistrictRow[], goals: DistrictGoal[]): Ranke
         sales: r.sales,
         besok: r.besok,
         customers: r.customers,
-        avgPerVisit: r.besok > 0 ? r.sales / r.besok : 0,
+        avgPerVisit: avgPerVisitExclMinor(r.sales, r.besok, r.minor),
         fashionShows: r.fashionShows,
         salesTarget: mål,
         goalPercent: mål != null && mål > 0 ? (r.sales / mål) * 100 : null,

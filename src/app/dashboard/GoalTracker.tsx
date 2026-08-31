@@ -85,7 +85,7 @@ export default function GoalTracker({
   const metrics: Metric[] = [
     { label: "Försäljning", target: goal?.salesTarget ?? 0, actual: actuals.sales, money: true, remainLabel: "kvar att sälja för", variance: false },
     { label: "Antal besök", target: goal?.visitsTarget ?? 0, actual: actuals.visits, money: false, remainLabel: "besök kvar", variance: false },
-    { label: "Snitt / besök", target: goal?.avgPerVisitTarget ?? 0, actual: actuals.avgPerVisit, money: true, remainLabel: "", variance: true,
+    { label: "Snitt / besök", sub: "exkl. mindre försäljning", target: goal?.avgPerVisitTarget ?? 0, actual: actuals.avgPerVisit, money: true, remainLabel: "", variance: true,
       hint: paceText(goal, actuals) },
     { label: "Modevisningar", target: goal?.fashionShowsTarget ?? 0, actual: actuals.fashionShows, money: false, remainLabel: "kvar", variance: false },
   ];
@@ -127,9 +127,21 @@ export default function GoalTracker({
           <GoalInput label="Mål antal modevisningar" value={form.fashionShowsTarget} onChange={v => setForm(f => ({ ...f, fashionShowsTarget: v }))} placeholder="t.ex. 10" />
         </div>
       ) : goal ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {metrics.map(m => <MetricCard key={m.label} {...m} />)}
-        </div>
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {metrics.map(m => <MetricCard key={m.label} {...m} />)}
+          </div>
+          {/* Utan den här raden ser snittet ut att räknas fel: försäljningen
+              delad med antalet besök ger ett annat tal, eftersom mindre
+              försäljning ingår i de två men inte i snittet. */}
+          {actuals.minor.besok > 0 && (
+            <p className="mt-3 text-xs text-slate-400">
+              Mindre försäljning: {formatSEK(Math.round(actuals.minor.sales))} på {actuals.minor.besok}{" "}
+              {actuals.minor.besok === 1 ? "tillfälle" : "tillfällen"} — ingår i försäljningen och i antalet
+              besök, men inte i snittet.
+            </p>
+          )}
+        </>
       ) : (
         <p className="text-sm text-slate-400 py-2">
           Inga mål satta för {seasonLabel} än.{canEdit && " Klicka “Sätt mål” för att komma igång."}
@@ -139,9 +151,9 @@ export default function GoalTracker({
   );
 }
 
-type Metric = { label: string; target: number; actual: number; money: boolean; remainLabel: string; variance: boolean; hint?: string };
+type Metric = { label: string; sub?: string; target: number; actual: number; money: boolean; remainLabel: string; variance: boolean; hint?: string };
 
-function MetricCard({ label, target, actual, money, remainLabel, variance, hint }: Metric) {
+function MetricCard({ label, sub, target, actual, money, remainLabel, variance, hint }: Metric) {
   const fmt = (n: number) => (money ? formatSEK(Math.round(n)) : String(Math.round(n)));
   const hasTarget = target > 0;
   const reached = hasTarget && actual >= target;
@@ -157,7 +169,10 @@ function MetricCard({ label, target, actual, money, remainLabel, variance, hint 
 
   return (
     <div className="bg-white border border-slate-200 rounded-xl p-4">
-      <p className="text-xs text-slate-400 mb-1.5">{label}</p>
+      <p className="text-xs text-slate-400 mb-1.5">
+        {label}
+        {sub && <span className="text-[11px] text-slate-300"> · {sub}</span>}
+      </p>
       <div className="flex items-baseline gap-1.5 mb-2.5">
         <span className="text-xl font-bold text-slate-800">{fmt(actual)}</span>
         {hasTarget && <span className="text-xs text-slate-400">/ {fmt(target)}</span>}

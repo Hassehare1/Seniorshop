@@ -1,3 +1,5 @@
+import type { MinorSales } from "./insights/aggregate.ts";
+
 export type Goal = {
   salesTarget: number;
   visitsTarget: number;
@@ -6,10 +8,15 @@ export type Goal = {
 };
 
 export type Actuals = {
+  /** Total omsättning, mindre försäljning inräknad. */
   sales: number;
+  /** Alla registrerade besök, mindre försäljning inräknad. */
   visits: number;
+  /** Tvättat snitt — mindre försäljning borträknad. Se MINOR_SALES_TYPE. */
   avgPerVisit: number;
   fashionShows: number;
+  /** Det som räknats bort ur snittet, så att gränssnittet kan skriva ut det. */
+  minor: MinorSales;
 };
 
 /**

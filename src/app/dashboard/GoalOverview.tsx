@@ -23,7 +23,10 @@ export default function GoalOverview({ rows, seasonLabel }: { rows: Row[]; seaso
               <th className="text-left pb-2 font-semibold">Distrikt</th>
               <th className="text-left pb-2 font-semibold w-[36%]">Försäljning</th>
               <th className="text-right pb-2 font-semibold">Besök</th>
-              <th className="text-right pb-2 font-semibold">Snitt / besök</th>
+              <th className="text-right pb-2 font-semibold">
+                Snitt / besök
+                <span className="block font-normal normal-case tracking-normal text-slate-300">exkl. mindre försäljning</span>
+              </th>
               <th className="text-right pb-2 font-semibold">Modevisn.</th>
             </tr>
           </thead>

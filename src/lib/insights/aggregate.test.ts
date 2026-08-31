@@ -1,8 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  MINOR_SALES_TYPE,
   aggregateByDistrict,
   aggregateByType,
+  avgPerVisitExclMinor,
   goalActualsFrom,
   uniqueWeeks,
   type ReportInput,
@@ -158,4 +160,73 @@ test("inga besök ger noll i snitt i stället för division med noll", () => {
   assert.equal(actuals.sales, 0);
   assert.equal(actuals.visits, 0);
   assert.equal(actuals.avgPerVisit, 0);
+});
+
+test("mindre försäljning räknas bort ur snittet men inte ur omsättning och besök", () => {
+  // Två riktiga besök à 20 000 kr och en lagerförsäljning på 2 000 kr. Utan
+  // tvätten blir snittet 14 000 kr — lagerförsäljningen drar ned det med 30 %.
+  const reports = [
+    report({
+      visits: [
+        visit({ sales: 20_000 }),
+        visit({ sales: 20_000 }),
+        visit({ sales: 2_000, customerType: MINOR_SALES_TYPE }),
+      ],
+    }),
+  ];
+  const { byType } = aggregateByType(reports, [10]);
+  const actuals = goalActualsFrom(byType);
+
+  assert.equal(actuals.sales, 42_000, "omsättningen är total — det är den som faktureras");
+  assert.equal(actuals.visits, 3, "besöken är alla registrerade besök");
+  assert.equal(actuals.avgPerVisit, 20_000, "snittet räknar bara de två riktiga besöken");
+  assert.deepEqual(actuals.minor, { sales: 2_000, besok: 1 }, "det borträknade ska gå att skriva ut");
+});
+
+test("ett urval som bara är mindre försäljning ger noll i snitt, inte kvarvarande omsättning delad med noll", () => {
+  // Nämnaren blir tom. Faller vakten bort ger uttrycket Infinity, som formateras
+  // till "∞ kr" i gränssnittet i stället för att utebli.
+  const reports = [report({ visits: [visit({ sales: 5_000, customerType: MINOR_SALES_TYPE })] })];
+  const { byType } = aggregateByType(reports, [10]);
+  const actuals = goalActualsFrom(byType);
+
+  assert.equal(actuals.sales, 5_000);
+  assert.equal(actuals.visits, 1);
+  assert.equal(actuals.avgPerVisit, 0);
+});
+
+test("distriktsaggregatet bär med sig mindre försäljning så snittet går att tvätta per distrikt", () => {
+  // DistAgg har ingen typdimension — utan det här fältet skulle admins
+  // måltabell räkna snittet på ett annat sätt än FT:s eget målkort.
+  const reports = [
+    report({
+      visits: [
+        visit({ sales: 30_000 }),
+        visit({ sales: 3_000, customerType: MINOR_SALES_TYPE }),
+      ],
+    }),
+  ];
+  const [d] = aggregateByDistrict(reports, [10]);
+
+  assert.equal(d.sales, 33_000);
+  assert.equal(d.besok, 2);
+  assert.deepEqual(d.minor, { sales: 3_000, besok: 1 });
+  assert.equal(avgPerVisitExclMinor(d.sales, d.besok, d.minor), 30_000);
+});
+
+test("samma tal oavsett om det räknas ur kundtyps- eller distriktsaggregatet", () => {
+  // De två vägarna leder till olika kort i gränssnittet (FT:s målkort respektive
+  // admins översikt). Glider de isär ser en FT ett annat snitt än sin chef.
+  const reports = [
+    report({ visits: [visit({ sales: 18_000 }), visit({ sales: 1_500, customerType: MINOR_SALES_TYPE })] }),
+    report({ week: 11, visits: [visit({ sales: 22_000, customerType: "ALDREBOENDE" })] }),
+  ];
+  const weeks = [10, 11];
+  const { byType } = aggregateByType(reports, weeks);
+  const [d] = aggregateByDistrict(reports, weeks);
+
+  assert.equal(
+    goalActualsFrom(byType).avgPerVisit,
+    avgPerVisitExclMinor(d.sales, d.besok, d.minor),
+  );
 });
