@@ -53,6 +53,10 @@ Viktigt:
   förstått frågan rätt.
 - Får du tillbaka sasongerMedMal betyder det att målen saknas för den säsongen
   men finns för andra. Nämn vilka i stället för att bara säga att målen saknas.
+- snittPerBesok räknas UTAN kundtypen Mindre försäljning (lagerförsäljning och
+  småpartier), medan försäljning och antal besök är totaler som innehåller den.
+  Snittet är alltså inte försäljningen delad med besöken. Ber någon dig förklara
+  skillnaden, säg det — men räkna aldrig fram ett eget snitt.
 - Jämför du år mot år: skriv alltid ut fältet omfattning. En pågående säsong
   jämförs bara på de veckor som hunnit passera, och utelämnas det låter en
   avkortad jämförelse som en hel säsong.

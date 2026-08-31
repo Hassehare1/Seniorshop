@@ -18,9 +18,11 @@ import { resolveOverviewPeriod, type SeasonRow } from "@/lib/season";
 import { loadForecast } from "@/lib/insights/forecast";
 import { THEME_COOKIE, THEME_ACCENT, isTheme, DEFAULT_THEME } from "@/lib/theme";
 import {
+  MINOR_SALES_TYPE,
   TYPE_KEYS,
   aggregateByDistrict,
   aggregateByType,
+  avgPerVisitExclMinor,
   goalActualsFrom,
   uniqueWeeks,
   type DistAgg,
@@ -197,12 +199,15 @@ export default async function DashboardPage({
         const a = actualByDistrict.get(g.districtId);
         const sales = a?.sales ?? 0;
         const visits = a?.besok ?? 0;
+        const minor = a?.minor ?? { sales: 0, besok: 0 };
         return {
           districtId: g.districtId,
           label: `D${g.district.number} – ${g.district.name}`,
           number: g.district.number,
           goal: { salesTarget: g.salesTarget, visitsTarget: g.visitsTarget, avgPerVisitTarget: g.avgPerVisitTarget, fashionShowsTarget: g.fashionShowsTarget },
-          actual: { sales, visits, avgPerVisit: visits > 0 ? sales / visits : 0, fashionShows: a?.fashionShows ?? 0 },
+          // Samma tvättade snitt som FT ser på sitt eget målkort — admin och FT
+          // får aldrig titta på två olika tal med samma namn.
+          actual: { sales, visits, avgPerVisit: avgPerVisitExclMinor(sales, visits, minor), fashionShows: a?.fashionShows ?? 0 },
         };
       })
       .sort((x, y) => x.number - y.number);
@@ -253,6 +258,8 @@ export default async function DashboardPage({
     fashionShows: t.fashionShows,
     hangerShows: t.hangerShows,
     weekly: t.weekly,
+    // Hela raden är mindre försäljning, eller ingen del av den.
+    minor: t.type === MINOR_SALES_TYPE ? { sales: t.sales, besok: t.besok } : { sales: 0, besok: 0 },
   }));
 
   // … eller per distrikt (admin-översikt). Färg sätts av skalan i komponenten.
@@ -268,6 +275,7 @@ export default async function DashboardPage({
     fashionShows: d.fashionShows,
     hangerShows: d.hangerShows,
     weekly: d.weekly,
+    minor: d.minor,
   }));
 
   const breakdown = showDistrictBreakdown ? districtBreakdown : typeBreakdown;

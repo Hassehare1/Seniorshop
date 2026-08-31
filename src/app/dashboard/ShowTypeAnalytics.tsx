@@ -7,6 +7,7 @@ import {
   XAxis, YAxis, Tooltip, LabelList,
 } from "recharts";
 import { formatSEK, formatCompactSEK } from "@/lib/fees";
+import { MINOR_SALES_TYPE, avgPerVisitExclMinor } from "@/lib/insights/aggregate";
 
 // Aggregat per kundtyp, uppdelat på visningstyp. Klienten summerar de valda
 // kundtyperna (union) — en kund har exakt en typ, så inga dubbelräkningar.
@@ -64,7 +65,24 @@ export default function ShowTypeAnalytics({ items }: Props) {
 
   const totalSales = totals.modevisning.sales + totals.galge.sales + totals.ovriga.sales;
   const totalBesok = totals.modevisning.besok + totals.galge.besok + totals.ovriga.besok;
-  const totalSnitt = totalBesok > 0 ? totalSales / totalBesok : 0;
+
+  // Nyckeltalet Snittomsättning är samma mått som målkortets "Snitt / besök"
+  // och måste därför räknas likadant — mindre försäljning bort. Låg det kvar
+  // stod två olika snitt bredvid varandra på samma sida (28 104 mot 29 687 i
+  // seeden), båda kallade snitt per besök.
+  //
+  // Diagrammen nedan rör det inte: där jämförs modevisning mot galge, och
+  // "Totalt" är den visningstypens hela summa precis som förut.
+  const minor = useMemo(() => {
+    const i = items.find(x => x.key === MINOR_SALES_TYPE);
+    if (!i) return { sales: 0, besok: 0 };
+    const c = i.categories;
+    return {
+      sales: c.modevisning.sales + c.galge.sales + c.ovriga.sales,
+      besok: c.modevisning.besok + c.galge.besok + c.ovriga.besok,
+    };
+  }, [items]);
+  const totalSnitt = avgPerVisitExclMinor(totalSales, totalBesok, minor);
 
   // Ett dataset per mått: en rad per visningstyp, ett fält per stapel (total +
   // en per vald kundtyp). Recharts ritar en grupperad <Bar> per fält automatiskt.
@@ -159,7 +177,7 @@ export default function ShowTypeAnalytics({ items }: Props) {
       <div className="grid grid-cols-3 gap-3">
         <StatCard label="Omsättning" value={formatSEK(totalSales)} sub="ink. moms" />
         <StatCard label="Antal besök" value={String(totalBesok)} sub="registrerade" />
-        <StatCard label="Snittomsättning" value={formatSEK(totalSnitt)} sub="per besök" />
+        <StatCard label="Snittomsättning" value={formatSEK(totalSnitt)} sub="exkl. mindre förs." />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

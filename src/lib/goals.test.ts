@@ -40,6 +40,7 @@ const actuals = (over: Partial<Actuals> = {}): Actuals => ({
   visits: 0,
   avgPerVisit: 0,
   fashionShows: 0,
+  minor: { sales: 0, besok: 0 },
   ...over,
 });
 

@@ -72,6 +72,7 @@ const rad = (id: string, sales: number, besok = 10, extra: Partial<DistrictRow> 
   besok,
   customers: besok * 5,
   fashionShows: 2,
+  minor: { sales: 0, besok: 0 },
   ...extra,
 });
 

@@ -115,7 +115,7 @@ export const assistantTools = [
   {
     name: "mal_mot_utfall",
     description:
-      "Målen för en säsong jämfört med utfallet: försäljning, antal besök, snitt per besök och modevisningar. Innehåller också vad som krävs per återstående besök för att nå säljmålet. Använd när frågan gäller mål, hur det går, eller vad som återstår.",
+      "Målen för en säsong jämfört med utfallet: försäljning, antal besök, snitt per besök och modevisningar. Snittet räknas utan kundtypen Mindre försäljning; försäljning och besök är totaler. Innehåller också vad som krävs per återstående besök för att nå säljmålet. Använd när frågan gäller mål, hur det går, eller vad som återstår.",
     inputSchema: {
       type: "object",
       properties: {
@@ -313,6 +313,7 @@ export async function runAssistantTool(
           besok: a?.besok ?? 0,
           customers: a?.customers ?? 0,
           fashionShows: a?.fashionShows ?? 0,
+          minor: a?.minor ?? { sales: 0, besok: 0 },
         };
       });
 

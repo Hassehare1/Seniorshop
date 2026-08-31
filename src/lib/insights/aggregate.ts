@@ -45,6 +45,42 @@ export interface TypeAgg {
 export interface DistAgg extends Omit<TypeAgg, "type"> {
   id: string;
   label: string;
+  /** Den del av raden ovan som är mindre försäljning. Se MINOR_SALES_TYPE. */
+  minor: MinorSales;
+}
+
+/**
+ * Kundtypen som räknas bort ur snittet per besök — men BARA därifrån.
+ *
+ * Mindre försäljning är lagerförsäljning och småpartier hemma hos någon, inte
+ * ett besök i den mening snittkvittot mäter. Posterna är många och små: över
+ * all pilotdata ligger de på ~3 600 kr mot ~16 800 kr för övriga besök, och i
+ * D12 — där 43 av 198 besök är en enda kund som heter "Lagerförsäljning" —
+ * drog de ned snittet med 19 %. Senior Shop räknar därför bort dem när snittet
+ * diskuteras med FT, och portalen följer samma definition så att FT ser samma
+ * tal i portalen som de hör på uppföljningen.
+ *
+ * Omsättningen och antalet besök är fortfarande totalerna, inklusive mindre
+ * försäljning. Det är de som rapporteras och faktureras — bara snittet tvättas.
+ * Följden är att snittet INTE är omsättning ÷ besök, och det måste stå utskrivet
+ * där talet visas.
+ */
+export const MINOR_SALES_TYPE = "MINDRE_FORSALJNING";
+
+/** Den del av ett utfall som inte räknas in i snittet per besök. */
+export type MinorSales = { sales: number; besok: number };
+
+/**
+ * Snitt per besök med mindre försäljning borträknad ur BÅDE täljare och nämnare.
+ *
+ * Bor här och används av målkortet, admin-översikten, analyskorten och
+ * AI-assistenten. Räkningen fanns tidigare utskriven på fyra ställen som
+ * `sales / besok`; med två definitioner i omlopp är det bara en tidsfråga
+ * innan de glider isär.
+ */
+export function avgPerVisitExclMinor(sales: number, besok: number, minor: MinorSales): number {
+  const namnare = besok - minor.besok;
+  return namnare > 0 ? (sales - minor.sales) / namnare : 0;
 }
 
 /** Modevisning och galge är ömsesidigt uteslutande, så delarna summerar till totalen. */
@@ -163,6 +199,7 @@ export function aggregateByDistrict(reports: ReportInput[], weeks: number[]): Di
         fashionShows: 0,
         hangerShows: 0,
         weekly: new Array(weeks.length).fill(0),
+        minor: { sales: 0, besok: 0 },
       };
     }
     const wi = weekIdx.get(r.week);
@@ -175,25 +212,42 @@ export function aggregateByDistrict(reports: ReportInput[], weeks: number[]): Di
       if (v.isFashionShow) a.fashionShows += 1;
       if (v.isHangerShow) a.hangerShows += 1;
       if (wi !== undefined) a.weekly[wi] += v.sales;
+      // Distriktsaggregatet har ingen typdimension, så mindre försäljning måste
+      // räknas separat här — annars går snittet inte att tvätta per distrikt.
+      if (v.customerType === MINOR_SALES_TYPE) {
+        a.minor.sales += v.sales;
+        a.minor.besok += 1;
+      }
     }
   }
 
   return Object.values(distMap).sort((x, y) => x.label.localeCompare(y.label, "sv"));
 }
 
-/** Utfallet som målkorten jämförs mot. */
+/**
+ * Utfallet som målkorten jämförs mot.
+ *
+ * `sales` och `visits` är totalerna, mindre försäljning inräknad. `avgPerVisit`
+ * är tvättad — se MINOR_SALES_TYPE. `minor` följer med så att gränssnittet kan
+ * skriva ut vad som räknats bort i stället för att bara visa ett tal som inte
+ * går ihop med de två andra.
+ */
 export function goalActualsFrom(byType: TypeAgg[]): {
   sales: number;
   visits: number;
   avgPerVisit: number;
   fashionShows: number;
+  minor: MinorSales;
 } {
   const sales = byType.reduce((s, t) => s + t.sales, 0);
   const visits = byType.reduce((s, t) => s + t.besok, 0);
+  const minorAgg = byType.find(t => t.type === MINOR_SALES_TYPE);
+  const minor: MinorSales = { sales: minorAgg?.sales ?? 0, besok: minorAgg?.besok ?? 0 };
   return {
     sales,
     visits,
-    avgPerVisit: visits > 0 ? sales / visits : 0,
+    avgPerVisit: avgPerVisitExclMinor(sales, visits, minor),
     fashionShows: byType.reduce((s, t) => s + t.fashionShows, 0),
+    minor,
   };
 }

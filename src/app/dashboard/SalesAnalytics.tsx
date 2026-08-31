@@ -24,6 +24,9 @@ export interface BreakdownItem {
   fashionShows: number;
   hangerShows: number;
   weekly: number[];  // försäljning per vecka, i samma ordning som `weeks`
+  // Den del av raden som är mindre försäljning. Räknas bort ur snitt/besök men
+  // inte ur försäljningen — se MINOR_SALES_TYPE i lib/insights/aggregate.ts.
+  minor: { sales: number; besok: number };
 }
 
 interface Props {
@@ -82,6 +85,7 @@ export default function SalesAnalytics({ weeks, breakdown, breakdownTitle, filte
       fashionShows: sum(b => b.fashionShows),
       hangerShows: sum(b => b.hangerShows),
       reportedWeeks: weekly.filter(v => v > 0).length,
+      minor: { sales: sum(b => b.minor.sales), besok: sum(b => b.minor.besok) },
     };
   }, [selected, breakdown, weeks]);
 
@@ -244,7 +248,10 @@ export default function SalesAnalytics({ weeks, breakdown, breakdownTitle, filte
             <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-2">Snitt &amp; aktivitet{tag}</p>
             <div className="grid grid-cols-2 md:grid-cols-5 gap-2 md:gap-3">
               <StatCard compact label="Snittkvitto" value={fmtAvg(agg.sales, agg.customers)} sub="per kund" />
-              <StatCard compact label="Snitt / besök" value={fmtAvg(agg.sales, agg.besok)} sub="per besök" />
+              {/* Samma tvättade snitt som målkortet. "–" när urvalet BARA är
+                  mindre försäljning — den kategorin har inget snitt per besök
+                  i den här meningen, och ett tal där hade varit en lögn. */}
+              <StatCard compact label="Snitt / besök" value={fmtAvg(agg.sales - agg.minor.sales, agg.besok - agg.minor.besok)} sub="exkl. mindre förs." />
               <StatCard compact label="Antal besök" value={String(agg.besok)} sub="registrerade besök" />
               <StatCard compact label="Modevisningar" value={String(agg.fashionShows)} sub="av besöken" />
               <StatCard compact label="Galgvisningar" value={String(agg.hangerShows)} sub="av besöken" />
