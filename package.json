@@ -21,7 +21,7 @@
     "seed": "npx ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.121.0",
+    "@anthropic-ai/sdk": "^0.122.0",
     "@prisma/client": "^5.22.0",
     "bcryptjs": "^3.0.3",
     "decimal.js": "^10.6.0",
