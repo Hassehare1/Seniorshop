@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { calculateFees, money, sumMoney, toNumber, STANDARD_FEE_CONFIG, type FeeConfig } from "@/lib/fees";
 import { las, z, id, valfriText, veckonummer, belopp, antal, boolean } from "@/lib/validering";
 import { medFelhantering } from "@/lib/felhantering";
+import { forstaOtillatnaDubbletten } from "@/lib/rapportRegler";
 
 // MF-taket ackumuleras över säsongens veckor, så veckor EFTER den ändrade
 // måste räknas om — både när en vecka sparas och när den tas bort.
@@ -96,8 +97,8 @@ export const POST = medFelhantering(async (req: NextRequest) => {
   const [season, feeConfig, districtCustomers, existing] = await Promise.all([
     prisma.season.findUnique({ where: { id: seasonId } }),
     prisma.feeConfig.findUnique({ where: { districtId } }),
-    // name behövs för att kunna namnge kunden i dubblettfelet
-    prisma.customer.findMany({ where: { districtId }, select: { id: true, name: true } }),
+    // name till dubblettfelets text, type till undantaget för mindre försäljning
+    prisma.customer.findMany({ where: { districtId }, select: { id: true, name: true, type: true } }),
     prisma.weeklyReport.findUnique({
       where: { districtId_seasonId_week: { districtId, seasonId, week } },
       select: { status: true },
@@ -168,17 +169,16 @@ export const POST = medFelhantering(async (req: NextRequest) => {
   // hanteras genom att redigera den befintliga raden. Payloaden innehåller hela
   // veckan (besöken ersätts nedan), så det räcker att kolla den mot sig själv.
   // UI:t spärrar redan valet, men det här är spärren som inte kan kringgås.
-  const seen = new Set<string>();
-  for (const v of visits) {
-    const kundId = v.customerId;
-    if (seen.has(kundId)) {
-      const name = districtCustomers.find((c) => c.id === kundId)?.name ?? "Kunden";
-      return NextResponse.json(
-        { error: `${name} är rapporterad två gånger samma vecka. Redigera det befintliga besöket i stället för att lägga till ett nytt.` },
-        { status: 400 }
-      );
-    }
-    seen.add(kundId);
+  //
+  // Undantaget är mindre försäljning, där flera rader samma vecka är
+  // normalfallet och inte ett misstag — se tillaterFleraPerVecka.
+  const dubblett = forstaOtillatnaDubbletten(visits, districtCustomers);
+  if (dubblett) {
+    const name = districtCustomers.find((c) => c.id === dubblett.id)?.name ?? "Kunden";
+    return NextResponse.json(
+      { error: `${name} är rapporterad två gånger samma vecka. Redigera det befintliga besöket i stället för att lägga till ett nytt.` },
+      { status: 400 }
+    );
   }
 
   // Allt skrivande sker i EN transaktion. Annars är "ta bort + återskapa besök

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState, useEffect, useId } from "react";
 import { calculateFees, formatSEK, money, sumMoney, type FeeConfig } from "@/lib/fees";
 import { getISOWeek } from "@/lib/week";
+import { upptagnaKunder } from "@/lib/rapportRegler";
 import type { Customer, Season } from "@prisma/client";
 import VisitRow, { type VisitRowData, type VisitStatus } from "./VisitRow";
 
@@ -500,7 +501,7 @@ export default function ReportForm({
               customers={customers}
               feeRow={feeRows[i] ?? null}
               status={visitStatus(visit)}
-              takenCustomerIds={new Set(visits.filter((_, idx) => idx !== i).map(v => v.customerId).filter(Boolean))}
+              takenCustomerIds={upptagnaKunder(visits, i, customers)}
               onUpdate={(field, value) => updateVisit(i, field, value)}
               onRemove={() => removeVisit(i)}
             />

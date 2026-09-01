@@ -54,6 +54,40 @@ export const customerTypeChartColors: Record<string, string> = {
   OVRIGT: "#64748b",
 };
 
+/**
+ * Mindre försäljning — kundtypen som beter sig annorlunda än alla andra.
+ *
+ * Den är ingen plats man besöker, utan en hink för enskilda småköp:
+ * lagerförsäljning, ett paket skickat till en kund, någon som handlar hemma.
+ * Två följder, båda med egen regel nedan:
+ *
+ *   1. Snittet per besök räknas utan den (se avgPerVisitExclMinor i
+ *      insights/aggregate.ts). En hink med sex köp är ingen besöksrad.
+ *   2. Samma "kund" får förekomma flera gånger samma vecka — se
+ *      tillaterFleraPerVecka.
+ *
+ * Bor här och inte i aggregate.ts: det är ett faktum om kundtypen, och både
+ * rapportformuläret och analysen behöver det. Ett värde, ett ställe.
+ */
+export const MINOR_SALES_TYPE = "MINDRE_FORSALJNING";
+
+/**
+ * Får kunden rapporteras flera gånger samma vecka?
+ *
+ * Normalt nej — ett andra besök samma vecka är nästan alltid en felinmatning,
+ * och rätt åtgärd är att redigera den befintliga raden. Genomgång av all
+ * pilotdata (1 072 besök): samma kundnamn förekom två gånger samma vecka i nio
+ * fall, och åtta av dem var mindre försäljning — "Lagerförsäljning" sex gånger
+ * på en och samma vecka i D12. Det nionde var ett vanligt boende och kunde lika
+ * gärna vara just den felinmatning spärren finns för.
+ *
+ * Carita blockerades av spärren 2026-09-01 när hon skulle bokföra flera
+ * hemköp gjorda under sommaren.
+ */
+export function tillaterFleraPerVecka(customerType: string): boolean {
+  return customerType === MINOR_SALES_TYPE;
+}
+
 /** Ordnade alternativ för formulär (select-dropdowns). Samma ordning som i slutrapporten. */
 export const customerTypeOptions = [
   { value: "ALDREBOENDE", label: "Äldreboende" },

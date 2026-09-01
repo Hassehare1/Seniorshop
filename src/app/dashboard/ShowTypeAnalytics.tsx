@@ -7,7 +7,8 @@ import {
   XAxis, YAxis, Tooltip, LabelList,
 } from "recharts";
 import { formatSEK, formatCompactSEK } from "@/lib/fees";
-import { MINOR_SALES_TYPE, avgPerVisitExclMinor } from "@/lib/insights/aggregate";
+import { avgPerVisitExclMinor } from "@/lib/insights/aggregate";
+import { MINOR_SALES_TYPE } from "@/lib/customerTypes";
 
 // Aggregat per kundtyp, uppdelat på visningstyp. Klienten summerar de valda
 // kundtyperna (union) — en kund har exakt en typ, så inga dubbelräkningar.
