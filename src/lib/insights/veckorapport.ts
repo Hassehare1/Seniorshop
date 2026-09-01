@@ -10,7 +10,7 @@
 // MINOR_SALES_TYPE i aggregate.ts. Blanda inte ihop de två vyerna: den här är
 // underlag till en extern rapport, den andra är portalens egen sanning.
 
-import { MINOR_SALES_TYPE } from "./aggregate.ts";
+import { MINOR_SALES_TYPE } from "../customerTypes.ts";
 
 export type VeckoVisit = {
   customerType: string;

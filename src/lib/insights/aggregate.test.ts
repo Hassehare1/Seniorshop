@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { MINOR_SALES_TYPE } from "../customerTypes.ts";
 import {
-  MINOR_SALES_TYPE,
   aggregateByDistrict,
   aggregateByType,
   avgPerVisitExclMinor,

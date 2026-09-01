@@ -2,7 +2,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { cookies } from "next/headers";
 import Link from "next/link";
-import { customerTypeLabels, customerTypeChartColors } from "@/lib/customerTypes";
+import { customerTypeLabels, customerTypeChartColors, MINOR_SALES_TYPE } from "@/lib/customerTypes";
 import { sumMoney, toNumber } from "@/lib/fees";
 import WeeklyReportList from "./WeeklyReportList";
 import ReaBackfillToggle from "./ReaBackfillToggle";
@@ -18,7 +18,6 @@ import { resolveOverviewPeriod, type SeasonRow } from "@/lib/season";
 import { loadForecast } from "@/lib/insights/forecast";
 import { THEME_COOKIE, THEME_ACCENT, isTheme, DEFAULT_THEME } from "@/lib/theme";
 import {
-  MINOR_SALES_TYPE,
   TYPE_KEYS,
   aggregateByDistrict,
   aggregateByType,

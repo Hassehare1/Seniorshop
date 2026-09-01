@@ -50,22 +50,25 @@ export interface DistAgg extends Omit<TypeAgg, "type"> {
 }
 
 /**
- * Kundtypen som räknas bort ur snittet per besök — men BARA därifrån.
+ * Mindre försäljning räknas bort ur snittet per besök — men BARA därifrån.
  *
- * Mindre försäljning är lagerförsäljning och småpartier hemma hos någon, inte
- * ett besök i den mening snittkvittot mäter. Posterna är många och små: över
- * all pilotdata ligger de på ~3 600 kr mot ~16 800 kr för övriga besök, och i
- * D12 — där 43 av 198 besök är en enda kund som heter "Lagerförsäljning" —
- * drog de ned snittet med 19 %. Senior Shop räknar därför bort dem när snittet
- * diskuteras med FT, och portalen följer samma definition så att FT ser samma
- * tal i portalen som de hör på uppföljningen.
+ * Raderna är inte besök utan hinkar med enskilda småköp, och FT fyller i hur
+ * många i Antal kunder. Per kund säljer de lika mycket som alla andra (992 kr
+ * mot 982 kr över all pilotdata); snedvridningen sitter i nämnaren. I D12, där
+ * 43 av 198 rader är kunden "Lagerförsäljning", drog de ned snittet 19 %.
+ * Senior Shop räknar därför bort dem när snittet diskuteras med FT, och
+ * portalen följer samma definition så att FT ser samma tal i portalen som de
+ * hör på uppföljningen.
  *
  * Omsättningen och antalet besök är fortfarande totalerna, inklusive mindre
  * försäljning. Det är de som rapporteras och faktureras — bara snittet tvättas.
  * Följden är att snittet INTE är omsättning ÷ besök, och det måste stå utskrivet
  * där talet visas.
+ *
+ * Konstanten bor i customerTypes.ts tillsammans med typens andra särregel
+ * (flera rader samma vecka) — importera den därifrån, inte härifrån.
  */
-export const MINOR_SALES_TYPE = "MINDRE_FORSALJNING";
+import { MINOR_SALES_TYPE } from "../customerTypes.ts";
 
 /** Den del av ett utfall som inte räknas in i snittet per besök. */
 export type MinorSales = { sales: number; besok: number };
