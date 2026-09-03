@@ -2,7 +2,14 @@
 // i dashboard/page.tsx), inte i databasen. Gäller den här enheten, inte kontot.
 export type Theme = "blue" | "seniorshop";
 export const THEME_COOKIE = "seniorshop_theme";
-export const DEFAULT_THEME: Theme = "blue";
+// Seniorshops plommon är standard sedan 2026-09-03. Portalen är franchisens
+// egen, och den ska se ut som varumärket utan att någon först måste hitta en
+// inställning. Blått finns kvar som val för den som föredrar det.
+//
+// Ändras det här måste rot-layouten sätta data-theme även utan kaka (annars
+// faller CSS tillbaka på basen, som är den blå) och etiketten i ThemeToggle
+// peka ut rätt alternativ som standard.
+export const DEFAULT_THEME: Theme = "seniorshop";
 
 export function isTheme(value: string | undefined): value is Theme {
   return value === "blue" || value === "seniorshop";

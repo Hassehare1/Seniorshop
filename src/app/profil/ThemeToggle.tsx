@@ -23,12 +23,12 @@ export default function ThemeToggle({ initialTheme }: { initialTheme: Theme }) {
       <h2 className="font-semibold text-slate-700 mb-1">Utseende</h2>
       <p className="text-slate-500 text-sm mb-4">Gäller bara den här enheten, inte kontot.</p>
       <div className="flex items-center justify-between">
-        <span className="text-sm text-slate-700">{on ? "Seniorshop" : "Blå (standard)"}</span>
+        <span className="text-sm text-slate-700">{on ? "Seniorshop (standard)" : "Blå"}</span>
         <button
           type="button"
           role="switch"
           aria-checked={on}
-          aria-label="Byt till Seniorshops egna färger"
+          aria-label="Byt mellan Seniorshops färger och blått"
           onClick={toggle}
           className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0 ${
             on ? "bg-blue-600" : "bg-slate-300"
