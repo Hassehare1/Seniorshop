@@ -8,20 +8,18 @@ import { VENUE_MAX_LENGTH } from "@/lib/venue";
 export type CustomerFormState = {
   name: string; type: string; contactPerson: string; contactRole: string; email: string;
   phone: string; address: string; postalCode: string; city: string; venue: string; notes: string;
-  active: boolean;
   postersA3: string; postersA4: string; digitalMaterial: boolean; digitalMaterialNote: string;
 };
 
 export const emptyCustomerForm: CustomerFormState = {
   name: "", type: "TRAFFPUNKTER", contactPerson: "", contactRole: "", email: "",
-  phone: "", address: "", postalCode: "", city: "", venue: "", notes: "", active: true,
+  phone: "", address: "", postalCode: "", city: "", venue: "", notes: "",
   postersA3: "", postersA4: "", digitalMaterial: false, digitalMaterialNote: "",
 };
 
 interface Props {
   form: CustomerFormState;
   setForm: Dispatch<SetStateAction<CustomerFormState>>;
-  editingId: string | null;
   region: string; // distriktets region — styr postnumrets längd
   saving: boolean;
   saveError: string;
@@ -31,7 +29,7 @@ interface Props {
 
 // Lägg till/redigera kund. Formulärets fält är alla "ostyrda" mot en enda
 // setForm — samma mönster som föräldern använde innan uppdelningen.
-export default function CustomerForm({ form, setForm, editingId, region, saving, saveError, onSave, onCancel }: Props) {
+export default function CustomerForm({ form, setForm, region, saving, saveError, onSave, onCancel }: Props) {
   const uid = useId();
 
   return (
@@ -40,7 +38,7 @@ export default function CustomerForm({ form, setForm, editingId, region, saving,
       className="bg-white border border-slate-200 rounded-xl p-6"
     >
       <h3 className="font-semibold text-slate-700 mb-4">
-        {editingId ? "Redigera kund" : "Lägg till kund"}
+        Lägg till kund
       </h3>
       <div className="grid grid-cols-2 gap-4">
         <div className="col-span-2">
@@ -196,27 +194,6 @@ export default function CustomerForm({ form, setForm, editingId, region, saving,
           />
         </div>
 
-        {editingId && (
-          <div className="col-span-2">
-            <button
-              type="button"
-              role="switch"
-              aria-checked={form.active}
-              onClick={() => setForm(f => ({ ...f, active: !f.active }))}
-              className="flex items-center gap-3 cursor-pointer text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 rounded"
-            >
-              <span
-                aria-hidden="true"
-                className={`relative w-10 h-6 rounded-full transition-colors shrink-0 ${form.active ? "bg-green-500" : "bg-slate-300"}`}
-              >
-                <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${form.active ? "left-5" : "left-1"}`} />
-              </span>
-              <span className="text-sm text-slate-700">
-                {form.active ? "Aktiv kund" : "Inaktiv (visas ej i rapportformuläret)"}
-              </span>
-            </button>
-          </div>
-        )}
       </div>
       {saveError && (
         <p className="mt-3 text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{saveError}</p>
@@ -227,7 +204,7 @@ export default function CustomerForm({ form, setForm, editingId, region, saving,
           disabled={saving || !form.name}
           className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white text-sm font-medium px-4 py-2 rounded-lg"
         >
-          {saving ? "Sparar..." : editingId ? "Spara ändringar" : "Spara kund"}
+          {saving ? "Sparar..." : "Spara kund"}
         </button>
         <button
           type="button"
