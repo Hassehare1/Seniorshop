@@ -27,7 +27,14 @@ export const customerTypeLabels: Record<string, string> = {
 
 export const customerTypeColors: Record<string, string> = {
   ALDREBOENDE: "bg-purple-100 text-purple-700",
-  TRAFFPUNKTER: "bg-blue-100 text-blue-700",
+  // Hårdkodad blå i stället för blue-100/blue-700. Temat räknar om Tailwinds
+  // blue-* till plommon (se globals.css), och Träffpunkter är den ENDA av de
+  // elva kategorierna vars etikett använder blått — följden blev en rosa
+  // etikett i kundlistan bredvid en blå stapel i diagrammet, samma kategori i
+  // två färger. Kategoripaletten ska vara stabil och oberoende av portalens
+  // accentfärg, precis som customerTypeChartColors nedan redan är.
+  // Värdena är Tailwinds egna blue-100 och blue-700.
+  TRAFFPUNKTER: "bg-[#dbeafe] text-[#1d4ed8]",
   PENSIONARSFORENING: "bg-green-100 text-green-700",
   FORENING_STOD_HALSA: "bg-teal-100 text-teal-700",
   OVRIGA_FORENINGAR: "bg-lime-100 text-lime-700",
