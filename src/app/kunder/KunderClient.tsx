@@ -29,7 +29,6 @@ export default function KunderClient({ customers: initial, districtId, districtN
   const [customers, setCustomers] = useState(initial);
   const [showForm, setShowForm] = useState(false);
   const [showImport, setShowImport] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
@@ -121,34 +120,6 @@ export default function KunderClient({ customers: initial, districtId, districtN
     }
   }
 
-  function startEdit(c: Customer) {
-    setEditingId(c.id);
-    setForm({
-      name: c.name,
-      type: c.type,
-      contactPerson: c.contactPerson ?? "",
-      contactRole: c.contactRole ?? "",
-      email: c.email ?? "",
-      phone: c.phone ?? "",
-      address: c.address ?? "",
-      postalCode: c.postalCode ?? "",
-      city: c.city ?? "",
-      venue: c.venue ?? "",
-      notes: c.notes ?? "",
-      postersA3: c.postersA3 ? String(c.postersA3) : "",
-      postersA4: c.postersA4 ? String(c.postersA4) : "",
-      digitalMaterial: c.digitalMaterial,
-      digitalMaterialNote: c.digitalMaterialNote ?? "",
-      active: c.active,
-    });
-    setShowForm(false);
-  }
-
-  function cancelEdit() {
-    setEditingId(null);
-    setForm(emptyForm);
-  }
-
   async function handleSave() {
     if (!form.name || !form.type) return;
 
@@ -168,42 +139,27 @@ export default function KunderClient({ customers: initial, districtId, districtN
     setSaving(true);
     setSaveError("");
 
-    if (editingId) {
-      const res = await fetch(`/api/customers/${editingId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-      if (res.ok) {
-        const updated = await res.json();
-        setCustomers(prev => prev.map(c => c.id === editingId ? updated : c));
-        setEditingId(null);
-        setForm(emptyForm);
-      } else {
-        const { error } = await res.json().catch(() => ({ error: "Något gick fel vid sparning." }));
-        setSaveError(error ?? "Något gick fel vid sparning.");
-      }
+    // Formuläret skapar bara NYA kunder. Ändringar görs på kundkortet, dit
+    // både namnet och Redigera leder.
+    const res = await fetch("/api/customers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...form, districtId }),
+    });
+    if (res.ok) {
+      const created = await res.json();
+      setCustomers(prev => [created, ...prev]);
+      setForm(emptyForm);
+      setShowForm(false);
     } else {
-      const res = await fetch("/api/customers", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, districtId }),
-      });
-      if (res.ok) {
-        const created = await res.json();
-        setCustomers(prev => [created, ...prev]);
-        setForm(emptyForm);
-        setShowForm(false);
-      } else {
-        const { error } = await res.json().catch(() => ({ error: "Något gick fel vid sparning." }));
-        setSaveError(error ?? "Något gick fel vid sparning.");
-      }
+      const { error } = await res.json().catch(() => ({ error: "Något gick fel vid sparning." }));
+      setSaveError(error ?? "Något gick fel vid sparning.");
     }
 
     setSaving(false);
   }
 
-  const formOpen = showForm || editingId !== null;
+  const formOpen = showForm;
 
   return (
     <div className="space-y-4">
@@ -240,13 +196,13 @@ export default function KunderClient({ customers: initial, districtId, districtN
           </>
         )}
         <button
-          onClick={() => { setShowImport(s => !s); setShowForm(false); setEditingId(null); }}
+          onClick={() => { setShowImport(s => !s); setShowForm(false); }}
           className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium px-4 py-2 rounded-lg"
         >
           Importera
         </button>
         <button
-          onClick={() => { setShowForm(!showForm); setShowImport(false); setEditingId(null); setForm(emptyForm); }}
+          onClick={() => { setShowForm(!showForm); setShowImport(false); setForm(emptyForm); }}
           className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg"
         >
           + Ny kund
@@ -267,12 +223,12 @@ export default function KunderClient({ customers: initial, districtId, districtN
         <CustomerForm
           form={form}
           setForm={setForm}
-          editingId={editingId}
+          editingId={null}
           region={region}
           saving={saving}
           saveError={saveError}
           onSave={handleSave}
-          onCancel={editingId ? cancelEdit : () => { setShowForm(false); setSaveError(""); }}
+          onCancel={() => { setShowForm(false); setSaveError(""); }}
         />
       )}
 
@@ -295,7 +251,10 @@ export default function KunderClient({ customers: initial, districtId, districtN
             {filtered.map(c => (
               <tr key={c.id} className={`hover:bg-slate-50 ${!c.active ? "opacity-40" : ""} ${seasons.length > 0 && visitCount(c.id) >= 2 ? "bg-blue-50" : ""}`}>
                 <td className="px-4 py-3 font-medium">
-                  <Link href={`/kunder/${c.id}`} className="text-slate-800 hover:text-blue-700 hover:underline">
+                  {/* prefetch av: /kunder/[id] är dynamisk och saknar loading.tsx, så varje
+                      synlig rad hade annars kostat en full serverrendering med
+                      Prisma-fråga — och nu finns TVÅ länkar per rad. */}
+                  <Link href={`/kunder/${c.id}`} prefetch={false} className="text-slate-800 hover:text-blue-700 hover:underline">
                     {c.name}
                   </Link>
                   {!c.approved && (
@@ -323,12 +282,17 @@ export default function KunderClient({ customers: initial, districtId, districtN
                 </td>
                 <td className="px-4 py-3 text-slate-500 max-w-xs truncate">{c.notes ?? "–"}</td>
                 <td className="px-4 py-3 text-right">
-                  <button
-                    onClick={() => startEdit(c)}
+                  {/* Går till kundkortet, samma ställe som ett klick på namnet.
+                      Tidigare öppnades ett formulär HÖGST UPP i listan — står
+                      man långt ned syns ingenting hända, och man tror att
+                      knappen är trasig. Ett ställe att ändra en kund på. */}
+                  <Link
+                    href={`/kunder/${encodeURIComponent(c.id)}`}
+                    prefetch={false}
                     className="text-xs text-blue-600 hover:text-blue-800 font-medium"
                   >
                     Redigera
-                  </button>
+                  </Link>
                 </td>
               </tr>
             ))}
@@ -339,7 +303,7 @@ export default function KunderClient({ customers: initial, districtId, districtN
                     <>
                       Inga kunder registrerade i ditt distrikt än.{" "}
                       <button
-                        onClick={() => { setShowForm(true); setShowImport(false); setEditingId(null); setForm(emptyForm); }}
+                        onClick={() => { setShowForm(true); setShowImport(false); setForm(emptyForm); }}
                         className="text-blue-600 hover:text-blue-700 font-medium"
                       >
                         Lägg till din första kund →

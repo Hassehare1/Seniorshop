@@ -5,9 +5,13 @@ import { useState } from "react";
 import { formatPostalCode, postalCodeDigits, validatePostalCode } from "@/lib/postalCode";
 import { materialSummary, parseAntal } from "@/lib/salesMaterial";
 import { validateVenue, VENUE_MAX_LENGTH } from "@/lib/venue";
+import { customerTypeOptions } from "@/lib/customerTypes";
 
 type Values = {
   name: string;
+  /** Kundtypen. Styr hur besöken räknas i statistiken — se customerTypes.ts. */
+  type: string;
+  active: boolean;
   contactPerson: string;
   contactRole: string;
   phone: string;
@@ -136,6 +140,31 @@ export default function ContactCard({
               <input type="text" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className={input} placeholder="t.ex. Träffpunkt Centrum" />
             </EditField>
           </div>
+          {/* Typ och aktiv-status gick tidigare bara att ändra i listans egna
+              formulär. Nu när Redigera leder hit måste de finnas här, annars
+              försvinner enda sättet att rätta en felaktig kundtyp. */}
+          <EditField label="Typ">
+            <select
+              value={form.type}
+              onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
+              className={input}
+            >
+              {customerTypeOptions.map(o => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+          </EditField>
+          <EditField label="Status">
+            <label className="flex items-center gap-2 text-sm text-slate-700 h-[38px]">
+              <input
+                type="checkbox"
+                checked={form.active}
+                onChange={e => setForm(f => ({ ...f, active: e.target.checked }))}
+                className="rounded border-slate-300"
+              />
+              Aktiv kund
+            </label>
+          </EditField>
           <EditField label="Kontaktperson">
             <input type="text" value={form.contactPerson} onChange={e => setForm(f => ({ ...f, contactPerson: e.target.value }))} className={input} placeholder="Förnamn Efternamn" />
           </EditField>
