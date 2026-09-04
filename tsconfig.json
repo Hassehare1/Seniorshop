@@ -5,6 +5,13 @@
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
+    // Fångar oanvända variabler, importer och parametrar — den vanligaste
+    // formen av död kod, och den som lämnas kvar när ett flöde flyttas.
+    // Slogs på 2026-09-04 efter att redigeringen flyttat till kundkortet och
+    // lämnat en oanvänd prop bakom sig. Repot var redan rent; regeln håller
+    // det så utan att någon behöver komma ihåg att svepa.
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "noEmit": true,
     "esModuleInterop": true,
     // Testfilerna importerar med explicit .ts-ändelse — det krävs av

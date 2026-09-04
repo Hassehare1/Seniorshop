@@ -223,7 +223,6 @@ export default function KunderClient({ customers: initial, districtId, districtN
         <CustomerForm
           form={form}
           setForm={setForm}
-          editingId={null}
           region={region}
           saving={saving}
           saveError={saveError}
