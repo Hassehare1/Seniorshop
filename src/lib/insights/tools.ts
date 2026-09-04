@@ -6,6 +6,7 @@ import { resolveReportSeason } from "@/lib/season";
 import { getCurrentWeekAndYear } from "@/lib/week";
 import { aggregateByDistrict, aggregateByType, goalActualsFrom, uniqueWeeks } from "./aggregate";
 import { comparableWeeks, rankDistricts } from "./compare";
+import { kundregisterRader, kundregisterSumma } from "./kundregister";
 import { loadSeasonReports, toAggregateInput } from "./load";
 
 /**
@@ -142,6 +143,16 @@ export const assistantTools = [
             "Säsongens id från lista_sasonger. Utelämnas för den säsong som pågår nu — gör det när frågan inte nämner någon säsong.",
         },
       },
+      required: [],
+    },
+  },
+  {
+    name: "kundregister",
+    description:
+      "Kundregistrets tillstånd per distrikt: antal kunder, hur många som är aktiva, och hur många som har postnummer, postort, telefon, kontaktperson respektive säljmaterial ifyllt. Använd när frågan gäller REGISTRET snarare än försäljningen — hur många kunder som saknar postnummer, vilket distrikt som lagt in flest, vem som har ett välskött register, eller hur många kunder ett distrikt har. Handlar frågan om kronor eller besök är det ett annat verktyg.",
+    inputSchema: {
+      type: "object",
+      properties: { ...distriktParam },
       required: [],
     },
   },
@@ -336,6 +347,58 @@ export async function runAssistantTool(
           besokare: d.customers,
           snittPerBesok: formatSEK(Math.round(d.avgPerVisit)),
           modevisningar: d.fashionShows,
+        })),
+      };
+    }
+
+    case "kundregister": {
+      // Ingen egen admin-spärr behövs: resolveDistrict ger FT sitt eget
+      // distrikt och ingenting annat, så frågan svarar på rätt underlag även
+      // om assistenten någon gång öppnas för dem. Admin utan distriktsnummer
+      // får alla — det är det som gör "vem har flest postnummer" möjlig.
+      const { districtId, label } = await resolveDistrict(scope, input.distriktsnummer as number | undefined);
+
+      const [kunder, distrikt] = await Promise.all([
+        prisma.customer.findMany({
+          where: districtId ? { districtId } : {},
+          select: {
+            districtId: true, active: true, postalCode: true, city: true,
+            phone: true, contactPerson: true,
+            postersA3: true, postersA4: true, digitalMaterial: true,
+          },
+        }),
+        prisma.district.findMany({
+          where: districtId ? { id: districtId } : {},
+          select: { id: true, number: true, name: true },
+        }),
+      ]);
+
+      const rader = kundregisterRader(kunder, distrikt);
+      const summa = kundregisterSumma(rader);
+
+      return {
+        urval: label,
+        totalt: {
+          kunder: summa.antal,
+          aktiva: summa.aktiva,
+          medPostnummer: summa.medPostnummer,
+          utanPostnummer: summa.utanPostnummer,
+          andelMedPostnummer: `${summa.andelPostnummer} %`,
+          medTelefon: summa.medTelefon,
+          medKontaktperson: summa.medKontaktperson,
+          medSaljmaterial: summa.medSaljmaterial,
+        },
+        perDistrikt: rader.map(r => ({
+          distrikt: r.label,
+          kunder: r.antal,
+          aktiva: r.aktiva,
+          medPostnummer: r.medPostnummer,
+          utanPostnummer: r.utanPostnummer,
+          andelMedPostnummer: `${r.andelPostnummer} %`,
+          medPostort: r.medPostort,
+          medTelefon: r.medTelefon,
+          medKontaktperson: r.medKontaktperson,
+          medSaljmaterial: r.medSaljmaterial,
         })),
       };
     }
