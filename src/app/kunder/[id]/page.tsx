@@ -88,6 +88,8 @@ export default async function CustomerCardPage({ params }: { params: Promise<{ i
         customerId={customer.id}
         initial={{
           name: customer.name,
+          type: customer.type,
+          active: customer.active,
           contactPerson: customer.contactPerson ?? "",
           contactRole: customer.contactRole ?? "",
           phone: customer.phone ?? "",
