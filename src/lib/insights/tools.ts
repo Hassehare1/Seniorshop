@@ -7,6 +7,7 @@ import { getCurrentWeekAndYear } from "@/lib/week";
 import { aggregateByDistrict, aggregateByType, goalActualsFrom, uniqueWeeks } from "./aggregate";
 import { comparableWeeks, rankDistricts } from "./compare";
 import { kundregisterRader, kundregisterSumma } from "./kundregister";
+import { bara, forsaljningPerVecka, veckoPerDistrikt } from "./veckoforsaljning";
 import { loadSeasonReports, toAggregateInput } from "./load";
 
 /**
@@ -153,6 +154,28 @@ export const assistantTools = [
     inputSchema: {
       type: "object",
       properties: { ...distriktParam },
+      required: [],
+    },
+  },
+  {
+    name: "forsaljning_per_vecka",
+    description:
+      "Försäljning och besök vecka för vecka under en säsong, plus varje distrikts total, bästa vecka och snitt per rapporterad vecka. Använd när frågan gäller VECKOR — vilken vecka som var bäst eller sämst, hur en viss vecka gick, vilket distrikt som har bäst veckoförsäljning, eller hur säsongen utvecklas i takt. Gäller frågan hela säsongen på en gång är det ett annat verktyg.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        seasonId: {
+          type: "string",
+          description:
+            "Säsongens id från lista_sasonger. Utelämnas för den säsong som pågår nu — gör det när frågan inte nämner någon säsong.",
+        },
+        vecka: {
+          type: "number",
+          description:
+            "Ett enskilt veckonummer, t.ex. 36. Utelämnas för hela säsongen — ta bara med det när frågan gäller en bestämd vecka.",
+        },
+        ...distriktParam,
+      },
       required: [],
     },
   },
@@ -347,6 +370,61 @@ export async function runAssistantTool(
           besokare: d.customers,
           snittPerBesok: formatSEK(Math.round(d.avgPerVisit)),
           modevisningar: d.fashionShows,
+        })),
+      };
+    }
+
+    case "forsaljning_per_vecka": {
+      // Samma spärr som kundregister: resolveDistrict ger FT sitt eget
+      // distrikt, admin får det hon ber om eller alla.
+      const { districtId, label } = await resolveDistrict(scope, input.distriktsnummer as number | undefined);
+      const seasonId = await resolveSeasonId(input);
+      if (!seasonId) return { fel: "Det finns inga säsonger upplagda i portalen." };
+      const season = await prisma.season.findUnique({ where: { id: seasonId } });
+
+      const [reports, distrikt] = await Promise.all([
+        loadSeasonReports({ seasonId, ...(districtId ? { districtId } : {}) }),
+        prisma.district.findMany({
+          where: districtId ? { id: districtId } : {},
+          select: { id: true, number: true, name: true },
+        }),
+      ]);
+
+      const alla = toAggregateInput(reports);
+      const veckoParam = typeof input.vecka === "number" ? input.vecka : null;
+      const urvalet = veckoParam != null ? bara(alla, veckoParam) : alla;
+
+      if (veckoParam != null && urvalet.length === 0) {
+        return {
+          urval: label,
+          sasong: season ? seasonLabel(season) : "okänd säsong",
+          vecka: veckoParam,
+          svar: `Ingen rapport finns för vecka ${veckoParam}.`,
+        };
+      }
+
+      const veckor = forsaljningPerVecka(urvalet);
+      const perDistrikt = veckoPerDistrikt(urvalet, distrikt);
+
+      return {
+        urval: label,
+        sasong: season ? seasonLabel(season) : "okänd säsong",
+        ...(veckoParam != null ? { vecka: veckoParam } : {}),
+        // Bara veckor som har en rapport finns med — en vecka som saknas är
+        // inte rapporterad, vilket är något annat än noll kronor.
+        perVecka: veckor.map(v => ({
+          vecka: v.vecka,
+          forsaljning: formatSEK(Math.round(v.forsaljning)),
+          besok: v.besok,
+        })),
+        perDistrikt: perDistrikt.map(d => ({
+          distrikt: d.label,
+          total: formatSEK(Math.round(d.total)),
+          rapporteradeVeckor: d.rapporteradeVeckor,
+          snittPerRapporteradVecka: formatSEK(Math.round(d.snittPerVecka)),
+          bastaVecka: d.bastaVecka
+            ? `v${d.bastaVecka.vecka} — ${formatSEK(Math.round(d.bastaVecka.forsaljning))}`
+            : "ingen rapporterad vecka",
         })),
       };
     }
