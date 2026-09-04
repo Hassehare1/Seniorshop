@@ -38,7 +38,7 @@ function systemPrompt(nu: { namn: string; idag: string; pagaende: boolean } | nu
     : "Det finns inga säsonger upplagda i portalen ännu.";
 
   return `Du är en assistent i SeniorShops franchiseportal. Du svarar på frågor om
-försäljning, besök och mål genom att anropa portalens verktyg.
+försäljning, besök, mål och kundregistret genom att anropa portalens verktyg.
 
 ${tidsbild}
 
