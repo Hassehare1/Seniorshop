@@ -36,6 +36,10 @@ export default function KunderClient({ customers: initial, districtId, districtN
   const [season, setSeason] = useState(defaultSeasonId);
   const [visitFilter, setVisitFilter] = useState("all");
   const [materialFilter, setMaterialFilter] = useState<MaterialFilter>("all");
+  // Postnummer fylls i för hand av FT själv. Utan ett filter här syntes bara
+  // täckningen på adminsidan, och FT fick öppna kundkorten ett i taget för att
+  // se hur långt hon kommit.
+  const [postalFilter, setPostalFilter] = useState("ALL");
   const [exporting, setExporting] = useState(false);
 
   const visitCount = (id: string) => visitMap[id]?.[season]?.count ?? 0;
@@ -47,11 +51,12 @@ export default function KunderClient({ customers: initial, districtId, districtN
         ? <span className="text-slate-500 text-xs">1 besök</span>
         : <span className="text-slate-300 text-xs">—</span>;
 
-  const hasActiveFilter = filter !== "" || visitFilter !== "all" || materialFilter !== "all";
+  const hasActiveFilter = filter !== "" || visitFilter !== "all" || materialFilter !== "all" || postalFilter !== "ALL";
   function resetFilters() {
     setFilter("");
     setVisitFilter("all");
     setMaterialFilter("all");
+    setPostalFilter("ALL");
   }
 
   const filtered = customers.filter(c => {
@@ -65,7 +70,11 @@ export default function KunderClient({ customers: initial, districtId, districtN
       (visitFilter === "one" && n === 1) ||
       (visitFilter === "multi" && n >= 2);
     const matchMaterial = matchesMaterialFilter(c, materialFilter);
-    return matchSearch && matchVisit && matchMaterial;
+    const matchPostal =
+      postalFilter === "ALL" ||
+      (postalFilter === "missing" && !c.postalCode) ||
+      (postalFilter === "has" && !!c.postalCode);
+    return matchSearch && matchVisit && matchMaterial && matchPostal;
   });
 
   const seasonStats = season
@@ -159,6 +168,11 @@ export default function KunderClient({ customers: initial, districtId, districtN
     setSaving(false);
   }
 
+  // Hur långt FT kommit med postnumren i det urval som visas. Det här var det
+  // enda stället informationen saknades — admin hade den, den som gör arbetet
+  // hade den inte.
+  const utanPostnummer = filtered.filter(c => !c.postalCode).length;
+
   const formOpen = showForm;
 
   return (
@@ -171,6 +185,16 @@ export default function KunderClient({ customers: initial, districtId, districtN
           onChange={e => setFilter(e.target.value)}
           className="flex-1 min-w-[160px] px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
+        <select
+          value={postalFilter}
+          onChange={e => setPostalFilter(e.target.value)}
+          aria-label="Filtrera på postnummer"
+          className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            >
+          <option value="ALL">Alla postnummer</option>
+          <option value="missing">Saknar postnummer</option>
+          <option value="has">Har postnummer</option>
+        </select>
         {seasons.length > 0 && (
           <>
             <select value={season} onChange={e => setSeason(e.target.value)} aria-label="Säsong" className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
@@ -214,6 +238,33 @@ export default function KunderClient({ customers: initial, districtId, districtN
           {seasons.find(s => s.id === season)?.label}: {customers.length} kunder · <span className="text-blue-600 font-medium">{seasonStats.multi} med återbesök</span> · {seasonStats.none} ej besökta
         </p>
       )}
+
+      {/* Postnummertäckning i det urval som visas. Kontrasten är avsiktligt
+          högre än den grå hjälptexten ovanför — det här är något att göra,
+          inte något att läsa förbi. */}
+      <p className="text-sm text-slate-600 -mt-1">
+        Postnummer:{" "}
+        {filtered.length === 0 ? (
+          <span className="text-slate-500">inga kunder i urvalet</span>
+        ) : utanPostnummer === 0 ? (
+          <span className="text-green-700 font-medium">alla {filtered.length} har postnummer</span>
+        ) : (
+          <>
+            <span className="text-amber-700 font-medium">{utanPostnummer} av {filtered.length} saknar</span>
+            {postalFilter !== "missing" && (
+              <>
+                {" · "}
+                <button
+                  onClick={() => setPostalFilter("missing")}
+                  className="text-blue-700 font-medium hover:underline"
+                >
+                  visa dem
+                </button>
+              </>
+            )}
+          </>
+        )}
+      </p>
 
       {showImport && (
         <ImportKunder onImported={created => setCustomers(prev => [...created, ...prev])} />

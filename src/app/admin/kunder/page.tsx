@@ -42,16 +42,10 @@ export default async function AdminKunder() {
         <p className="text-slate-500 text-sm mt-1">{customers.length} kunder totalt</p>
       </div>
 
-      {/* Postnummer fylls i av varje FT på sina egna kunder. Uppföljningen
-          finns tills vidare bara här, så FT ser inte hur långt hon kommit. */}
-      <div className="mb-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
-        <p className="text-sm font-medium text-amber-900">Postnummer följs bara upp här</p>
-        <p className="text-sm text-amber-800 mt-0.5">
-          FT ser ingen markering över vilka av sina kunder som saknar postnummer — hon måste
-          öppna kundkorten ett i taget för att veta. Vill du att hon ska kunna följa sitt eget
-          arbete behöver samma markering läggas till på “Mina kunder”.
-        </p>
-      </div>
+      {/* Rutan som stod här beskrev ett utvecklingsbehov för en läsare som inte
+          kunde göra något åt det: att FT saknade uppföljning av postnummer.
+          Behovet är löst — "Mina kunder" har samma filter och samma
+          täckningsrad — så anteckningen har inget kvar att säga. */}
       <AdminKunderClient
         customers={customers}
         seasons={seasonOptions}

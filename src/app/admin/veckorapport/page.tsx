@@ -103,11 +103,23 @@ export default async function VeckorapportPage({
           week={week}
         />
       </div>
-      <p className="text-sm text-slate-500 mb-6">
-        Underlag till Senior Shops sammanställning, {seasonLabel} · {periodLabel}. Mindre
-        försäljning ingår inte i något av talen — omsättningen delad med antalet besök är
-        alltså snittet rakt av.
+      <p className="text-sm text-slate-600 mb-4">
+        Underlag till Senior Shops sammanställning, {seasonLabel} · {periodLabel}.
       </p>
+
+      {/* Definitionen låg tidigare som ljusgrå brödtext ovanför och som grå
+          fotnot nedanför. Den avgör hur varje tal i tabellen ska läsas och hör
+          därför ihop med tabellen, inte i marginalen kring den. */}
+      <div className="mb-4 rounded-lg border border-slate-300 bg-slate-50 px-4 py-3">
+        <p className="text-sm font-semibold text-slate-800">
+          Mindre försäljning ingår inte i något av talen nedan
+        </p>
+        <p className="text-sm text-slate-700 mt-0.5">
+          Omsättningen delad med antalet besök är alltså snittet rakt av. Portalens egen
+          totalsiffra för samma period är {kr(summa.totalSales)} på {antal(summa.totalBesok)}{" "}
+          besök — det är den som rapporteras och faktureras.
+        </p>
+      </div>
 
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
         <div className="overflow-x-auto">
@@ -119,14 +131,14 @@ export default async function VeckorapportPage({
                 <th className="text-right px-4 py-3 font-semibold">Antal besök</th>
                 <th className="text-right px-4 py-3 font-semibold">Antal kunder</th>
                 <th className="text-right px-4 py-3 font-semibold">Omsättn. pr besök</th>
-                <th className="text-right px-4 py-3 font-normal normal-case tracking-normal text-slate-400">
+                <th className="text-right px-4 py-3 font-normal normal-case tracking-normal text-slate-600">
                   Borttaget
                 </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {rader.map(r => (
-                <tr key={r.districtId} className={r.besok === 0 ? "text-slate-400" : ""}>
+                <tr key={r.districtId} className={r.besok === 0 ? "text-slate-500" : ""}>
                   <td className="px-4 py-2.5 whitespace-nowrap">{r.label}</td>
                   <td className="px-4 py-2.5 text-right tabular-nums">{r.sales > 0 ? kr(r.sales) : "–"}</td>
                   <td className="px-4 py-2.5 text-right tabular-nums">{r.besok > 0 ? antal(r.besok) : "–"}</td>
@@ -134,7 +146,7 @@ export default async function VeckorapportPage({
                   <td className="px-4 py-2.5 text-right tabular-nums font-medium">
                     {r.besok > 0 ? kr(r.snitt) : "–"}
                   </td>
-                  <td className="px-4 py-2.5 text-right text-xs tabular-nums text-slate-400 whitespace-nowrap">
+                  <td className="px-4 py-2.5 text-right text-xs tabular-nums text-slate-600 whitespace-nowrap">
                     {r.bortSales > 0 || r.bortKunder > 0
                       ? `${kr(r.bortSales)} · ${antal(r.bortKunder)} kunder`
                       : "–"}
@@ -149,7 +161,7 @@ export default async function VeckorapportPage({
                 <td className="px-4 py-3 text-right tabular-nums">{antal(summa.besok)}</td>
                 <td className="px-4 py-3 text-right tabular-nums">{antal(summa.kunder)}</td>
                 <td className="px-4 py-3 text-right tabular-nums">{summa.besok > 0 ? kr(summa.snitt) : "–"}</td>
-                <td className="px-4 py-3 text-right text-xs font-normal tabular-nums text-slate-400 whitespace-nowrap">
+                <td className="px-4 py-3 text-right text-xs font-normal tabular-nums text-slate-600 whitespace-nowrap">
                   {summa.bortSales > 0 || summa.bortKunder > 0
                     ? `${kr(summa.bortSales)} · ${antal(summa.bortKunder)} kunder`
                     : "–"}
@@ -160,11 +172,9 @@ export default async function VeckorapportPage({
         </div>
       </div>
 
-      <p className="mt-4 text-xs text-slate-400 max-w-2xl">
-        Portalens totala omsättning för samma period är {kr(summa.totalSales)} på{" "}
-        {antal(summa.totalBesok)} besök — det är den som rapporteras och faktureras.
-        Tabellen ovan räknar bort mindre försäljning, eftersom lagerförsäljning och
-        småpartier inte är besök i den mening snittkvittot mäter.
+      <p className="mt-4 text-sm text-slate-600 max-w-2xl">
+        Lagerförsäljning och småpartier räknas bort eftersom de inte är besök i den
+        mening snittkvittot mäter.
       </p>
     </div>
   );
