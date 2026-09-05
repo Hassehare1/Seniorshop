@@ -319,8 +319,13 @@ export default async function DashboardPage({
         )}
       </div>
 
+      {/* key på GoalTracker: den läser målen till lokalt tillstånd EN gång med
+          useState(initialGoal). Utan nyckel låg förra distriktets eller
+          säsongens mål kvar när urvalet byttes — och kunde sparas under fel
+          distrikt. Samma fälla som rapportstatusen gick i tidigare. */}
       {showGoals && selectedDistrictId && period && period.kind === "season" && (
         <GoalTracker
+          key={`${selectedDistrictId}-${period.id}`}
           districtId={selectedDistrictId}
           seasonId={period.id}
           seasonLabel={seasonLabel}

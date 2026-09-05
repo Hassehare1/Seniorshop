@@ -268,7 +268,11 @@ export default function ReportForm({
 
   // Skickar en lista besök till servern och speglar svaret i sparat läge.
   // Avgifterna räknas om server-sidan, så klientens värden behöver inte med.
-  async function persistVisits(list: VisitRowData[]) {
+  async function persistVisits(list: VisitRowData[]): Promise<boolean> {
+    // Under laddningen ligger FÖRRA veckans rader kvar i formuläret. Sparades
+    // de då hamnade de på den nya veckan. Knappen är avstängd, men vägen hit
+    // finns också via Lämna in — spärren hör hemma här.
+    if (loadingVisits) return false;
     setSaving(true);
     setError("");
     try {
@@ -292,7 +296,7 @@ export default function ReportForm({
         setSavedVisits([]);
         setSavedReportId(null);
         setReports(prev => prev.filter(r => r.week !== selectedWeek));
-        return;
+        return true;
       }
 
       setSavedReportId(id);
@@ -306,8 +310,10 @@ export default function ReportForm({
         if (exists) return prev.map(r => r.week === selectedWeek ? { ...r, id, status: "DRAFT" } : r);
         return [...prev, { id, week: selectedWeek, status: "DRAFT" }];
       });
+      return true;
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Något gick fel");
+      return false;
     } finally {
       setSaving(false);
     }
@@ -321,7 +327,18 @@ export default function ReportForm({
   }
 
   async function handleLockToggle() {
-    if (!reportId) return;
+    if (!reportId || loadingVisits) return;
+
+    // Lämna in ÄNDRADE tidigare bara status. Skrev man en rad och klickade
+    // direkt låstes vyn med ändringen kvar enbart i webbläsaren — det som
+    // lämnades in var inte det man såg. Nu sparas först, och misslyckas den
+    // sparningen ändras ingen status.
+    const skaLamnaIn = currentStatus !== "SUBMITTED";
+    if (skaLamnaIn && isDirty) {
+      const sparat = await persistVisits(visits);
+      if (!sparat) return;
+    }
+
     setLocking(true);
     setError("");
     try {
@@ -492,7 +509,12 @@ export default function ReportForm({
           </div>
         )}
 
-        <div className={`divide-y divide-slate-100 ${isLocked ? "opacity-60 pointer-events-none select-none" : ""}`}>
+        {/* fieldset, inte pointer-events-none: CSS stoppar bara muspekaren, så
+            en inlämnad rapport gick att ändra med tangentbordet. Servern
+            skyddar bara GODKÄNDA rapporter, alltså gick en INLÄMNAD att skriva
+            om den vägen. disabled på ett fieldset spärrar varje fält inuti,
+            oavsett hur man når det. */}
+        <fieldset disabled={isLocked} className={`min-w-0 divide-y divide-slate-100 ${isLocked ? "opacity-60" : ""}`}>
           {visits.map((visit, i) => (
             <VisitRow
               key={visit._key}
@@ -506,7 +528,7 @@ export default function ReportForm({
               onRemove={() => removeVisit(i)}
             />
           ))}
-        </div>
+        </fieldset>
 
         {!isLocked && customers.length > 0 && (
           <div className="p-6 border-t border-slate-100">
@@ -546,7 +568,7 @@ export default function ReportForm({
       )}
 
       {/* Sparad-bekräftelse (utan Excel-knapp — finns i knapprad nedan) */}
-      {savedReportId && !isLocked && (
+      {savedReportId && !isLocked && !isDirty && (
         <div className="flex items-center gap-3 bg-green-50 border border-green-200 px-4 py-3 rounded-lg">
           <svg className="w-5 h-5 text-green-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -561,7 +583,7 @@ export default function ReportForm({
           {!isLocked && (
             <button
               onClick={handleSubmit}
-              disabled={saving || (visits.length === 0 && savedVisits.length === 0)}
+              disabled={saving || loadingVisits || (visits.length === 0 && savedVisits.length === 0)}
               className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium px-6 py-2.5 rounded-lg transition-colors"
             >
               {saving ? "Sparar..." : "Spara utkast"}
@@ -572,14 +594,22 @@ export default function ReportForm({
           {!isApproved && (currentReport || savedReportId) && (
             <button
               onClick={handleLockToggle}
-              disabled={locking}
+              disabled={locking || saving || loadingVisits}
               className={`font-medium px-6 py-2.5 rounded-lg transition-colors ${
                 currentStatus === "SUBMITTED"
                   ? "bg-amber-100 hover:bg-amber-200 text-amber-800"
                   : "bg-green-600 hover:bg-green-700 text-white"
               }`}
             >
-              {locking ? "..." : currentStatus === "SUBMITTED" ? "🔓 Återta rapport" : "✓ Lämna in rapport"}
+              {locking || saving
+                ? "..."
+                : currentStatus === "SUBMITTED"
+                  ? "🔓 Återta rapport"
+                  // Etiketten säger vad knappen faktiskt gör när det finns
+                  // osparade ändringar — den sparar dem först.
+                  : isDirty
+                    ? "✓ Spara och lämna in"
+                    : "✓ Lämna in rapport"}
             </button>
           )}
 

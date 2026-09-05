@@ -54,32 +54,40 @@ export default function GoalTracker({
   async function save() {
     setSaving(true);
     setError("");
-    const res = await fetch("/api/goals", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        districtId,
-        seasonId,
-        salesTarget: Number(form.salesTarget || 0),
-        visitsTarget: Number(form.visitsTarget || 0),
-        avgPerVisitTarget: Number(form.avgPerVisitTarget || 0),
-        fashionShowsTarget: Number(form.fashionShowsTarget || 0),
-      }),
-    });
-    if (res.ok) {
-      const g = await res.json();
-      setGoal({
-        salesTarget: g.salesTarget,
-        visitsTarget: g.visitsTarget,
-        avgPerVisitTarget: g.avgPerVisitTarget,
-        fashionShowsTarget: g.fashionShowsTarget,
+    // try/finally: utan det lämnade ett nätverksfel knappen i "Sparar…" för
+    // alltid — fetch kastar vid avbruten uppkoppling, och raden som slog av
+    // flaggan låg efter anropet.
+    try {
+      const res = await fetch("/api/goals", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          districtId,
+          seasonId,
+          salesTarget: Number(form.salesTarget || 0),
+          visitsTarget: Number(form.visitsTarget || 0),
+          avgPerVisitTarget: Number(form.avgPerVisitTarget || 0),
+          fashionShowsTarget: Number(form.fashionShowsTarget || 0),
+        }),
       });
-      setEditing(false);
-    } else {
-      const { error } = await res.json().catch(() => ({ error: "Något gick fel." }));
-      setError(error ?? "Något gick fel.");
+      if (res.ok) {
+        const g = await res.json();
+        setGoal({
+          salesTarget: g.salesTarget,
+          visitsTarget: g.visitsTarget,
+          avgPerVisitTarget: g.avgPerVisitTarget,
+          fashionShowsTarget: g.fashionShowsTarget,
+        });
+        setEditing(false);
+      } else {
+        const { error } = await res.json().catch(() => ({ error: "Något gick fel." }));
+        setError(error ?? "Något gick fel.");
+      }
+    } catch {
+      setError("Kunde inte spara — kontrollera uppkopplingen och försök igen.");
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   }
 
   const metrics: Metric[] = [
